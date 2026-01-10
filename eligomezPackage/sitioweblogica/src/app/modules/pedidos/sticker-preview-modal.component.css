@@ -1,0 +1,63 @@
+:host ::ng-deep {
+  .print-page {
+    width: 210mm;
+    height: 297mm;
+  }
+}
+
+/* Estilos para impresión */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Ocultar scrollbar */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  body, html {
+    overflow: hidden;
+  }
+
+  /* Ocultar solo el header */
+  .modal-header {
+    display: none;
+  }
+
+  /* Ocultar solo los controles de navegación y botones */
+  div.flex.gap-4.justify-between,
+  div.bg-white.px-8.py-4.flex.gap-4.justify-end {
+    display: none;
+  }
+
+  /* Asegurar que el contenido no se corte */
+  .modal-content {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .bg-gradient-to-b {
+    overflow: visible;
+  }
+}
+
+/* Estilos del sticker */
+.sticker {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.sticker-left {
+  min-width: 90px;
+}
+
+.sticker-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.sticker-content {
+  display: flex;
+  flex-direction: column;
+}

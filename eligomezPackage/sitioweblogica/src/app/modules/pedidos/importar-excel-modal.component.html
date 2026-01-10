@@ -1,0 +1,259 @@
+<div *ngIf="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-t-lg sticky top-0">
+      <h2 class="text-2xl font-bold">📊 Importar Pedidos desde Excel</h2>
+      <p class="text-green-100 text-sm mt-1">Carga tu archivo Excel con la estructura de pedidos</p>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-6 space-y-6">
+      <!-- Instrucciones -->
+      <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+        <h3 class="font-bold text-blue-900 mb-2">📋 Estructura requerida:</h3>
+        <ul class="text-sm text-blue-800 space-y-1">
+          <li>✓ Encabezado con fecha (ej: 20-12-2025)</li>
+          <li>✓ Columnas: Clienta, TELEFONO, Destino, Encomendista, Dia, HORA, ESTADO, PRENDA VENDIDA</li>
+          <li>✓ Estados: cancelado, confirmado</li>
+          <li>✓ Días: Domingo, Lunes, Martes, Miércoles, Jueves, Viernes, Sábado</li>
+        </ul>
+      </div>
+
+      <!-- File input -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">📁 Seleccionar archivo Excel</label>
+        <input 
+          type="file" 
+          accept=".xlsx,.xls,.csv"
+          (change)="onArchivoSeleccionado($event)"
+          class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg focus:outline-none focus:border-green-500 cursor-pointer"
+          placeholder="Arrastra el archivo aquí o haz clic para seleccionar">
+        <p class="text-xs text-gray-500 mt-2">Formatos soportados: .xlsx, .xls, .csv</p>
+      </div>
+
+      <!-- Preview de archivo seleccionado -->
+      <div *ngIf="archivoSeleccionado" class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+        <p class="text-sm font-medium text-green-900">✓ Archivo seleccionado:</p>
+        <p class="text-sm text-green-700">{{ archivoSeleccionado.name }}</p>
+      </div>
+
+      <!-- Resumen de datos -->
+      <div *ngIf="resumenCargado" class="space-y-4">
+        <!-- Estadísticas generales -->
+        <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+          <h3 class="font-bold text-gray-900">📊 Resumen de datos a importar:</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div class="bg-white p-3 rounded border-l-4 border-blue-400">
+              <span class="text-gray-600">Clientes:</span>
+              <span class="font-bold text-blue-600 ml-2">{{ datosResumen.clientes }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border-l-4 border-purple-400">
+              <span class="text-gray-600">Encomendistas:</span>
+              <span class="font-bold text-purple-600 ml-2">{{ datosResumen.encomendistas }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border-l-4 border-orange-400">
+              <span class="text-gray-600">Destinos:</span>
+              <span class="font-bold text-orange-600 ml-2">{{ datosResumen.destinos }}</span>
+            </div>
+            <div class="bg-white p-3 rounded border-l-4 border-green-400">
+              <span class="text-gray-600">Pedidos:</span>
+              <span class="font-bold text-green-600 ml-2">{{ datosResumen.pedidos }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview detallado con tabs -->
+        <div class="border rounded-lg">
+          <div class="flex flex-wrap border-b bg-gray-100">
+            <button 
+              (click)="tabActual = 'clientes'"
+              [class.bg-white]="tabActual === 'clientes'"
+              [class.border-b-2]="tabActual === 'clientes'"
+              [class.border-blue-600]="tabActual === 'clientes'"
+              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              👤 Clientes ({{ datosResumen.clientes }})
+            </button>
+            <button 
+              (click)="tabActual = 'encomendistas'"
+              [class.bg-white]="tabActual === 'encomendistas'"
+              [class.border-b-2]="tabActual === 'encomendistas'"
+              [class.border-purple-600]="tabActual === 'encomendistas'"
+              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              🚚 Encomendistas ({{ datosResumen.encomendistas }})
+            </button>
+            <button 
+              (click)="tabActual = 'destinos'"
+              [class.bg-white]="tabActual === 'destinos'"
+              [class.border-b-2]="tabActual === 'destinos'"
+              [class.border-orange-600]="tabActual === 'destinos'"
+              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              📍 Destinos ({{ datosResumen.destinos }})
+            </button>
+            <button 
+              (click)="tabActual = 'pedidos'"
+              [class.bg-white]="tabActual === 'pedidos'"
+              [class.border-b-2]="tabActual === 'pedidos'"
+              [class.border-green-600]="tabActual === 'pedidos'"
+              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              📦 Pedidos ({{ datosResumen.pedidos }})
+            </button>
+          </div>
+
+          <!-- Contenido de tabs -->
+          <div class="p-4 max-h-80 overflow-y-auto">
+            <!-- Tab Clientes -->
+            <div *ngIf="tabActual === 'clientes'" class="space-y-2">
+              <div *ngFor="let cliente of datosParaImportar?.clientes" class="bg-blue-50 p-3 rounded border-l-4 border-blue-400 text-sm">
+                <div class="font-medium text-gray-900">{{ cliente.nombre }}</div>
+                <div class="text-gray-600 text-xs mt-1">
+                  📱 {{ cliente.telefono || 'N/A' }} | 📍 {{ cliente.direccion || 'N/A' }}
+                </div>
+              </div>
+              <div *ngIf="!datosParaImportar?.clientes?.length" class="text-gray-500 text-center py-4">
+                Sin clientes
+              </div>
+            </div>
+
+            <!-- Tab Encomendistas -->
+            <div *ngIf="tabActual === 'encomendistas'" class="space-y-2">
+              <div *ngFor="let enc of datosParaImportar?.encomendistas" class="bg-purple-50 p-3 rounded border-l-4 border-purple-400 text-sm">
+                <div class="font-medium text-gray-900">{{ enc.nombre }}</div>
+                <div class="text-gray-600 text-xs mt-1">
+                  📱 {{ enc.telefono || 'N/A' }} | 📍 {{ enc.local || 'N/A' }}
+                </div>
+              </div>
+              <div *ngIf="!datosParaImportar?.encomendistas?.length" class="text-gray-500 text-center py-4">
+                Sin encomendistas
+              </div>
+            </div>
+
+            <!-- Tab Destinos -->
+            <div *ngIf="tabActual === 'destinos'" class="space-y-2">
+              <div *ngFor="let destino of datosParaImportar?.destinos" class="bg-orange-50 p-3 rounded border-l-4 border-orange-400 text-sm">
+                <div class="font-medium text-gray-900">📍 {{ destino }}</div>
+              </div>
+              <div *ngIf="!datosParaImportar?.destinos?.length" class="text-gray-500 text-center py-4">
+                Sin destinos
+              </div>
+            </div>
+
+            <!-- Tab Pedidos -->
+            <div *ngIf="tabActual === 'pedidos'" class="space-y-2">
+              <div *ngFor="let pedido of datosParaImportar?.pedidos | slice:0:10" class="bg-green-50 p-3 rounded border-l-4 border-green-400 text-sm">
+                <div class="font-medium text-gray-900">{{ pedido.cliente_nombre }}</div>
+                <div class="text-gray-600 text-xs mt-1 space-y-1">
+                  <div>📍 {{ pedido.destino_id }}</div>
+                  <div>💰 ${{ pedido.total?.toFixed?.(2) || '0.00' }} | 📦 {{ pedido.cantidad_prendas || 0 }} prendas</div>
+                  <div>📅 {{ formatearFecha(pedido.fecha_entrega_programada) }} | 🕐 {{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}</div>
+                  <div>
+                    <span [class]="getEstadoColor(pedido.estado)" class="px-2 py-0.5 rounded text-xs font-medium">
+                      {{ pedido.estado }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="datosParaImportar && datosParaImportar.pedidos && datosParaImportar.pedidos.length > 10" class="text-gray-500 text-center py-2 text-xs">
+                ... y {{ datosParaImportar.pedidos.length - 10 }} más
+              </div>
+              <div *ngIf="!datosParaImportar?.pedidos?.length" class="text-gray-500 text-center py-4">
+                Sin pedidos
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mensajes de error -->
+      <div *ngIf="errorMensaje" class="bg-red-50 border-l-4 border-red-400 p-4">
+        <p class="text-sm font-medium text-red-900">❌ Error:</p>
+        <p class="text-sm text-red-700">{{ errorMensaje }}</p>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="cargando" class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <p class="text-sm font-medium text-yellow-900">⏳ Procesando archivo...</p>
+        <div class="mt-2 h-2 bg-yellow-200 rounded-full overflow-hidden">
+          <div class="h-full bg-yellow-500 animate-pulse" style="width: 60%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex gap-3 justify-between border-t sticky bottom-0 flex-wrap">
+      <button 
+        (click)="limpiarBaseDatos()"
+        title="Elimina TODOS los clientes, encomendistas y pedidos de la base de datos"
+        class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition cursor-help">
+        🗑️ Limpiar BD
+      </button>
+      
+      <div class="flex gap-3 flex-wrap">
+        <button 
+          (click)="cerrar()"
+          class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-medium transition">
+          ❌ Cancelar
+        </button>
+        
+        <!-- Botón Importar Clientes -->
+        <div class="relative group">
+          <button 
+            (click)="importarClientes()"
+            [disabled]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.clientes === 0"
+            [class.opacity-50]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.clientes === 0"
+            [class.cursor-not-allowed]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.clientes === 0"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition disabled:from-gray-400 disabled:to-gray-400">
+            👤 Clientes ({{ datosResumen.clientes }})
+          </button>
+          <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block bg-blue-900 text-white text-xs rounded p-2 w-48 z-50">
+            <strong>Importa:</strong><br>
+            • Nombre del cliente<br>
+            • Teléfono<br>
+            • Dirección
+          </div>
+        </div>
+        
+        <!-- Botón Importar Destinos -->
+        <div class="relative group">
+          <button 
+            (click)="importarDestinos()"
+            [disabled]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.encomendistas === 0"
+            [class.opacity-50]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.encomendistas === 0"
+            [class.cursor-not-allowed]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.encomendistas === 0"
+            class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition disabled:from-gray-400 disabled:to-gray-400">
+            📍 Destinos ({{ datosResumen.encomendistas }})
+          </button>
+          <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block bg-orange-900 text-white text-xs rounded p-2 w-56 z-50">
+            <strong>Importa:</strong><br>
+            • Encomendistas<br>
+            &nbsp;&nbsp;- Nombre<br>
+            &nbsp;&nbsp;- Teléfono<br>
+            &nbsp;&nbsp;- Local<br>
+            &nbsp;&nbsp;- Destinos []<br>
+          </div>
+        </div>
+        
+        <!-- Botón Importar Pedidos -->
+        <div class="relative group">
+          <button 
+            (click)="importarPedidos()"
+            [disabled]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.pedidos === 0"
+            [class.opacity-50]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.pedidos === 0"
+            [class.cursor-not-allowed]="!archivoSeleccionado || cargando || !resumenCargado || datosResumen.pedidos === 0"
+            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition disabled:from-gray-400 disabled:to-gray-400">
+            📦 Pedidos ({{ datosResumen.pedidos }})
+          </button>
+          <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block bg-green-900 text-white text-xs rounded p-2 w-56 z-50">
+            <strong>Importa:</strong><br>
+            • Cliente ID (busca por nombre)<br>
+            • Encomendista ID<br>
+            • Destino/Tienda<br>
+            • Fecha entrega<br>
+            • Horario (inicio-fin)<br>
+            • Estado<br>
+            • Total & prendas
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

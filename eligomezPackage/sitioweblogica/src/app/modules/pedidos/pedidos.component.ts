@@ -1,0 +1,1389 @@
+import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ResponsiveService } from '../../service/responsive/responsive.service';
+import { PedidosService, Pedido } from '../../service/pedidos/pedidos.service';
+import { ClientesService, Cliente } from '../../service/clientes/clientes.service';
+import { EncomendistasService, Encomendista } from '../../service/encomendistas/encomendistas.service';
+import { ProductosService, Producto } from '../../service/productos/productos.service';
+import { TiendasService } from '../../service/tiendas/tiendas.service';
+import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal-confirmacion.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
+import { Tienda } from '../../models/tienda.model';
+import { Subscription } from 'rxjs';
+import { StickerPdfService } from '../../service/pdf/sticker-pdf.service';
+import { StickerPreviewModalComponent } from './sticker-preview-modal.component';
+import { ImportarExcelModalComponent } from './importar-excel-modal.component';
+
+interface PedidoCompleto extends Pedido {
+  cliente_nombre?: string;
+  encomendista_nombre?: string;
+  nombre_tienda?: string;
+  color_sticker?: string;
+  logo_tienda?: string;
+}
+
+@Component({
+  selector: 'app-pedidos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, StickerPreviewModalComponent, ImportarExcelModalComponent],
+  templateUrl: './pedidos.component.html',
+  styleUrls: ['./pedidos.component.css']
+})
+export class PedidosComponent implements OnInit, OnDestroy {
+  @ViewChild(ImportarExcelModalComponent) importarExcelModal!: ImportarExcelModalComponent;
+  
+  isMobile: boolean = false;
+  pedidos: PedidoCompleto[] = [];
+  clientes: Cliente[] = [];
+  encomendistas: Encomendista[] = [];
+  productos: Producto[] = [];
+  tiendas: Tienda[] = [];  // NUEVO: Agregar tiendas
+  tiendaSeleccionada: Tienda | null = null;  // NUEVO: Tienda seleccionada para crear pedido
+
+  filtroEstado = 'todos';
+  estados = ['todos', 'sin-finalizar', 'pendiente', 'reservado', 'empacada', 'enviado', 'retirado', 'no-retirado', 'cancelado', 'retirado-local', 'liberado'];
+
+  // Modal de cambio de estado
+  mostrarModalEstado = false;
+  pedidoSeleccionado: PedidoCompleto | null = null;
+
+  nuevoEstado: string = '';
+
+  // Filtro por fecha
+  filtroFechaDesde: string = '';
+  filtroFechaHasta: string = '';
+
+  // Zoom de imagen
+  imagenZoom: string | null = null;
+  mostrarZoom = false;
+
+
+
+  // Pedidos expandidos para ver detalles
+  pedidosExpandidos: Set<string> = new Set();
+
+  // Modal de preview de stickers
+  mostrarModalPreview = false;
+  pedidosParaPreview: PedidoCompleto[] = [];
+  fechaEnvio: Date | null = null;
+  
+  // Modal de fecha de envío
+  mostrarModalFechaEnvio = false;
+  fechaTemporal: string = '';
+
+  // Selección de pedidos para stickers
+  pedidosSeleccionados: Set<string> = new Set();
+  mostrarSelectorStickers = false;
+
+  // Foto del paquete empacado
+  fotoSeleccionada: File | null = null;
+  fotoPreview: string | ArrayBuffer | null = null;
+
+  // Modal para cargar imagen de paquete
+  mostrarModalCargarImagen = false;
+  pedidoParaCargarImagen: PedidoCompleto | null = null;
+  imagenPaqueteBase64: string | null = null;
+  imagenPaquetePreview: string | ArrayBuffer | null = null;
+
+  // Modal de importación de Excel
+  mostrarImportarExcel = false;
+
+  // Ordenamiento de tabla
+  ordenarPor: 'cliente' | 'encomendista' = 'cliente';
+  direccionOrden: 'asc' | 'desc' = 'asc';
+
+  private subscriptions: Subscription[] = [];
+  constructor(
+    private pedidosService: PedidosService,
+    private clientesService: ClientesService,
+    private encomendistasService: EncomendistasService,
+    private productosService: ProductosService,
+    private tiendasService: TiendasService,
+    private stickerPdfService: StickerPdfService,
+    private modalService: ModalConfirmacionService,
+    private notificacionService: ModalNotificacionService,
+    private responsiveService: ResponsiveService
+  ) {}
+
+  ngOnInit() {
+    this.isMobile = this.responsiveService.getIsMobile();
+    this.responsiveService.isMobile$.subscribe((val: boolean) => this.isMobile = val);
+    // Suscribir PRIMERO antes de cargar datos
+    this.cargarClientes();
+    this.cargarEncomendistas();
+    this.cargarProductos();
+    this.cargarTiendas();  // NUEVO: Cargar tiendas
+    this.cargarPedidos();
+
+    // LUEGO cargar desde Firebase
+    console.log('Iniciando carga de datos...');
+    Promise.all([
+      this.clientesService.recargarClientes(),
+      this.encomendistasService.cargarEncomendistas().toPromise(),
+      this.productosService.recargarProductos(),
+      this.tiendasService.cargarTiendas().toPromise(),  // NUEVO: Cargar tiendas desde Firebase
+      this.pedidosService.recargarPedidos()
+    ]).then(() => {
+      console.log('Datos cargados correctamente');
+    }).catch(error => {
+      console.error('Error en carga de datos:', error);
+    });
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  cargarClientes() {
+    const sub = this.clientesService.cargarClientes().subscribe((clientes: Cliente[]) => {
+      this.clientes = clientes;
+      this.enriquecerPedidos();
+    });
+    this.subscriptions.push(sub);
+  }
+
+  cargarEncomendistas() {
+    const sub = this.encomendistasService.cargarEncomendistas().subscribe((encomendistas: Encomendista[]) => {
+      this.encomendistas = encomendistas;
+      this.enriquecerPedidos();
+    });
+    this.subscriptions.push(sub);
+  }
+
+  cargarPedidos() {
+    const sub = this.pedidosService.cargarPedidos().subscribe((pedidos: Pedido[]) => {
+     
+      this.pedidos = pedidos as PedidoCompleto[];
+      this.enriquecerPedidos();
+    });
+    this.subscriptions.push(sub);
+  }
+
+  cargarProductos() {
+    const sub = this.productosService.cargarProductos().subscribe((productos: Producto[]) => {
+      this.productos = productos;
+    });
+    this.subscriptions.push(sub);
+  }
+
+  cargarTiendas() {  // NUEVO: Método para cargar tiendas
+    const sub = this.tiendasService.cargarTiendas().subscribe((tiendas: Tienda[]) => {
+      this.tiendas = tiendas;
+      console.log('Tiendas cargadas:', tiendas.length);
+    });
+    this.subscriptions.push(sub);
+  }
+
+  /**
+   * Obtiene los productos de un pedido por sus IDs
+   */
+  obtenerProductosDePedido(pedido: PedidoCompleto): Producto[] {
+    if (!pedido.productos_id || pedido.productos_id.length === 0) {
+      return [];
+    }
+    return this.productos.filter(p => pedido.productos_id!.includes(p.id));
+  }
+
+  /**
+   * Obtiene los códigos de los productos del pedido
+   */
+  obtenerCodigosDePedido(pedido: PedidoCompleto): string {
+    if (pedido.productos_codigos && pedido.productos_codigos.length > 0) {
+      return pedido.productos_codigos.join(', ');
+    }
+    // Si no hay códigos almacenados, intentar obtenerlos de los productos
+    const codigos = this.obtenerProductosDePedido(pedido).map(p => p.codigo);
+    return codigos.length > 0 ? codigos.join(', ') : 'Sin códigos';
+  }
+
+  /**
+   * Abre zoom de imagen
+   */
+  abrirZoom(imagenUrl: string) {
+    this.imagenZoom = imagenUrl;
+    this.mostrarZoom = true;
+  }
+
+  /**
+   * Cierra zoom de imagen
+   */
+  cerrarZoom() {
+    this.mostrarZoom = false;
+    this.imagenZoom = null;
+  }
+
+  /**
+   * Alterna la expansión de un pedido
+   */
+  alternarExpansion(pedidoId: string) {
+    if (this.pedidosExpandidos.has(pedidoId)) {
+      this.pedidosExpandidos.delete(pedidoId);
+    } else {
+      this.pedidosExpandidos.add(pedidoId);
+    }
+  }
+
+  /**
+   * Verifica si un pedido está expandido
+   */
+  estaPedidoExpandido(pedidoId: string): boolean {
+    return this.pedidosExpandidos.has(pedidoId);
+  }
+
+  /**
+   * Enriquece los pedidos con nombres de cliente y encomendista
+   */
+  enriquecerPedidos() {
+ 
+    this.pedidos = this.pedidos.map((p, index) => {
+      const tienda = this.tiendas.find(t => t.id === p.tienda_id);
+      const cliente = this.clientes.find(c => c.id === p.cliente_id);
+      const pedidoEnriquecido = {
+        ...p,
+        cliente_nombre: this.obtenerNombreCliente(p.cliente_id),
+        telefono_cliente: cliente?.telefono,
+        encomendista_nombre: p.encomendista_id ? this.obtenerNombreEncomendista(p.encomendista_id) : 'Personalizado',
+        nombre_tienda: tienda?.nombre_pagina || 'Eli Gomez',
+        color_sticker: tienda?.color_sticker || '#ec4899',
+        logo_tienda: tienda?.imagen_url || 'assets/images/logoeligomez.jpg'
+      };
+      
+      
+      return pedidoEnriquecido;
+    });
+  }
+
+  /**
+   * Obtiene el nombre del cliente por ID
+   */
+  obtenerNombreCliente(cliente_id: string): string {
+    const cliente = this.clientes.find(c => c.id === cliente_id);
+    return cliente ? cliente.nombre : 'Desconocido';
+  }
+
+  /**
+   * Obtiene el nombre del encomendista por ID
+   */
+  obtenerNombreEncomendista(encomendista_id: string): string {
+    const encomendista = this.encomendistas.find(e => e.id === encomendista_id);
+    return encomendista ? encomendista.nombre : 'Desconocido';
+  }
+
+  /**
+   * Convierte hora formato 24h ("09:00") a formato 12h ("9am")
+   */
+  convertirHora12(hora24: string | undefined): string {
+    if (!hora24) return '';
+    
+    try {
+      const [horas, minutos] = hora24.split(':');
+      const h = parseInt(horas, 10);
+      const periodo = h >= 12 ? 'pm' : 'am';
+      const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      return minutos && minutos !== '00' ? `${h12}:${minutos}${periodo}` : `${h12}${periodo}`;
+    } catch {
+      return hora24;
+    }
+  }
+
+  getPedidosFiltrados() {
+    const pedidosFiltrados = this.pedidos.filter(p => {
+      // Filtro por estado
+      if (this.filtroEstado === 'sin-finalizar') {
+        // Sin finalizar = NO está en: liberado, retirado-local, cancelado
+        const finalizados = ['liberado', 'retirado-local', 'cancelado'];
+        if (finalizados.includes(p.estado)) {
+          return false;
+        }
+      } else if (this.filtroEstado !== 'todos' && p.estado !== this.filtroEstado) {
+        return false;
+      }
+
+      // Filtro por fecha
+      if (this.filtroFechaDesde || this.filtroFechaHasta) {
+        const fechaPedido = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+        
+        if (this.filtroFechaDesde) {
+          const desdeDate = new Date(this.filtroFechaDesde);
+          if (fechaPedido < desdeDate) return false;
+        }
+
+        if (this.filtroFechaHasta) {
+          const hastaDate = new Date(this.filtroFechaHasta);
+          // Sumar un día a hasta para incluir todo el día
+          hastaDate.setDate(hastaDate.getDate() + 1);
+          if (fechaPedido >= hastaDate) return false;
+        }
+      }
+
+      return true;
+    });
+    
+    // SIEMPRE ordenar por fecha de entrega (la más próxima primero)
+    // luego por cliente o encomendista como criterio secundario
+    pedidosFiltrados.sort((a, b) => {
+      // Criterio primario: Fecha de entrega (más próxima primero)
+      const fechaA = this.obtenerFechaEntrega(a.fecha_entrega_programada);
+      const fechaB = this.obtenerFechaEntrega(b.fecha_entrega_programada);
+      const difFechas = fechaA.getTime() - fechaB.getTime();
+      
+      if (difFechas !== 0) {
+        return difFechas;
+      }
+      
+      // Criterio secundario: cliente o encomendista según la selección
+      if (this.ordenarPor === 'cliente') {
+        const clienteA = this.obtenerNombreCliente(a.cliente_id).toLowerCase();
+        const clienteB = this.obtenerNombreCliente(b.cliente_id).toLowerCase();
+        const comparacion = clienteA.localeCompare(clienteB);
+        return this.direccionOrden === 'asc' ? comparacion : -comparacion;
+      } else if (this.ordenarPor === 'encomendista') {
+        const encA = (a.encomendista_id ? this.obtenerNombreEncomendista(a.encomendista_id) : 'Personalizado').toLowerCase();
+        const encB = (b.encomendista_id ? this.obtenerNombreEncomendista(b.encomendista_id) : 'Personalizado').toLowerCase();
+        const comparacion = encA.localeCompare(encB);
+        return this.direccionOrden === 'asc' ? comparacion : -comparacion;
+      }
+      
+      return 0;
+    });
+
+    return pedidosFiltrados;
+  }
+
+  /**
+   * Alterna el ordenamiento de una columna
+   */
+  alternarOrdenamiento(columna: 'cliente' | 'encomendista') {
+    if (this.ordenarPor === columna) {
+      // Si ya está ordenada por esta columna, cambiar dirección
+      this.direccionOrden = this.direccionOrden === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Si es otra columna, establecerla como orden principal (ascendente)
+      this.ordenarPor = columna;
+      this.direccionOrden = 'asc';
+    }
+  }
+
+  /**
+   * Obtiene el indicador visual de ordenamiento
+   */
+  obtenerIndicadorOrdenamiento(columna: 'cliente' | 'encomendista'): string {
+    if (this.ordenarPor !== columna) return '↕️';
+    return this.direccionOrden === 'asc' ? '↑' : '↓';
+  }
+
+  /**
+   * Extrae la fecha de entrega del pedido (es un timestamp de Firestore o Date)
+   */
+  obtenerFechaEntrega(fecha: any): Date {
+    if (!fecha) return new Date();
+    if (fecha instanceof Date) return fecha;
+    if (typeof fecha === 'string') return new Date(fecha);
+    if (fecha.toDate && typeof fecha.toDate === 'function') return fecha.toDate(); // Timestamp de Firestore
+    return new Date(fecha);
+  }
+
+  /**
+   * Formatea la fecha de entrega para mostrar
+   */
+  formatearFechaEntrega(fecha: any): string {
+    const fechaObj = this.obtenerFechaEntrega(fecha);
+    const opciones: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    };
+    return fechaObj.toLocaleDateString('es-ES', opciones);
+  }
+
+  verPedido(pedido: PedidoCompleto) {
+    this.pedidoSeleccionado = pedido;
+    this.nuevoEstado = pedido.estado;
+    this.mostrarModalEstado = true;
+  }
+
+  editarPedido(pedido: PedidoCompleto) {
+    this.pedidoSeleccionado = pedido;
+    this.nuevoEstado = pedido.estado;
+    this.mostrarModalEstado = true;
+  }
+
+  /**
+   * Abre modal para cambiar estado del pedido
+   */
+  abrirModalEstado(pedido: PedidoCompleto) {
+    this.pedidoSeleccionado = pedido;
+    this.nuevoEstado = pedido.estado;
+    this.mostrarModalEstado = true;
+  }
+
+  /**
+   * Cierra el modal de cambio de estado
+   */
+  cerrarModalEstado() {
+    this.mostrarModalEstado = false;
+    this.pedidoSeleccionado = null;
+    this.nuevoEstado = '';
+    this.fotoSeleccionada = null;
+    this.fotoPreview = null;
+  }
+
+  /**
+   * Maneja la selección de la foto del paquete
+   */
+  onFotoSeleccionada(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      
+      // Validar que sea una imagen
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor selecciona una imagen válida (JPG, PNG, etc.)');
+        return;
+      }
+
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('La imagen es muy grande. Máximo 5MB');
+        return;
+      }
+
+      this.fotoSeleccionada = file;
+
+      // Crear preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.fotoPreview = e.target?.result || null;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  /**
+   * Guarda el cambio de estado del pedido
+   */
+  async guardarCambioEstado() {
+    if (!this.pedidoSeleccionado || !this.nuevoEstado) return;
+
+    try {
+      // Si el nuevo estado es "liberado", usar el método especial que libera los productos
+      if (this.nuevoEstado === 'liberado') {
+        const confirmacion = confirm(
+          `¿Estás seguro de que deseas LIBERAR este pedido?\n\nEsto:\n- Marcará el pedido como LIBERADO\n- Liberará los productos (quedaran disponibles de nuevo)\n\n¿Continuar?`
+        );
+        if (!confirmacion) return;
+
+        await this.pedidosService.liberarPedido(this.pedidoSeleccionado.id);
+        this.cerrarModalEstado();
+        alert('✅ Pedido liberado correctamente. Los productos están disponibles de nuevo.');
+        // Recargar pedidos para reflejar cambios
+        this.cargarPedidos();
+      } else {
+        // Para otros estados, actualización normal
+        const pedidoActualizado = { ...this.pedidoSeleccionado, estado: this.nuevoEstado as any };
+        
+        // Si el nuevo estado es "empacada" y hay foto, guardar como base64
+        if (this.nuevoEstado === 'empacada' && this.fotoSeleccionada && this.fotoPreview) {
+          try {
+            if (typeof this.fotoPreview === 'string') {
+              pedidoActualizado.foto_paquete = this.fotoPreview;
+              console.log('✅ Foto guardada como base64');
+            }
+          } catch (error) {
+            console.error('❌ Error procesando foto:', error);
+            alert('Error al procesar la foto. El estado se actualizará sin foto.');
+          }
+        }
+
+        await this.pedidosService.actualizarPedido(pedidoActualizado);
+        this.cerrarModalEstado();
+        alert('Estado actualizado correctamente');
+        // Recargar pedidos para reflejar cambios
+        this.cargarPedidos();
+      }
+    } catch (error) {
+      console.error('Error al actualizar estado:', error);
+      alert('Error al actualizar el estado');
+    }
+  }
+
+  /**
+   * Elimina un pedido con confirmación
+   */
+  async eliminarPedido(pedido: PedidoCompleto) {
+    const confirmado = await this.modalService.confirmar({
+      titulo: '⚠️ Eliminar Pedido',
+      mensaje: `¿Estás seguro de que deseas eliminar el pedido para ${pedido.cliente_nombre}? Esta acción no se puede deshacer.`,
+      textoBtnSi: 'Sí, eliminar',
+      textoBtnNo: 'No, cancelar'
+    });
+
+    if (!confirmado) return;
+
+    try {
+      await this.pedidosService.eliminarPedido(pedido.id);
+      alert('Pedido eliminado correctamente');
+    } catch (error) {
+      console.error('Error al eliminar pedido:', error);
+      alert('Error al eliminar el pedido');
+    }
+  }
+
+  getEstadoBadgeColor(estado: string): string {
+    const colors: { [key: string]: string } = {
+      'pendiente': 'bg-yellow-100 text-yellow-800',
+      'empacada': 'bg-blue-100 text-blue-800',
+      'enviado': 'bg-purple-100 text-purple-800',
+      'retirado': 'bg-green-100 text-green-800',
+      'no-retirado': 'bg-orange-100 text-orange-800',
+      'cancelado': 'bg-red-100 text-red-800',
+      'retirado-local': 'bg-indigo-100 text-indigo-800',
+      'liberado': 'bg-pink-100 text-pink-800'
+    };
+    return colors[estado] || 'bg-gray-100 text-gray-800';
+  }
+
+  formatearEstado(estado: string): string {
+    const estados: { [key: string]: string } = {
+      'pendiente': 'Pendiente',
+      'empacada': 'Empacada',
+      'enviado': 'Enviado',
+      'retirado': 'Retirado',
+      'no-retirado': 'No Retirado',
+      'cancelado': 'Cancelado',
+      'retirado-local': 'Retirado del Local',
+      'liberado': 'Liberado'
+    };
+    return estados[estado] || estado;
+  }
+
+  /**
+   * Obtiene estadísticas de pedidos
+   */
+  obtenerEstadisticas() {
+    const stats = {
+      total: this.pedidos.length,
+      sinFinalizar: this.pedidos.filter(p => !['liberado', 'retirado-local', 'cancelado'].includes(p.estado)).length,
+      pendientes: this.pedidos.filter(p => p.estado === 'pendiente').length,
+      enviados: this.pedidos.filter(p => p.estado === 'enviado').length,
+      retirados: this.pedidos.filter(p => p.estado === 'retirado').length,
+      noRetirados: this.pedidos.filter(p => p.estado === 'no-retirado').length,
+      liberados: this.pedidos.filter(p => p.estado === 'liberado').length,
+      cancelados: this.pedidos.filter(p => p.estado === 'cancelado').length,
+      retiradosLocal: this.pedidos.filter(p => p.estado === 'retirado-local').length,
+      empacadas: this.pedidos.filter(p => p.estado === 'empacada').length
+    };
+    return stats;
+  }
+
+  /**
+   * Obtiene pedidos sin finalizar (para búsqueda semanal)
+   */
+  obtenerPedidosSinFinalizar(): PedidoCompleto[] {
+    const finalizados = ['liberado', 'retirado-local', 'cancelado'];
+    return this.pedidos.filter(p => !finalizados.includes(p.estado));
+  }
+
+  /**
+   * Abre preview de stickers con número de columnas especificado
+   */
+  abrirPreviewStickers(columnas: number = 2): void {
+    // Abrir primero el selector de fecha
+    this.abrirSelectorFechaEnvio();
+  }
+
+  /**
+   * Maneja la descarga desde el modal de preview
+   */
+  manejarDescargarDesdePreview(evento: { pedidos: any[], todosPedidos: boolean }): void {
+    try {
+      console.log(`📥 Descargando ${evento.pedidos.length} stickers desde preview`);
+      this.descargarStickersPdf(evento.pedidos);
+      alert(`✅ PDF generado con ${evento.pedidos.length} stickers`);
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      alert('Error al generar el PDF');
+    }
+  }
+
+  /**
+   * Descarga stickers en PDF (método interno)
+   */
+  private descargarStickersPdf(pedidos: PedidoCompleto[]): void {
+    this.stickerPdfService.generarPdfStickersBon(pedidos).then((blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const fecha = new Date().toISOString().split('T')[0];
+      link.download = `Stickers_Control_Eli_Gomez_${fecha}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  /**
+   * Descarga stickers de pedidos pendientes filtrados por fecha
+   */
+  descargarStickersPorFecha(): void {
+    try {
+      // Filtrar solo pendientes
+      let pendientes = this.pedidos.filter(p => p.estado === 'pendiente');
+
+      // Aplicar filtros de fecha si existen
+      if (this.filtroFechaDesde || this.filtroFechaHasta) {
+        pendientes = pendientes.filter(p => {
+          const fechaPedido = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+          
+          if (this.filtroFechaDesde) {
+            const desdeDate = new Date(this.filtroFechaDesde);
+            if (fechaPedido < desdeDate) return false;
+          }
+
+          if (this.filtroFechaHasta) {
+            const hastaDate = new Date(this.filtroFechaHasta);
+            hastaDate.setDate(hastaDate.getDate() + 1);
+            if (fechaPedido >= hastaDate) return false;
+          }
+
+          return true;
+        });
+      }
+
+      if (pendientes.length === 0) {
+        alert('No hay pedidos pendientes para descargar');
+        return;
+      }
+
+      // Guardar pendientes temporalmente y abrir selector de fecha
+      this.pedidosParaPreview = pendientes as PedidoCompleto[];
+      this.abrirSelectorFechaEnvio();
+    } catch (error) {
+      console.error('Error abriendo preview:', error);
+      alert('Error al abrir preview');
+    }
+  }
+
+
+
+
+  /**
+   * Calcula la próxima fecha de envío (miércoles o sábado)
+   */
+  calcularProximaFechaEnvio(): Date {
+    const hoy = new Date();
+    const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes, 2=martes, 3=miércoles, 4=jueves, 5=viernes, 6=sábado
+
+    let proximaFecha = new Date(hoy);
+
+    // Si es miércoles (3), devolver miércoles de hoy
+    if (diaSemana === 3) {
+      return proximaFecha;
+    }
+
+    // Si es sábado (6), devolver sábado de hoy
+    if (diaSemana === 6) {
+      return proximaFecha;
+    }
+
+    // Calcular días para el próximo miércoles o sábado
+    let diasParaMiercoles: number;
+    let diasParaSabado: number;
+
+    if (diaSemana < 3) {
+      // Lunes (1) o martes (2): miércoles es pronto
+      diasParaMiercoles = 3 - diaSemana;
+      diasParaSabado = 6 - diaSemana;
+    } else if (diaSemana < 6) {
+      // Miércoles (3) a viernes (5): próximo sábado es más cercano que próximo miércoles
+      diasParaMiercoles = (7 - diaSemana) + 3; // próximo miércoles de la semana siguiente
+      diasParaSabado = 6 - diaSemana;
+    } else {
+      // Domingo (0): próximo miércoles es en 3 días
+      diasParaMiercoles = 3;
+      diasParaSabado = 6;
+    }
+
+    // Elegir el más cercano
+    const diasHastaProxima = diasParaMiercoles <= diasParaSabado ? diasParaMiercoles : diasParaSabado;
+    proximaFecha.setDate(hoy.getDate() + diasHastaProxima);
+
+    return proximaFecha;
+  }
+
+  /**
+   * Abre el diálogo para seleccionar fecha de envío ANTES de preview
+   */
+  abrirSelectorFechaEnvio(): void {
+    const proximaFecha = this.calcularProximaFechaEnvio();
+    this.fechaTemporal = this.formatearFechaParaInput(proximaFecha);
+    this.mostrarModalFechaEnvio = true;
+  }
+
+  /**
+   * Formatea una fecha para el input type="date" (YYYY-MM-DD)
+   */
+  private formatearFechaParaInput(fecha: Date): string {
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Confirma la fecha seleccionada y abre el preview
+   */
+  confirmarFechaEnvio(): void {
+    if (!this.fechaTemporal) {
+      alert('Por favor selecciona una fecha');
+      return;
+    }
+
+    // Convertir string a Date
+    const partes = this.fechaTemporal.split('-');
+    this.fechaEnvio = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    
+    // Cerrar modal de fecha
+    this.mostrarModalFechaEnvio = false;
+
+    // Si hay pedidos seleccionados, mostrar preview
+    if (this.pedidosParaPreview && this.pedidosParaPreview.length > 0) {
+      this.mostrarModalPreview = true;
+    } else {
+      // Si no hay pedidos pre-cargados, obtener los filtrados
+      const pedidosFiltrados = this.getPedidosFiltrados();
+      if (pedidosFiltrados.length === 0) {
+        alert('No hay pedidos para mostrar');
+        return;
+      }
+      this.pedidosParaPreview = pedidosFiltrados;
+      this.mostrarModalPreview = true;
+    }
+
+    console.log(`📋 Abriendo preview con ${this.pedidosParaPreview.length} stickers y fecha: ${this.fechaEnvio}`);
+  }
+
+  /**
+   * Cancela la selección de fecha
+   */
+  cancelarFechaEnvio(): void {
+    this.mostrarModalFechaEnvio = false;
+    this.fechaTemporal = '';
+    this.fechaEnvio = null;
+  }
+
+  /**
+   * Abre preview de stickers con la fecha seleccionada
+   */
+  abrirPreviewStickersConFecha(): void {
+    try {
+      const pedidosFiltrados = this.getPedidosFiltrados();
+      
+      if (pedidosFiltrados.length === 0) {
+        alert('No hay pedidos para descargar');
+        return;
+      }
+
+      console.log(`📋 Abriendo preview de ${pedidosFiltrados.length} stickers con fecha: ${this.fechaEnvio}`);
+      this.pedidosParaPreview = pedidosFiltrados;
+      this.mostrarModalPreview = true;
+    } catch (error) {
+      console.error('Error abriendo preview:', error);
+      alert('Error al abrir preview');
+    }
+  }
+
+  /**
+   * Alterna la selección de un pedido para generar stickers (máximo 8)
+   */
+  alternarSeleccionPedido(pedidoId: string): void {
+    if (this.pedidosSeleccionados.has(pedidoId)) {
+      this.pedidosSeleccionados.delete(pedidoId);
+    } else {
+      // Limitar a 8 pedidos máximo
+      if (this.pedidosSeleccionados.size < 8) {
+        this.pedidosSeleccionados.add(pedidoId);
+      } else {
+        alert('⚠️ Máximo permitido: 8 stickers\n\nDeselecciona algunos pedidos para agregar nuevos.');
+      }
+    }
+  }
+
+  /**
+   * Verifica si un pedido está seleccionado
+   */
+  estaPedidoSeleccionado(pedidoId: string): boolean {
+    return this.pedidosSeleccionados.has(pedidoId);
+  }
+
+  /**
+   * Verifica si un pedido está vencido (sin empacar y pasó su fecha de envío)
+   */
+  estaPedidoVencido(pedido: PedidoCompleto): boolean {
+    // Solo si está en estado "pendiente" o similar (no empacado)
+    if (!pedido.estado || ['empacada', 'enviado', 'liberado', 'retirado', 'cancelado'].includes(pedido.estado)) {
+      return false;
+    }
+
+    // Obtener la fecha de entrega
+    const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaEntrega.setHours(0, 0, 0, 0);
+
+    // Si la fecha de entrega pasó y aún no está empacado
+    return fechaEntrega < hoy;
+  }
+
+  /**
+   * Verifica si un pedido debe estar destacado (atenuado con borde amarillo)
+   * Basado en la fecha de entrega programada
+   */
+  obtenerClaseAtenuacionPedido(pedido: PedidoCompleto): boolean {
+    const hoy = new Date();
+    const diaHoy = hoy.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+
+    // Obtener la fecha de entrega y su día
+    const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+    const diaEntrega = fechaEntrega.getDay();
+
+    // Si hoy es sábado (6), domingo (0), lunes (1) o martes (2):
+    // Los pedidos para MIÉRCOLES (3) deben estar destacados
+    if ([6, 0, 1, 2].includes(diaHoy) && diaEntrega === 3) {
+      return true;
+    }
+
+    // Si hoy es miércoles (3), jueves (4) o viernes (5):
+    // Los pedidos para SÁBADO (6) deben estar destacados
+    if ([3, 4, 5].includes(diaHoy) && diaEntrega === 6) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Cuenta los pedidos pendientes para envío de miércoles (miércoles, jueves, viernes)
+   */
+  contarPedidosMiercoles(): number {
+    return this.pedidos.filter(p => {
+      if (p.estado === 'cancelado') return false;
+      const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      const diaEntrega = fechaEntrega.getDay();
+      // Miércoles (3), Jueves (4), Viernes (5)
+      return [3, 4, 5].includes(diaEntrega);
+    }).length;
+  }
+
+  /**
+   * Cuenta los pedidos pendientes para envío de sábado (sábado, domingo, lunes, martes)
+   */
+  contarPedidosSabado(): number {
+    return this.pedidos.filter(p => {
+      if (p.estado === 'cancelado') return false;
+      const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      const diaEntrega = fechaEntrega.getDay();
+      // Sábado (6), Domingo (0), Lunes (1), Martes (2)
+      return [6, 0, 1, 2].includes(diaEntrega);
+    }).length;
+  }
+
+  /**
+   * Obtiene el texto del día de envío próximo según el día actual
+   */
+  obtenerTextoProximoEnvio(): { miercoles: string; sabado: string; fechaMiercoles: number; fechaSabado: number } {
+    const hoy = new Date();
+    const diaHoy = hoy.getDay();
+    const diaActual = hoy.getDate();
+    const mes = hoy.getMonth();
+    const año = hoy.getFullYear();
+
+    // Calcular próximo miércoles (3)
+    let proximoMiercoles = new Date(año, mes, diaActual);
+    const diasAlMiercoles = (3 - diaHoy + 7) % 7;
+    proximoMiercoles.setDate(diaActual + (diasAlMiercoles === 0 && diaHoy !== 3 ? 7 : diasAlMiercoles));
+
+    // Calcular próximo sábado (6)
+    let proximoSabado = new Date(año, mes, diaActual);
+    const diasAlSabado = (6 - diaHoy + 7) % 7;
+    proximoSabado.setDate(diaActual + (diasAlSabado === 0 && diaHoy !== 6 ? 7 : diasAlSabado));
+
+    const fechaMiercoles = proximoMiercoles.getDate();
+    const fechaSabado = proximoSabado.getDate();
+
+    if ([6, 0, 1, 2].includes(diaHoy)) {
+      // Sábado, domingo, lunes o martes -> próximo es miércoles
+      return {
+        miercoles: `📅 Este Miércoles (${fechaMiercoles})`,
+        sabado: `🔔 Próximo Sábado (${fechaSabado})`,
+        fechaMiercoles,
+        fechaSabado
+      };
+    } else {
+      // Miércoles, jueves, viernes -> próximo es sábado
+      return {
+        miercoles: `🔔 Próximo Miércoles (${fechaMiercoles})`,
+        sabado: `📅 Este Sábado (${fechaSabado})`,
+        fechaMiercoles,
+        fechaSabado
+      };
+    }
+  }
+
+  /**
+   * Retorna el color óptimo para el texto basado en el color de fondo
+   * Usa la misma lógica que en sticker-preview-modal
+   */
+  obtenerColorTexto(colorFondo: string | undefined, nombreTienda: string | undefined = ''): string {
+    // Rosa de Eli Gomez (#ec4899) siempre usa blanco
+    if (nombreTienda?.toLowerCase().includes('eli gomez') || colorFondo === '#ec4899') {
+      return '#FFFFFF';
+    }
+    
+    // Amarillo de Betty (#FFD700 o similar) siempre usa negro
+    if (nombreTienda?.toLowerCase().includes('betty') || nombreTienda?.toLowerCase().includes('bettus')) {
+      return '#000000';
+    }
+    
+    if (!colorFondo) return '#000000';
+    
+    try {
+      const hex = colorFondo.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // Si es color muy claro (luminancia > 0.55), usar negro para máximo contraste
+      if (luminancia > 0.55) {
+        return '#000000'; // Negro para colores pálidos/claros
+      } else if (luminancia > 0.35) {
+        // Color medio: usar versión más clara del mismo color
+        const factor = 1.5;
+        const r2 = Math.min(255, Math.floor(r * factor));
+        const g2 = Math.min(255, Math.floor(g * factor));
+        const b2 = Math.min(255, Math.floor(b * factor));
+        return `#${r2.toString(16).padStart(2, '0')}${g2.toString(16).padStart(2, '0')}${b2.toString(16).padStart(2, '0')}`;
+      } else {
+        return '#ffffff'; // Blanco para fondos oscuros
+      }
+    } catch {
+      return '#000000';
+    }
+  }
+
+  /**
+   * Determina si un pedido debe ser empacado (está pendiente de empacar para envío)
+   * Retorna true si: NO está empacado, NO está cancelado Y su fecha de entrega corresponde al próximo envío
+   */
+  debeSerEmpacado(pedido: PedidoCompleto): boolean {
+    // Si ya está empacado o cancelado, no necesita empacar
+    if (pedido.estado === 'cancelado' || pedido.estado === 'empacada') return false;
+    
+    const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+    const diaEntrega = fechaEntrega.getDay();
+    
+    // Determinar si el próximo envío es miércoles o sábado
+    const proximoEnvio = this.obtenerTextoProximoEnvio();
+    const esMiercoles = proximoEnvio.miercoles.includes('Este');
+    
+    if (esMiercoles) {
+      // Envío miércoles: incluye Miércoles (3), Jueves (4), Viernes (5)
+      return [3, 4, 5].includes(diaEntrega);
+    } else {
+      // Envío sábado: incluye Sábado (6), Domingo (0), Lunes (1), Martes (2)
+      return [6, 0, 1, 2].includes(diaEntrega);
+    }
+  }
+
+  /**
+   * Cuenta pedidos a empacar para envío de miércoles (no empacados)
+   */
+  contarPorEmpacarMiercoles(): number {
+    return this.pedidos.filter(p => {
+      if (p.estado === 'cancelado' || p.estado === 'empacada') return false;
+      const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      const diaEntrega = fechaEntrega.getDay();
+      // Miércoles (3), Jueves (4), Viernes (5)
+      return [3, 4, 5].includes(diaEntrega);
+    }).length;
+  }
+
+  /**
+   * Cuenta pedidos a empacar para envío de sábado (no empacados)
+   */
+  contarPorEmpacarSabado(): number {
+    return this.pedidos.filter(p => {
+      if (p.estado === 'cancelado' || p.estado === 'empacada') return false;
+      const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      const diaEntrega = fechaEntrega.getDay();
+      // Sábado (6), Domingo (0), Lunes (1), Martes (2)
+      return [6, 0, 1, 2].includes(diaEntrega);
+    }).length;
+  }
+
+  /**
+   * Abre el generador de stickers con pedidos seleccionados
+   */
+  abrirGeneradorStickers(): void {
+    if (this.pedidosSeleccionados.size === 0) {
+      alert('Selecciona al menos 1 pedido');
+      return;
+    }
+
+    // Obtener los pedidos seleccionados en orden
+    const pedidosSeleccionadosArray = this.getPedidosFiltrados().filter(p => 
+      this.pedidosSeleccionados.has(p.id!)
+    );
+
+    // Cerrar el modal de selector
+    this.mostrarSelectorStickers = false;
+
+    // Asignar los pedidos seleccionados
+    this.pedidosParaPreview = pedidosSeleccionadosArray;
+
+    // Abrir selector de fecha de envío
+    this.abrirSelectorFechaEnvio();
+
+    console.log(`📋 Abriendo preview con ${pedidosSeleccionadosArray.length} stickers seleccionados`);
+  }
+
+  /**
+   * Limpia la selección de pedidos
+   */
+  limpiarSeleccion(): void {
+    this.pedidosSeleccionados.clear();
+  }
+
+  /**
+   * Abre el modal para seleccionar pedidos para stickers
+   */
+  abrirSelectorStickers(): void {
+    this.mostrarSelectorStickers = true;
+  }
+
+  /**
+   * Cierra el modal de selector de stickers
+   */
+  cerrarSelectorStickers(): void {
+    this.mostrarSelectorStickers = false;
+  }
+
+  /**
+   * Obtiene un color distintivo para cada perfil/nombre_perfil
+   */
+  obtenerColorPerfil(nombrePerfil: string): string {
+    // 50 colores OSCUROS para excelente contraste con texto BLANCO
+    const coloresDisponibles = [
+      '#1A237E', // 1. Azul marino profundo
+      '#0D47A1', // 2. Azul noche
+      '#1B5E20', // 3. Verde bosque oscuro
+      '#2E7D32', // 4. Verde oscuro
+      '#27AE60', // 5. Verde esmeralda
+      '#1565C0', // 6. Azul profundo
+      '#0288D1', // 7. Azul cielo oscuro
+      '#00796B', // 8. Teal oscuro
+      '#004D40', // 9. Verde azulado oscuro
+      '#1A237E', // 10. Índigo profundo
+      '#512DA8', // 11. Púrpura profundo
+      '#6A1B9A', // 12. Púrpura oscuro
+      '#7B1FA2', // 13. Púrpura más profundo
+      '#880E4F', // 14. Rosa profundo
+      '#AD1457', // 15. Rosa rojo oscuro
+      '#B71C1C', // 16. Rojo oscuro
+      '#C41C3B', // 17. Rojo vino
+      '#D32F2F', // 18. Rojo profundo
+      '#F57F17', // 19. Naranja oscuro
+      '#E65100', // 20. Naranja rojo
+      '#BF360C', // 21. Naranja profundo
+      '#3F2C2C', // 22. Marrón oscuro
+      '#4A235A', // 23. Púrpura marrón
+      '#3E2723', // 24. Marrón muy oscuro
+      '#212121', // 25. Negro carbón
+      '#263238', // 26. Gris azulado oscuro
+      '#37474F', // 27. Gris oscuro
+      '#455A64', // 28. Gris azul
+      '#546E7A', // 29. Gris azul claro (sigue siendo oscuro)
+      '#1A1A1A', // 30. Negro absoluto
+      '#0B3D2C', // 31. Verde profundo
+      '#1E3A5F', // 32. Azul marino
+      '#2D3436', // 33. Gris carbón
+      '#1D1D30', // 34. Azul marino muy oscuro
+      '#3D1429', // 35. Púrpura burgundy
+      '#1F1B3C', // 36. Índigo oscuro
+      '#1A4D4D', // 37. Teal profundo
+      '#2D3E50', // 38. Azul gris profundo
+      '#1B2631', // 39. Negro azulado
+      '#0E3B43', // 40. Verde azul profundo
+      '#1C2833', // 41. Negro carbón claro
+      '#34495E', // 42. Pizarra oscura
+      '#16A085', // 43. Verde turquesa oscuro
+      '#27452B', // 44. Verde militar
+      '#1A1F5E', // 45. Azul marino índigo
+      '#4A0E0E', // 46. Rojo borgoña
+      '#2C1B47', // 47. Púrpura oscuro real
+      '#0D3B66', // 48. Azul océano
+      '#1A3A3A', // 49. Teal militar
+      '#1C1A1A'  // 50. Negro gráfito
+    ];
+
+    // Generar un índice basado en el hash del nombre del perfil
+    let hash = 0;
+    for (let i = 0; i < nombrePerfil.length; i++) {
+      hash = ((hash << 5) - hash) + nombrePerfil.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+
+    const indice = Math.abs(hash) % coloresDisponibles.length;
+    
+    // Retornar solo el color de fondo hex (para usar en ngStyle)
+    return coloresDisponibles[indice];
+  }
+
+  /**
+   * Obtiene el color de texto para un perfil específico - Optimizado para legibilidad
+   */
+  obtenerColorTextoPerfil(nombrePerfil: string): string {
+    // Todos los colores de fondo ahora son OSCUROS, por lo que SIEMPRE usamos BLANCO
+    return '#FFFFFF'; // BLANCO para todos - excelente contraste con los colores oscuros
+  }
+
+  /**
+   * Genera un QR en base64 para mostrar
+   */
+  generarQR(codigo: string | undefined): string {
+    if (!codigo) return '';
+    // Retorna una URL de servicio QR online para simplificar
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(codigo)}`;
+  }
+
+  /**
+   * Abre modal para cargar imagen de paquete
+   */
+  abrirModalCargarImagen(pedido: PedidoCompleto): void {
+    this.pedidoParaCargarImagen = pedido;
+    this.mostrarModalCargarImagen = true;
+    this.imagenPaqueteBase64 = null;
+    this.imagenPaquetePreview = null;
+  }
+
+  /**
+   * Cierra modal de cargar imagen
+   */
+  cerrarModalCargarImagen(): void {
+    this.mostrarModalCargarImagen = false;
+    this.pedidoParaCargarImagen = null;
+    this.imagenPaqueteBase64 = null;
+    this.imagenPaquetePreview = null;
+  }
+
+  /**
+   * Maneja la selección de imagen de paquete
+   */
+  onImagenPaqueteSeleccionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const result = e.target?.result;
+      if (typeof result === 'string') {
+        this.imagenPaqueteBase64 = result;
+        this.imagenPaquetePreview = result;
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  /**
+   * Guarda la imagen del paquete
+   */
+  async guardarImagenPaquete(): Promise<void> {
+    if (!this.pedidoParaCargarImagen || !this.imagenPaqueteBase64) {
+      alert('Por favor selecciona una imagen');
+      return;
+    }
+
+    try {
+      // Actualizar el pedido con la imagen en base64
+      const pedidoActualizado: any = {
+        ...this.pedidoParaCargarImagen,
+        foto_paquete: this.imagenPaqueteBase64 as string
+      };
+
+      await this.pedidosService.actualizarPedido(pedidoActualizado);
+      alert('✅ Imagen guardada exitosamente');
+      this.cerrarModalCargarImagen();
+      // Recargar pedidos
+      this.cargarPedidos();
+    } catch (error) {
+      console.error('Error al guardar imagen:', error);
+      alert('Error al guardar la imagen');
+    }
+  }
+
+  /**
+   * Abre el modal de importación de Excel
+   */
+  abrirImportarExcel() {
+    this.mostrarImportarExcel = true;
+  }
+
+  /**
+   * Procesa los datos importados del Excel
+   */
+  async procesarDatosExcel(datos: any) {
+    try {
+      console.log('📊 Iniciando importación de datos...');
+      console.log('Tipo de importación:', datos.tipo);
+      console.log('Clientes:', datos.clientes.length);
+      console.log('Encomendistas:', datos.encomendistas.length);
+      console.log('Destinos:', datos.destinos.length);
+      console.log('Pedidos:', datos.pedidos.length);
+
+      // Si tipo es 'limpiar', eliminar todos los datos
+      if (datos.tipo === 'limpiar') {
+        console.log('🗑️ Limpiando toda la base de datos...');
+        await this.limpiarDatos();
+        alert('✅ Base de datos limpiada exitosamente');
+        return;
+      }
+
+      // Importar clientes
+      if (datos.tipo === 'clientes' || !datos.tipo) {
+        // Importar clientes
+        for (const cliente of datos.clientes) {
+          const clienteExistente = this.clientes.find(c => 
+            this.normalizarNombre(c.nombre) === this.normalizarNombre(cliente.nombre)
+          );
+          if (!clienteExistente) {
+            await this.clientesService.crearCliente(cliente.nombre, cliente.telefono, cliente.direccion);
+          }
+        }
+      }
+
+      if (datos.tipo === 'destinos' || !datos.tipo) {
+        // Importar encomendistas con destinos
+        for (const encomendista of datos.encomendistas) {
+          const encomendistasExistente = this.encomendistas.find(e => 
+            this.normalizarNombre(e.nombre) === this.normalizarNombre(encomendista.nombre)
+          );
+          if (!encomendistasExistente) {
+            await this.encomendistasService.crearEncomendista(
+              encomendista.nombre,
+              encomendista.destinos || [],
+              encomendista.telefono,
+              encomendista.local
+            );
+          }
+        }
+      }
+
+      if (datos.tipo === 'pedidos' || !datos.tipo) {
+        // Cargar datos actualizados para buscar relaciones
+        await this.cargarClientes();
+        await this.cargarEncomendistas();
+        
+        // Importar pedidos
+        for (const pedido of datos.pedidos) {
+          try {
+            // Buscar cliente con normalización de nombre
+            const cliente = this.clientes.find(c => 
+              this.normalizarNombre(c.nombre) === this.normalizarNombre(pedido.cliente_nombre || '')
+            );
+            
+            // Buscar encomendista con normalización de nombre
+            const encomendista = this.encomendistas.find(e => 
+              this.normalizarNombre(e.nombre) === this.normalizarNombre(pedido.encomendista_nombre || '')
+            );
+
+            // Agregar IDs y horarios al pedido
+            const pedidoCompleto = {
+              ...pedido,
+              cliente_id: cliente?.id || '',
+              encomendista_id: encomendista?.id || '',
+              destino_tienda: pedido.tienda || pedido.destino || '',
+              horario: `${pedido.hora_inicio || ''} a ${pedido.hora_fin || ''}`.trim()
+            };
+
+            await this.pedidosService.crearPedido(pedidoCompleto);
+          } catch (error) {
+            console.error('Error creando pedido:', error);
+          }
+        }
+      }
+
+      // Recargar datos
+      await this.cargarClientes();
+      await this.cargarEncomendistas();
+      await this.cargarPedidos();
+
+      const mensaje = datos.tipo === 'clientes' ? `✅ Importación de clientes completada!\n👤 Clientes: ${datos.clientes.length}` :
+                      datos.tipo === 'destinos' ? `✅ Importación de destinos completada!\n👥 Encomendistas: ${datos.encomendistas.length}\n📍 Destinos: ${datos.destinos.length}` :
+                      datos.tipo === 'pedidos' ? `✅ Importación de pedidos completada!\n📦 Pedidos: ${datos.pedidos.length}` :
+                      `✅ Importación completada!\n👤 Clientes: ${datos.clientes.length}\n👥 Encomendistas: ${datos.encomendistas.length}\n📍 Destinos: ${datos.destinos.length}\n📦 Pedidos: ${datos.pedidos.length}`;
+      
+      alert(mensaje);
+    } catch (error) {
+      console.error('Error importando datos:', error);
+      alert('❌ Error al importar los datos. Revisa la consola para más detalles.');
+    }
+  }
+
+  /**
+   * Normaliza un nombre para comparación (trim, toLowerCase, sin acentos)
+   */
+  private normalizarNombre(nombre: string): string {
+    if (!nombre) return '';
+    return nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  async limpiarDatos() {
+    try {
+      console.log('🗑️ Eliminando pedidos...');
+      for (const pedido of this.pedidos) {
+        try {
+          await this.pedidosService.eliminarPedido(pedido.id);
+        } catch (e) {
+          console.warn('No se pudo eliminar pedido:', pedido.id);
+        }
+      }
+
+      console.log('🗑️ Eliminando encomendistas...');
+      for (const encomendista of this.encomendistas) {
+        try {
+          await this.encomendistasService.eliminarEncomendista(encomendista.id);
+        } catch (e) {
+          console.warn('No se pudo eliminar encomendista:', encomendista.id);
+        }
+      }
+
+      console.log('🗑️ Eliminando clientes...');
+      for (const cliente of this.clientes) {
+        try {
+          await this.clientesService.eliminarCliente(cliente.id);
+        } catch (e) {
+          console.warn('No se pudo eliminar cliente:', cliente.id);
+        }
+      }
+
+      console.log('✅ Datos limpiados exitosamente');
+      this.pedidos = [];
+      this.encomendistas = [];
+      this.clientes = [];
+    } catch (error) {
+      console.error('Error limpiando datos:', error);
+      throw error;
+    }
+  }
+
+}

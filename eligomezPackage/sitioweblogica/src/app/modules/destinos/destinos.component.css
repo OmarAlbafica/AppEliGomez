@@ -1,0 +1,37 @@
+/* Modal y contenedor */
+:host ::ng-deep .modal-container {
+  max-height: calc(100vh - 2cm);
+  overflow-y: auto;
+  padding-top: 2cm;
+}
+
+/* Tabla con scroll interno */
+.bg-white {
+  max-height: calc(100vh - 2cm);
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-white table {
+  flex-grow: 1;
+}
+
+/* Encabezado fijo */
+.bg-white thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f9fafb;
+}
+
+/* Cuerpo de la tabla con scroll */
+.bg-white tbody {
+  max-height: calc(100vh - 8cm);
+  overflow-y: auto;
+  display: block;
+}
+
+.bg-white table {
+  display: flex;
+  flex-direction: column;
+}

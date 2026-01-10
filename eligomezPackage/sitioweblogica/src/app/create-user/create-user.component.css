@@ -1,0 +1,22 @@
+.btn-option {
+    display: block; /* Asegura que los botones se coloquen uno encima del otro */
+    width: 150px; /* Ancho fijo basado en el botón con el texto más largo */
+    height: 3rem; /* Altura ajustada para que coincida con los select */
+    padding: 0.5rem; /* Espaciado interno ajustado */
+    background-color: #555; /* Color de fondo */
+    color: white; /* Color del texto */
+    border-radius: 0.5rem; /* Bordes redondeados */
+    transition: background-color 0.3s ease; /* Transición suave */
+    text-align: center; /* Centra el texto */
+    margin-bottom: 0.5rem; /* Espaciado inferior entre botones */
+  }
+  
+  .btn-option:hover {
+    background-color: #777; /* Color de fondo al pasar el ratón */
+  }
+  
+  .form-input {
+    height: 3rem; /* Altura ajustada */
+    padding-left: 10px; /* Espaciado interno ajustado */
+    padding-right: 10px; /* Espaciado interno ajustado */
+  }

@@ -1,0 +1,47 @@
+/* Animación de carga */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Estilos de la tabla */
+table {
+  border-collapse: collapse;
+}
+
+td {
+  white-space: nowrap;
+}
+
+input[type="text"],
+input[type="time"],
+select {
+  font-size: 0.875rem;
+}
+
+/* Drag and drop hover */
+.drag-over {
+  background-color: #eef2ff;
+  border-color: #4f46e5;
+}
+
+/* Respuesta a confianza */
+.bg-green-100 {
+  background-color: #dcfce7;
+}
+
+.bg-yellow-100 {
+  background-color: #fef3c7;
+}
+
+.bg-red-100 {
+  background-color: #fee2e2;
+}

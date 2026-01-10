@@ -1,0 +1,78 @@
+.sidebar {
+  background-color: #f0f2f4; /* Fondo suave del contenedor principal */
+  padding: 1rem;
+  height: 100%; /* Ajusta la altura del sidebar restando la altura del footer */
+  overflow-y: auto; /* Permite el desplazamiento si el contenido es mayor que la altura disponible */
+  overflow-x: hidden; /* Evita el desbordamiento horizontal durante las transiciones */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar a {
+  color: #333; /* Color del texto */
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+  text-decoration: none; /* Elimina el subrayado de los enlaces */
+  padding: 0.75rem; /* Espaciado interno */
+  border-radius: 8px; /* Bordes redondeados */
+  transition: background-color 0.3s ease, color 0.3s ease; /* Transiciones suaves */
+}
+
+.sidebar a:hover {
+  background-color: #cf5117; /* Color de fondo al pasar el ratón */
+  color: white; /* Color del texto al pasar el ratón */
+}
+
+.selected {
+  background-color: #cf5117 !important; /* Color de fondo para el elemento seleccionado */
+  color: white !important; /* Color del texto para el elemento seleccionado */
+  border-radius: 0.5rem; /* Opcional: redondear los bordes del elemento seleccionado */
+}
+
+/* Estilos específicos para el estado colapsado */
+.sidebar .collapsed-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25rem 0;
+}
+
+/* Transiciones suaves para los elementos */
+.sidebar .transition-item {
+  transition: all 0.3s ease;
+}
+
+/* Tooltip para elementos colapsados */
+.sidebar [title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #333;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 1200;
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Media query para pantallas más pequeñas */
+@media (max-width: 768px) {
+  .sidebar {
+    height: auto; /* Ajustar la altura automáticamente */
+  }
+
+  .sidebar .flex {
+    flex-direction: column;
+  }
+
+  .sidebar .flex .px-4 {
+    order: -1; /* Mover el botón de "Log Out" hacia arriba */
+  }
+}

@@ -1,0 +1,59 @@
+<div *ngIf="notificacion$ | async as notif" 
+     class="fixed inset-0 flex items-center justify-center z-[9999] bg-black bg-opacity-50 animate-fadeIn">
+  <div [ngClass]="notif.tipo === 'éxito' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'"
+       class="border-l-4 rounded-lg shadow-2xl p-8 w-full max-w-md animate-slideUp">
+    <!-- Icono y Título -->
+    <div class="flex items-center gap-3 mb-4">
+      <span [ngClass]="notif.tipo === 'éxito' ? 'text-green-600 text-4xl' : 'text-red-600 text-4xl'">
+        {{ notif.tipo === 'éxito' ? '✅' : '❌' }}
+      </span>
+      <h2 [ngClass]="notif.tipo === 'éxito' ? 'text-green-800' : 'text-red-800'"
+          class="text-2xl font-bold">
+        {{ notif.titulo }}
+      </h2>
+    </div>
+
+    <!-- Mensaje -->
+    <p [ngClass]="notif.tipo === 'éxito' ? 'text-green-700' : 'text-red-700'"
+       class="text-base mb-6 leading-relaxed">
+      {{ notif.mensaje }}
+    </p>
+
+    <!-- Botón Aceptar -->
+    <button (click)="cerrar()"
+            [ngClass]="notif.tipo === 'éxito' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-300' : 'bg-red-600 hover:bg-red-700 focus:ring-red-300'"
+            class="w-full px-4 py-3 rounded-lg font-bold text-white transition focus:outline-none focus:ring-2 focus:ring-offset-2">
+      Aceptar
+    </button>
+  </div>
+</div>
+
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.3s ease-out;
+  }
+</style>

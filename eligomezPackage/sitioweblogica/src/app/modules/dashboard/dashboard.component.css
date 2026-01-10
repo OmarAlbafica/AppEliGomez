@@ -1,0 +1,15 @@
+.dashboard-container {
+  padding: 2rem;
+}
+
+.dashboard-container h1 {
+  color: #1980e6;
+}
+
+.dashboard-container .grid > div {
+  transition: box-shadow 0.2s;
+}
+
+.dashboard-container .grid > div:hover {
+  box-shadow: 0 4px 24px rgba(37,99,235,0.10);
+}

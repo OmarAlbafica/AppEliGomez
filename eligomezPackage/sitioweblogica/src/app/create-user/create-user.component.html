@@ -1,0 +1,196 @@
+
+<!-- Formulario para crear usuario -->
+<div *ngIf="!isEditMode">
+  <div class="px-40 flex flex-1 justify-center py-5">
+    <div class="layout-content-container flex flex-col w-[512px] max-w-[512px] py-5 max-w-[960px] flex-1">
+      <div class="flex flex-wrap justify-between gap-3 p-4">
+        <div class="flex min-w-72 flex-col gap-3">
+          <p class="text-[#111517] tracking-light text-[32px] font-bold leading-tight">Agregar Usuario</p>
+          <p class="text-[#647787] text-sm font-normal leading-normal">Agregar usuarios que puedan acceder al mantenimiento de Tarjeta de Coordenada.</p>
+        </div>
+      </div>
+      <form [formGroup]="createForm" (ngSubmit)="onSubmit()">
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Nombre</p>
+            <input
+              formControlName="name"
+              placeholder="Nombre"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="createForm.get('name')?.invalid && createForm.get('name')?.touched" class="text-red-500 text-sm">El nombre es requerido.</div>
+          </label>
+        </div>
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Email</p>
+            <input
+              formControlName="email"
+              type="email"
+              placeholder="Email"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="createForm.get('email')?.invalid && createForm.get('email')?.touched" class="text-red-500 text-sm">El email es requerido y debe ser válido.</div>
+          </label>
+        </div>
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Password</p>
+            <input
+              formControlName="password"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="Password"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="createForm.get('password')?.invalid && createForm.get('password')?.touched" class="text-red-500 text-sm">La contraseña es requerida.</div>
+          </label>
+        </div>
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Confirmar Password</p>
+            <input
+              formControlName="confirmPassword"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="Confirmar Password"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="createForm.get('confirmPassword')?.invalid && createForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">La confirmación de la contraseña es requerida.</div>
+            <div *ngIf="createForm.errors?.['mismatch'] && createForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">Las contraseñas no coinciden.</div>
+          </label>
+        </div>
+        <div class="flex items-center gap-4 bg-white px-4 min-h-[72px] py-2 justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex size-7 items-center justify-center">
+              <input
+                type="checkbox"
+                class="h-5 w-5 rounded border-[#dce1e5] border-2 bg-transparent text-[#2c90e2] checked:bg-[#2c90e2] checked:border-[#2c90e2] focus:ring-0 focus:ring-offset-0 focus:border-[#dce1e5] focus:outline-none"
+                (change)="showPassword = !showPassword"
+              />
+            </div>
+            <div class="flex flex-col justify-center">
+              <p class="text-[#111517] text-base font-medium leading-normal line-clamp-1">Mostrar contraseña</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex px-4 py-3 gap-4">
+          <button
+            type="submit"
+            class="btn-option bg-[#2c90e2] text-white hover:bg-[#1a6fb3] h-12 px-4"
+          >
+            <span class="truncate">Agregar Usuario</span>
+          </button>
+          <button
+            type="button"
+            class="btn-option bg-[#dce1e5] text-[#111517] hover:bg-[#c0c4c8] h-12 px-4"
+            (click)="goBack()"
+          >
+            <span class="truncate">Regresar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario para actualizar usuario -->
+<div *ngIf="isEditMode">
+  <div class="px-40 flex flex-1 justify-center py-5">
+    <div class="layout-content-container flex flex-col w-[512px] max-w-[512px] py-5 max-w-[960px] flex-1">
+      <div class="flex flex-wrap justify-between gap-3 p-4">
+        <div class="flex min-w-72 flex-col gap-3">
+          <p class="text-[#111517] tracking-light text-[32px] font-bold leading-tight">Actualizar Usuario</p>
+          <p class="text-[#647787] text-sm font-normal leading-normal">Actualizar los datos del usuario.</p>
+        </div>
+      </div>
+  <form [formGroup]="updateForm" (ngSubmit)="onSubmit()">
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Nombre</p>
+            <input
+              formControlName="name"
+              placeholder="Nombre"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="updateForm.get('name')?.invalid && updateForm.get('name')?.touched" class="text-red-500 text-sm">El nombre es requerido.</div>
+          </label>
+        </div>
+        <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <label class="flex flex-col min-w-40 flex-1">
+            <p class="text-[#111517] text-base font-medium leading-normal pb-2">Email</p>
+            <input
+              formControlName="email"
+              type="email"
+              placeholder="Email"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+            />
+            <div *ngIf="updateForm.get('email')?.invalid && updateForm.get('email')?.touched" class="text-red-500 text-sm">El email es requerido y debe ser válido.</div>
+          </label>
+        </div>
+        <div *ngIf="showPasswordFields">
+          <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+            <label class="flex flex-col min-w-40 flex-1">
+              <p class="text-[#111517] text-base font-medium leading-normal pb-2">Password</p>
+              <input
+                formControlName="password"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="Password"
+                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              />
+              <div *ngIf="updateForm.get('password')?.invalid && updateForm.get('password')?.touched" class="text-red-500 text-sm">La contraseña es requerida.</div>
+            </label>
+          </div>
+          <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+            <label class="flex flex-col min-w-40 flex-1">
+              <p class="text-[#111517] text-base font-medium leading-normal pb-2">Confirmar Password</p>
+              <input
+                formControlName="confirmPassword"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="Confirmar Password"
+                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              />
+              <div *ngIf="updateForm.get('confirmPassword')?.invalid && updateForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">La confirmación de la contraseña es requerida.</div>
+              <div *ngIf="updateForm.errors?.['mismatch'] && updateForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">Las contraseñas no coinciden.</div>
+            </label>
+          </div>
+        </div>
+        <div *ngIf="!showPasswordFields" class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+          <div class="w-full bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
+            Por seguridad, la contraseña no se muestra. ¿Deseas cambiarla?
+            <button type="button" class="ml-4 px-4 py-2 rounded bg-yellow-500 text-white font-semibold" (click)="showPasswordFields = true">Sí, cambiar contraseña</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 bg-white px-4 min-h-[72px] py-2 justify-between">
+          <div class="flex items-center gap-4" *ngIf="showPasswordFields">
+            <div class="flex size-7 items-center justify-center">
+              <input
+                type="checkbox"
+                class="h-5 w-5 rounded border-[#dce1e5] border-2 bg-transparent text-[#2c90e2] checked:bg-[#2c90e2] checked:border-[#2c90e2] focus:ring-0 focus:ring-offset-0 focus:border-[#dce1e5] focus:outline-none"
+                (change)="showPassword = !showPassword"
+              />
+            </div>
+            <div class="flex flex-col justify-center">
+              <p class="text-[#111517] text-base font-medium leading-normal line-clamp-1">Mostrar contraseña</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex px-4 py-3 gap-4">
+          <button
+            type="submit"
+            class="btn-option bg-[#2c90e2] text-white hover:bg-[#1a6fb3] h-12 px-4"
+          >
+            <span class="truncate">Actualizar Usuario</span>
+          </button>
+          <button
+            type="button"
+            class="btn-option bg-[#dce1e5] text-[#111517] hover:bg-[#c0c4c8] h-12 px-4"
+            (click)="goBack()"
+          >
+            <span class="truncate">Regresar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<app-modal [showModal]="showModal" [message]="modalMessage" [header]="modalHeader" (close)="closeModal()"></app-modal>

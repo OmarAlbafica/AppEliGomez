@@ -1,0 +1,7 @@
+.text-primary.text-base.leading-normal.mb-4 {
+    font-weight: normal;
+  }
+  
+  .bg-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+  }

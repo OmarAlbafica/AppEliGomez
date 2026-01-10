@@ -1,0 +1,102 @@
+<div class="space-y-6 p-6">
+  <!-- Mensaje -->
+  <div *ngIf="mensaje" 
+       [ngClass]="mensaje.tipo === 'éxito' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'"
+       class="border rounded px-4 py-3 mb-6">
+    {{ mensaje.texto }}
+  </div>
+
+  <div class="grid grid-cols-4 gap-6">
+    <!-- Panel Izquierdo: Lista de Clientes -->
+    <div class="col-span-1 bg-white rounded-lg shadow">
+      <div class="bg-indigo-600 text-white p-4 rounded-t-lg font-bold">
+        👤 Clientes
+      </div>
+      <div class="p-4 space-y-2 max-h-96 overflow-y-auto">
+        <button (click)="seleccionarCliente(null)"
+                [class.bg-indigo-100]="!clienteSeleccionado"
+                class="w-full text-left px-4 py-2 rounded hover:bg-gray-100 transition text-sm">
+          📋 Ver todos ({{ favoritos.length }})
+        </button>
+        
+        <button *ngFor="let cliente of clientes"
+                (click)="seleccionarCliente(cliente)"
+                [class.bg-indigo-100]="clienteSeleccionado?.id === cliente.id"
+                class="w-full text-left px-4 py-2 rounded hover:bg-gray-100 transition text-sm">
+          {{ cliente.nombre }}
+          <span class="text-xs text-gray-500 block">
+            ({{ obtenerConteoFavoritos(cliente.id) }} favoritos)
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel Derecho: Lista de Favoritos -->
+    <div class="col-span-3 bg-white rounded-lg shadow overflow-hidden">
+      <div class="bg-indigo-600 text-white p-4 font-bold flex justify-between items-center">
+        <span>⭐ Favoritos de Pedidos</span>
+        <span class="text-sm bg-indigo-700 px-3 py-1 rounded">
+          {{ favoritosFiltrados.length }}
+        </span>
+      </div>
+
+      <!-- Sin favoritos -->
+      <div *ngIf="favoritosFiltrados.length === 0" class="p-8 text-center text-gray-500">
+        <p class="text-lg font-medium">📭 Sin favoritos guardados</p>
+        <p class="text-sm mt-2">Crea pedidos y guárdalos como favoritos para reutilizarlos</p>
+      </div>
+
+      <!-- Lista de Favoritos -->
+      <div *ngIf="favoritosFiltrados.length > 0" class="divide-y">
+        <div *ngFor="let favorito of favoritosFiltrados" 
+             class="p-4 hover:bg-gray-50 transition">
+          
+          <div class="grid grid-cols-12 gap-4 items-start">
+            <!-- Información -->
+            <div class="col-span-8">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="font-bold text-gray-900">{{ favorito.cliente_nombre }}</span>
+                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  {{ favorito.cliente_nombre }}
+                </span>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p class="text-gray-600">Encomienda</p>
+                  <p class="font-medium text-gray-900">🚚 {{ favorito.encomendista_nombre }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-600">Destino</p>
+                  <p class="font-medium text-gray-900">📍 {{ favorito.destino_nombre }}</p>
+                </div>
+              </div>
+
+              <div *ngIf="favorito.dia_maximo" class="mt-2 text-sm">
+                <p class="text-gray-600">Día Máximo</p>
+                <p class="font-medium text-gray-900">📅 En {{ favorito.dia_maximo }} días</p>
+              </div>
+
+              <div *ngIf="favorito.descripcion" class="mt-2 text-sm italic text-gray-600">
+                💬 {{ favorito.descripcion }}
+              </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="col-span-4 flex flex-col gap-2">
+              <button (click)="irACrearPedido(favorito)"
+                      class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition">
+                ✅ Usar
+              </button>
+              <button (click)="eliminarFavorito(favorito)"
+                      [disabled]="cargando"
+                      class="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition disabled:opacity-50">
+                🗑️ Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

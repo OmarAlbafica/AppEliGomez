@@ -1,0 +1,20 @@
+Opciones de configuración para menu-config.json:
+
+// Mostrar o no el módulo de bancos en el menú principal
+showBancos: true | false
+
+// Mostrar o no la opción de configuración central
+default: true
+showCentralConfig: true | false
+
+// Modo de gestión de coordenadas:
+// "classic" = modo clásico (una tienda por usuario)
+// "tiendas" = modo multi-tiendas (varias tiendas por usuario)
+coordenadaMode: "classic" | "tiendas"
+
+Ejemplo:
+{
+  "showBancos": false,
+  "showCentralConfig": true,
+  "coordenadaMode": "classic"
+}

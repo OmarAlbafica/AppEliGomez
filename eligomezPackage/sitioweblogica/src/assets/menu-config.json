@@ -1,0 +1,10 @@
+{
+  "showBancos": false, 
+  "showCentralConfig": true, 
+  "coordenadaMode": "tiendas",
+  "showReglasAcumulacion": true,
+  "showDobleAcumulacion": false,
+  "showRedencion": false,
+  "showVencimiento": false,
+  "showRangosPrecios": true
+}

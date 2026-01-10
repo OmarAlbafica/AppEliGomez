@@ -1,0 +1,64 @@
+/* Estilos simples - Tailwind se encarga del resto */
+:host {
+  display: contents;
+}
+
+a[routerLink] {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Animaciones suaves */
+button {
+  transition: all 0.2s ease;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.app-sidebar-footer {
+  position: absolute;
+  left: 0;
+  bottom: 16px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 32px 24px 0 24px;
+  background: #fff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - 72px - 50px); /* header + footer */
+  margin-left: 320px;
+}
+.app-content.collapsed {
+  margin-left: 64px;
+}
+
+.app-footer {
+  width: 100%;
+  z-index: 1000;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+}

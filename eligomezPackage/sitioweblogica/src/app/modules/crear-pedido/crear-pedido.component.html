@@ -1,0 +1,758 @@
+<div class="container mx-auto p-6">
+  <!-- SPLASH DE CARGA - Guardando Pedidos -->
+  <div *ngIf="guardando" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl p-8 text-center">
+      <div class="animate-spin mb-4">
+        <div class="text-5xl">⏳</div>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Guardando Pedidos...</h2>
+      <p class="text-gray-600">Por favor espera mientras se guardan los pedidos en la base de datos</p>
+      <div class="mt-6 flex justify-center">
+        <div class="w-64 bg-gray-200 rounded-full h-2">
+          <div class="bg-green-600 h-2 rounded-full animate-pulse" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPLASH DE CARGA - Extrayendo precio de imagen -->
+  <div *ngIf="extrayendoPrecioImagen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl p-8 text-center">
+      <div class="animate-spin mb-4">
+        <div class="text-5xl">🔍</div>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Analizando Imagen...</h2>
+      <p class="text-gray-600">Tratando de obtener el monto de la imagen</p>
+      <div class="mt-6 flex justify-center">
+        <div class="w-64 bg-gray-200 rounded-full h-2">
+          <div class="bg-blue-600 h-2 rounded-full animate-pulse" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Zoom de Imagen -->
+  <div *ngIf="mostrarZoom" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-screen overflow-hidden flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-gray-300">
+        <h3 class="text-xl font-bold text-gray-800">🔍 Vista Ampliada</h3>
+        <button (click)="cerrarZoom()" class="text-2xl text-gray-600 hover:text-gray-900 font-bold">✕</button>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-4 overflow-auto">
+        <img [src]="imagenZoom" alt="Imagen ampliada" class="max-w-full max-h-full object-contain">
+      </div>
+      <div class="p-4 border-t border-gray-300 text-center text-sm text-gray-600">
+        💡 Usa el zoom del navegador (Ctrl + rueda) para ampliar más o haz clic fuera para cerrar
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Agregar Destino a Encomienda -->
+  <div *ngIf="mostrarModalAgregarDestino" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+    <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+      <h2 class="text-2xl font-bold mb-4">➕ Agregar Destino a {{ getNombreEncomendista() }}</h2>
+      
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium mb-2">Nombre del Destino *</label>
+          <input [(ngModel)]="nuevoDestinoParaEncomienda.nombre" 
+                 type="text" 
+                 placeholder="Ej: San Miguel, La Florida"
+                 class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium mb-2">Local/Dirección <span class="text-gray-500 text-xs">opcional</span></label>
+          <input [(ngModel)]="nuevoDestinoParaEncomienda.local" 
+                 type="text" 
+                 placeholder="Ej: Centro Comercial, Alcaldía"
+                 class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button (click)="guardarNuevoDestinoAEncomienda()"
+                class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition">
+          ✅ Guardar Destino
+        </button>
+        <button (click)="cerrarModalAgregarDestino()"
+                class="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg font-bold transition">
+          ✕ Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Agregar Horario a Destino -->
+  <div *ngIf="mostrarModalAgregarHorario" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md my-8">
+      <h2 class="text-2xl font-bold mb-4">⏰ Agregar Horario a {{ destino_id }}</h2>
+      
+      <div class="space-y-4 mb-6">
+        <!-- Seleccionar días -->
+        <div>
+          <label class="block text-sm font-medium mb-2">Selecciona los días *</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label *ngFor="let dia of diasSemana" class="flex items-center cursor-pointer">
+              <input type="checkbox" 
+                     [checked]="isDiaSeleccionado(dia)"
+                     (change)="toggleDiaHorario(dia)"
+                     class="mr-2 cursor-pointer">
+              <span class="text-sm">{{ dia }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Horario de inicio -->
+        <div>
+          <label class="block text-sm font-medium mb-2">Hora Inicio</label>
+          <input [(ngModel)]="nuevoHorarioParaDestino.hora_inicio" 
+                 type="time"
+                 class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+        </div>
+
+        <!-- Horario de fin -->
+        <div>
+          <label class="block text-sm font-medium mb-2">Hora Fin</label>
+          <input [(ngModel)]="nuevoHorarioParaDestino.hora_fin" 
+                 type="time"
+                 class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+        </div>
+
+        <!-- Resumen -->
+        <div *ngIf="diasSeleccionadosParaHorario.length > 0" class="bg-blue-50 border-2 border-blue-300 rounded-lg p-3">
+          <p class="text-sm text-blue-900"><strong>Días:</strong> {{ diasSeleccionadosParaHorario.join(', ') }}</p>
+          <p class="text-sm text-blue-900"><strong>Horario:</strong> {{ convertirHora12(nuevoHorarioParaDestino.hora_inicio) }} - {{ convertirHora12(nuevoHorarioParaDestino.hora_fin) }}</p>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button (click)="guardarNuevoHorarioADestino()"
+                class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition">
+          ✅ Guardar Horario
+        </button>
+        <button (click)="cerrarModalAgregarHorario()"
+                class="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg font-bold transition">
+          ✕ Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <h1 class="text-4xl font-bold mb-8">📦 Crear Pedido</h1>
+
+  <!-- Mensaje de estado -->
+  <div *ngIf="mensaje" 
+       [ngClass]="mensaje.tipo === 'éxito' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'"
+       class="border rounded px-4 py-3 mb-6 animate-pulse">
+    {{ mensaje.texto }}
+  </div>
+
+  <!-- PASO 0: Seleccionar Tienda y Modo -->
+  <div class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-md p-6 mb-6 text-white">
+    <h2 class="text-2xl font-bold mb-4">🏪 Tienda y Tipo de Pedido</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Seleccionar Tienda -->
+      <div>
+        <label class="block text-sm font-medium mb-2">🏢 Selecciona Tienda <span class="text-red-300">*</span></label>
+        <select [(ngModel)]="tienda_id" 
+                (change)="seleccionarTienda()"
+                class="w-full px-4 py-2 border-2 border-white rounded-lg focus:outline-none text-gray-800 font-semibold">
+          <option value="">-- Selecciona una tienda --</option>
+          <option *ngFor="let tienda of tiendas" [value]="tienda.id">
+            {{ tienda.nombre_pagina }} - {{ tienda.nombre_perfil_reserva }}
+          </option>
+        </select>
+        <!-- Indicador de tienda seleccionada -->
+        <div *ngIf="tienda_seleccionada" class="mt-2 bg-white bg-opacity-30 rounded p-2 text-sm">
+          ✅ <strong>{{ tienda_seleccionada.nombre_pagina }}</strong> seleccionada
+        </div>
+      </div>
+
+      <!-- Seleccionar Modo -->
+      <div>
+        <label class="block text-sm font-medium mb-2">📝 Tipo de Pedido</label>
+        <select (change)="cambiarModoEvent($event)"
+                [value]="modo"
+                class="w-full px-4 py-2 border-2 border-white rounded-lg focus:outline-none text-gray-800 font-semibold">
+          <option value="normal">📦 Normal (Seleccionar Encomendista)</option>
+          <option value="personalizado">🎁 Personalizado (Ingresar Dirección)</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="text-sm text-purple-100 mt-4">
+      <strong>Modo seleccionado:</strong> 
+      <span *ngIf="modo === 'normal'">📦 Normal - Debes seleccionar una encomendista y destino</span>
+      <span *ngIf="modo === 'personalizado'">🎁 Personalizado - Solo ingresa la dirección de entrega</span>
+    </p>
+  </div>
+
+  <!-- PASO 1: Seleccionar Cliente -->
+  <div *ngIf="pedidos_a_crear.length === 0" class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-2xl font-bold mb-4">1️⃣ Datos del Cliente</h2>
+    
+    <div class="space-y-3 mb-4">
+      <!-- Búsqueda de cliente existente -->
+      <div>
+        <label class="block text-sm font-medium mb-2">🔍 Buscar Cliente Existente</label>
+        <input [(ngModel)]="nombreClienteBusqueda" 
+               (input)="buscarClientes(nombreClienteBusqueda)" 
+               type="text" 
+               placeholder="Escribe el nombre del cliente..."
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+        
+        <!-- Resultados de búsqueda -->
+        <div *ngIf="clientesBuscados.length > 0" class="mt-2 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+          <div *ngFor="let cliente of clientesBuscados" 
+               (click)="seleccionarCliente(cliente)"
+               class="p-3 border-b hover:bg-blue-100 cursor-pointer flex justify-between items-center">
+            <div>
+              <div class="font-bold">{{ cliente.nombre }}</div>
+              <div class="text-sm text-gray-600">📞 {{ cliente.telefono }}</div>
+            </div>
+            <div class="text-green-600 font-bold">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cliente seleccionado -->
+      <div *ngIf="cliente_id" class="bg-blue-50 border-2 border-blue-300 p-3 rounded-lg">
+        <p class="font-bold text-blue-900">✅ Cliente Seleccionado:</p>
+        <p class="text-lg">{{ getNombreCliente() }}</p>
+      </div>
+
+      <!-- Panel: Favoritos del Cliente (SOLO SI HAY FAVORITOS) -->
+      <div *ngIf="cliente_id && mostrarModalFavoritos && favoritosDelCliente.length > 0" class="bg-yellow-50 border-2 border-yellow-400 p-4 rounded-lg mt-4">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-lg font-bold">⭐ Tus Favoritos para {{ getNombreCliente() }}</h3>
+          <button (click)="cerrarModalFavoritos()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+        </div>
+
+        <div class="space-y-2 mb-4">
+          <button *ngFor="let fav of favoritosDelCliente"
+                  (click)="usarFavorito(fav); cerrarModalFavoritos()"
+                  class="w-full p-3 border-2 border-yellow-300 rounded-lg hover:bg-yellow-100 text-left transition block">
+            <p class="font-bold text-yellow-900">{{ fav.descripcion }}</p>
+            <p class="text-sm text-gray-600">{{ fav.modo === 'normal' ? '📦 ' + fav.encomendista_nombre + ' → ' + fav.destino_nombre : '🎁 Personalizado: ' + fav.direccion_personalizada }}</p>
+          </button>
+        </div>
+
+        <button (click)="cerrarModalFavoritos()"
+                class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold">
+          ➕ Crear Nuevo Pedido
+        </button>
+      </div>
+
+      <!-- Botón crear nuevo cliente -->
+      <button (click)="abrirModalNuevoCliente()" 
+              class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold">
+        ➕ Crear Nuevo Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Crear Nuevo Cliente -->
+  <div *ngIf="mostrarModalNuevoCliente" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96">
+      <h3 class="text-xl font-bold mb-4">➕ Crear Nuevo Cliente</h3>
+      
+      <div class="space-y-3 mb-4">
+        <input [(ngModel)]="nuevoCliente.nombre" type="text" placeholder="Nombre completo *"
+               class="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500">
+        <input [(ngModel)]="nuevoCliente.telefono" type="tel" placeholder="Teléfono (ej: +56912345678)"
+               class="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500">
+        <input [(ngModel)]="nuevoCliente.direccion" type="text" placeholder="Dirección (opcional)"
+               class="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500">
+      </div>
+
+      <div class="flex gap-2">
+        <button (click)="crearCliente()"
+                class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold">
+          ✅ Guardar
+        </button>
+        <button (click)="mostrarModalNuevoCliente = false"
+                class="flex-1 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 font-bold">
+          ✕ Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 2: MODO NORMAL - Seleccionar Destino y Horario -->
+  <div *ngIf="pedidos_a_crear.length === 0 && cliente_id && modo === 'normal'" class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-2xl font-bold mb-4">2️⃣ Seleccionar Destino y Día de Entrega</h2>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <!-- Búsqueda de Encomendista (PRIMERO) -->
+      <div>
+        <label class="block text-sm font-medium mb-2">🚚 Seleccionar Encomendista</label>
+        <input [(ngModel)]="nombreEncomendistaBusqueda" 
+               (input)="buscarEncomendistas(nombreEncomendistaBusqueda)" 
+               type="text" 
+               placeholder="Escribe el nombre de la encomendista..."
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+        
+        <!-- Botón para crear nueva encomienda -->
+        <button (click)="abrirModalNuevaEncomienda()"
+                class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition text-sm">
+          ➕ Crear Nueva Encomienda
+        </button>
+
+        <!-- Resultados de búsqueda -->
+        <div *ngIf="encomendistaBuscadas.length > 0" class="mt-2 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+          <div *ngFor="let enc of encomendistaBuscadas" 
+               (click)="seleccionarEncomendistaBuscada(enc)"
+               class="p-3 border-b hover:bg-blue-100 cursor-pointer flex justify-between items-center">
+            <div>
+              <div class="font-bold">{{ enc.nombre }}</div>
+              <div class="text-sm text-gray-600">📞 {{ enc.telefono || 'Sin teléfono' }}</div>
+            </div>
+            <div class="text-green-600 font-bold">✓</div>
+          </div>
+        </div>
+
+        <!-- Encomendista seleccionada -->
+        <div *ngIf="encomendista_id" class="bg-blue-50 border-2 border-blue-300 p-3 rounded-lg mt-2">
+          <p class="font-bold text-blue-900">✅ Encomendista Seleccionada:</p>
+          <p class="text-lg">{{ getNombreEncomendista() }}</p>
+          <button (click)="abrirModalAgregarDestinoAEncomienda()"
+                  class="w-full mt-2 bg-orange-500 hover:bg-orange-600 text-white font-medium py-1 px-2 rounded text-sm">
+            ➕ Agregar Destino a Esta Encomienda
+          </button>
+        </div>
+      </div>
+
+      <!-- Destino (SEGUNDO) - Ahora con búsqueda -->
+      <div>
+        <label class="block text-sm font-medium mb-2">📍 Buscar Destino</label>
+        <input [(ngModel)]="nombreDestinoBusqueda" 
+               (input)="buscarDestinos(nombreDestinoBusqueda)"
+               [disabled]="!encomendista_id"
+               type="text" 
+               placeholder="Escribe el nombre del destino..."
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 disabled:bg-gray-100">
+        
+        <!-- Resultados de búsqueda de destinos -->
+        <div *ngIf="destinosBuscados.length > 0" class="mt-2 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+          <div *ngFor="let dest of destinosBuscados" 
+               (click)="seleccionarDestinoBuscado(dest)"
+               class="px-4 py-2 hover:bg-blue-100 cursor-pointer border-b last:border-b-0">
+            <p class="font-medium text-gray-900">{{ dest.nombre }}</p>
+            <p class="text-xs text-gray-600" *ngIf="dest.local">{{ dest.local }}</p>
+          </div>
+        </div>
+
+        <!-- Botón para agregar horario al destino -->
+        <button *ngIf="destino_id && encomendista_id"
+                (click)="abrirModalAgregarHorarioADestino()"
+                class="w-full mt-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-3 rounded-lg transition text-sm">
+          ⏰ Agregar/Editar Horario del Destino
+        </button>
+
+        <!-- Destino seleccionado -->
+        <div *ngIf="destino_id" class="bg-green-50 border-2 border-green-300 p-3 rounded-lg mt-2">
+          <p class="font-bold text-green-900">✅ Destino Seleccionado:</p>
+          <p class="text-lg">{{ getNombreDestino() }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Días disponibles -->
+    <div *ngIf="diasProximos.length > 0" class="bg-blue-50 border border-blue-300 rounded-lg p-4 mb-4">
+      
+      <!-- Mostrar días disponibles si existen -->
+      <div *ngIf="diasProximos.length > 0" class="mb-4">
+        <h3 class="font-bold text-blue-900 mb-3">📅 Días y Horarios Disponibles:</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+          <div *ngFor="let d of diasProximos" 
+               (click)="seleccionarDia(d.dia)"
+               [class.ring-2]="dia_entrega === d.dia"
+               [class.ring-blue-500]="dia_entrega === d.dia"
+               [class.bg-blue-200]="dia_entrega === d.dia"
+               class="p-3 border-2 border-blue-300 rounded-lg cursor-pointer hover:bg-blue-100 transition">
+            <p class="font-bold text-blue-900">{{ d.dia }}</p>
+            <p class="text-sm text-gray-600">
+              🕐 {{ convertirHora12(d.proximoHorario?.hora_inicio) }} - {{ convertirHora12(d.proximoHorario?.hora_fin) }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Si NO hay días disponibles, permitir seleccionar día manualmente -->
+      <div *ngIf="diasProximos.length === 0 && destino_id" class="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 mb-4">
+        <p class="text-orange-900 font-bold mb-3">⚠️ Este destino aún no tiene horarios registrados.</p>
+        <p class="text-sm text-orange-800 mb-3">Selecciona un día de entrega manualmente:</p>
+        <select [(ngModel)]="dia_entrega" 
+                class="w-full px-4 py-2 border-2 border-orange-300 rounded-lg focus:outline-none focus:border-orange-600 mb-3">
+          <option value="">-- Selecciona un día --</option>
+          <option value="Lunes">Lunes</option>
+          <option value="Martes">Martes</option>
+          <option value="Miércoles">Miércoles</option>
+          <option value="Jueves">Jueves</option>
+          <option value="Viernes">Viernes</option>
+          <option value="Sábado">Sábado</option>
+          <option value="Domingo">Domingo</option>
+        </select>
+        <p class="text-xs text-gray-600">Completa el horario desde el módulo de Encomendistas si es necesario.</p>
+      </div>
+
+      <!-- Fechas específicas para el día seleccionado (solo si hay horarios) -->
+      <div *ngIf="dia_entrega && fechasDisponibles.length > 0" class="mb-4 pb-4 border-b-2 border-blue-300">
+        <p class="font-bold text-blue-900 mb-2">📅 Selecciona una fecha específica para {{ dia_entrega }}:</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div *ngFor="let fechaObj of fechasDisponibles"
+               (click)="seleccionarFecha(fechaObj)"
+               [class.ring-2]="fechaSeleccionada === fechaObj.fechaFormato"
+               [class.ring-green-500]="fechaSeleccionada === fechaObj.fechaFormato"
+               [class.bg-green-200]="fechaSeleccionada === fechaObj.fechaFormato"
+               class="p-3 border-2 border-green-300 rounded-lg cursor-pointer hover:bg-green-100 transition text-center font-bold text-green-900">
+            {{ fechaObj.fechaFormato }}
+          </div>
+        </div>
+
+        <!-- Botones de navegación -->
+        <div class="flex gap-2 mt-4 justify-center">
+          <button (click)="irAtras()" 
+                  class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold">
+            ⬅️ Fechas Anteriores
+          </button>
+          <button (click)="irAdelante()" 
+                  class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold">
+            Fechas Siguientes ➡️
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="dia_entrega" class="bg-green-100 border-2 border-green-300 p-3 rounded-lg">
+        <p class="font-bold text-green-900">✅ Día Seleccionado: <span class="text-lg">{{ dia_entrega }}</span></p>
+        <p *ngIf="fechaSeleccionada" class="text-green-800 mt-1">📅 Fecha: <span class="font-bold">{{ fechaSeleccionada }}</span></p>
+      </div>
+    </div>
+
+    <!-- Resumen de selección -->
+    <div *ngIf="encomendista_id && destino_id && dia_entrega" class="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-lg">
+      <p class="text-sm"><strong>🚚 Encomendista:</strong> {{ getNombreEncomendista() }}</p>
+      <p class="text-sm"><strong>📍 Destino:</strong> {{ getNombreDestino() }}</p>
+      <p class="text-sm"><strong>📅 Entrega:</strong> {{ dia_entrega }}</p>
+    </div>
+  </div>
+
+  <!-- PASO 2: MODO PERSONALIZADO - Ingresar Dirección -->
+  <div *ngIf="pedidos_a_crear.length === 0 && cliente_id && modo === 'personalizado'" class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-2xl font-bold mb-4">2️⃣ Datos de Entrega Personalizada</h2>
+
+    <!-- Dirección -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-2">📍 Dirección de Entrega <span class="text-red-500">*</span></label>
+      <input [(ngModel)]="direccion_personalizada" 
+             type="text" 
+             placeholder="Ej: Calle Principal 123, Apto 4B"
+             class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+      <p class="text-xs text-gray-500 mt-1">Ingresa la dirección completa de entrega</p>
+    </div>
+
+    <!-- Día de Entrega -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-2">📅 Día de Entrega <span class="text-red-500">*</span></label>
+      <select (change)="seleccionarDiaEvent($event)"
+              [value]="dia_entrega"
+              class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+        <option value="">Selecciona un día...</option>
+        <option value="Lunes">Lunes</option>
+        <option value="Martes">Martes</option>
+        <option value="Miércoles">Miércoles</option>
+        <option value="Jueves">Jueves</option>
+        <option value="Viernes">Viernes</option>
+        <option value="Sábado">Sábado</option>
+        <option value="Domingo">Domingo</option>
+      </select>
+    </div>
+
+    <!-- Encomendista (Quien entrega) -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-2">👤 Encomendista (Quien entrega) <span class="text-red-500">*</span></label>
+      <input [(ngModel)]="nombreEncomendistaBusqueda" 
+             (input)="buscarEncomendistas(nombreEncomendistaBusqueda)" 
+             type="text" 
+             placeholder="Escribe el nombre de la encomendista..."
+             class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none">
+      
+      <!-- Resultados de búsqueda -->
+      <div *ngIf="encomendistaBuscadas.length > 0" class="mt-2 border-2 rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+        <div *ngFor="let enc of encomendistaBuscadas" 
+             (click)="seleccionarEncomendistaBuscada(enc)"
+             class="p-3 border-b hover:bg-purple-100 cursor-pointer flex justify-between items-center">
+          <div>
+            <div class="font-bold">{{ enc.nombre }}</div>
+            <div class="text-sm text-gray-600">📞 {{ enc.telefono || 'Sin teléfono' }}</div>
+          </div>
+          <div class="text-green-600 font-bold">✓</div>
+        </div>
+      </div>
+
+      <!-- Encomendista seleccionada -->
+      <div *ngIf="encomendista_id" class="bg-purple-50 border-2 border-purple-300 p-3 rounded-lg mt-2">
+        <p class="font-bold text-purple-900">✅ Encomendista Seleccionada:</p>
+        <p class="text-lg">{{ getNombreEncomendista() }}</p>
+      </div>
+
+      <p class="text-xs text-gray-500 mt-1">Selecciona quién manejará esta encomienda personalizada</p>
+    </div>
+
+    <!-- Fechas Disponibles para el Día Seleccionado -->
+    <div *ngIf="dia_entrega && fechasDisponibles.length > 0" class="mb-4">
+      <label class="block text-sm font-bold mb-2 text-blue-600">📅 Selecciona una fecha específica para {{ dia_entrega }}:</label>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button *ngFor="let fechaObj of fechasDisponibles"
+                (click)="seleccionarFecha(fechaObj)"
+                [class.ring-2]="fechaSeleccionada === fechaObj.fechaFormato"
+                [class.ring-green-400]="fechaSeleccionada === fechaObj.fechaFormato"
+                [class.bg-green-100]="fechaSeleccionada === fechaObj.fechaFormato"
+                class="px-3 py-2 border-2 border-green-300 rounded-lg hover:bg-green-50 text-sm font-medium text-center">
+          {{ fechaObj.fechaFormato }}
+        </button>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <button (click)="irAtras()"
+                class="flex-1 bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 font-bold">
+          ← Fechas Anteriores
+        </button>
+        <button (click)="irAdelante()"
+                class="flex-1 bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 font-bold">
+          Fechas Siguientes →
+        </button>
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div *ngIf="direccion_personalizada && dia_entrega && encomendista_id" class="bg-purple-50 border-2 border-purple-300 p-4 rounded-lg">
+      <p class="text-sm"><strong>📍 Dirección:</strong> {{ direccion_personalizada }}</p>
+      <p class="text-sm"><strong>👤 Encomendista:</strong> {{ obtenerNombreEncomendista(encomendista_id) }}</p>
+      <p class="text-sm"><strong>📅 Día:</strong> {{ dia_entrega }} <span *ngIf="fechaSeleccionada">- {{ fechaSeleccionada }}</span></p>
+    </div>
+  </div>
+
+  <!-- PASO 3: Datos del Pedido -->
+  <div *ngIf="cliente_id && ((modo === 'normal' && encomendista_id && destino_id && dia_entrega) || (modo === 'personalizado' && direccion_personalizada && dia_entrega && encomendista_id))" class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <h2 class="text-2xl font-bold mb-4">3️⃣ Detalles del Pedido</h2>
+
+    <!-- Seleccionar Productos -->
+    <div class="mb-6">
+      <button (click)="abrirModalProductos()"
+              class="w-full bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 font-bold text-lg mb-3">
+        📷 Seleccionar Productos ({{ productosSeleccionados.length }} seleccionados)
+      </button>
+
+      <!-- Mostrar productos seleccionados -->
+      <div *ngIf="productosSeleccionados.length > 0" class="bg-purple-50 border-2 border-purple-300 p-4 rounded-lg">
+        <p class="font-bold text-purple-900 mb-3">✅ Productos Seleccionados:</p>
+        <div class="grid grid-cols-3 gap-3">
+          <div *ngFor="let producto of obtenerProductosSeleccionados()" class="relative">
+            <img [src]="producto.url_thumbnail" 
+                 alt="{{ producto.codigo }}"
+                 (click)="abrirZoom(producto.url_imagen)"
+                 class="w-full h-40 object-contain rounded border-2 border-purple-300 bg-white cursor-pointer hover:opacity-80 transition">
+            <p class="text-xs text-center mt-1 font-bold">{{ producto.codigo }}</p>
+            <button (click)="toggleProducto(producto.id)"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 font-bold">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Seleccionar Productos -->
+    <div *ngIf="mostrarModalProductos" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg w-full max-w-7xl max-h-screen flex flex-col shadow-2xl">
+        <!-- Header fijo -->
+        <div class="flex justify-between items-center p-8 border-b border-gray-200 flex-shrink-0">
+          <h3 class="text-2xl font-bold">📷 Seleccionar Productos (Disponibles)</h3>
+          <button (click)="mostrarModalProductos = false" class="text-2xl text-gray-600 hover:text-gray-900">✕</button>
+        </div>
+        
+        <!-- Contenido scrollable -->
+        <div class="flex-1 overflow-y-auto p-8">
+          <!-- Indicador de carga -->
+          <div *ngIf="productos.length === 0" class="text-center text-gray-500 py-8">
+            <div class="inline-block mb-4">
+              <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+            </div>
+            <p class="text-lg">Cargando productos...</p>
+          </div>
+
+          <div *ngIf="obtenerProductosDisponibles().length === 0 && productos.length > 0" class="text-center text-gray-500 py-8">
+            <p>No hay productos disponibles. Todos están reservados en otros pedidos.</p>
+          </div>
+
+          <div *ngIf="obtenerProductosDisponibles().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div *ngFor="let producto of obtenerProductosDisponibles()" 
+                 [ngClass]="esProductoSeleccionado(producto.id) ? 'border-green-500 bg-green-50 shadow-2xl ring-2 ring-green-400' : 'border-gray-300 hover:border-blue-400'"
+                 class="border-2 p-3 rounded-lg cursor-pointer hover:shadow-lg transition transform hover:scale-105 flex flex-col h-full">
+              <!-- Imagen con zoom -->
+              <img [src]="producto.url_thumbnail" 
+                   alt="{{ producto.codigo }}"
+                   (click)="abrirZoom(producto.url_imagen); $event.stopPropagation()"
+                   class="w-full h-56 object-contain rounded mb-3 bg-gray-50 hover:opacity-80 transition cursor-pointer">
+              
+              <!-- Código y Álbum -->
+              <p class="text-sm font-bold text-center truncate">{{ producto.codigo }}</p>
+              <p class="text-xs text-gray-600 text-center mb-auto">Álbum: {{ producto.album }}</p>
+              
+              <!-- Botón Seleccionar Grande -->
+              <button (click)="toggleProducto(producto.id)"
+                      [ngClass]="esProductoSeleccionado(producto.id) ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-300' : 'bg-blue-600 hover:bg-blue-700 text-white'"
+                      class="w-full mt-3 px-3 py-2 rounded-lg font-bold text-sm transition shadow-md hover:shadow-lg">
+                <span *ngIf="esProductoSeleccionado(producto.id)">✓ Seleccionado</span>
+                <span *ngIf="!esProductoSeleccionado(producto.id)">Seleccionar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer fijo -->
+        <div class="border-t border-gray-200 p-8 flex-shrink-0 bg-gray-50">
+          <div class="flex gap-2">
+            <button (click)="cerrarModalProductos()"
+                    class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 font-bold text-lg transition shadow-md">
+              ✅ Listo
+            </button>
+            <button (click)="mostrarModalProductos = false"
+                    class="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg hover:bg-gray-500 font-bold text-lg transition shadow-md">
+              ✕ Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium mb-2">👕 Cantidad de Prendas</label>
+        <input [(ngModel)]="cantidad_prendas" type="number" min="0" disabled
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+        <p class="text-xs text-gray-600 mt-1">Auto-calculado basado en productos seleccionados</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">� Costo de Prendas</label>
+        <input [(ngModel)]="costo_prendas" (focus)="limpiarCero('prendas')" (change)="calcularTotal()" type="number" min="0" step="0.01"
+               placeholder="Ej: 50.00"
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium mb-2">📦 Costo de Envío</label>
+        <input [(ngModel)]="monto_envio" (focus)="limpiarCero('envio')" (change)="calcularTotal()" type="number" min="0" step="0.01"
+               placeholder="Ej: 3.50"
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">💰 TOTAL</label>
+        <div class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-green-50 font-bold text-lg text-green-700 flex items-center">
+          $ {{ obtenerTotalDisplay() }}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-2">📝 Notas (opcional)</label>
+      <textarea [(ngModel)]="notas" rows="3" placeholder="Detalles adicionales..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"></textarea>
+    </div>
+
+    <!-- Checkbox: Guardar como Favorito -->
+    <div class="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-lg mt-4 mb-4">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input [(ngModel)]="guardarComoFavorito" type="checkbox" class="w-5 h-5 text-yellow-600 rounded">
+        <span class="font-bold text-yellow-900">⭐ Guardar esta configuración como favorito</span>
+      </label>
+      <p class="text-xs text-gray-600 mt-2">Podrás reutilizar este destino/dirección rápidamente</p>
+    </div>
+
+    <!-- Campo: Descripción del Favorito -->
+    <div *ngIf="guardarComoFavorito" class="mb-4">
+      <label class="block text-sm font-medium mb-2">📌 Descripción del Favorito</label>
+      <input [(ngModel)]="descripcionFavorito" 
+             type="text" 
+             placeholder="Ej: Abraham - Chalatenango Express"
+             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+      <p class="text-xs text-gray-600 mt-1">Nombre descriptivo para recordar este favorito</p>
+    </div>
+
+    <div class="mt-4 flex gap-3">
+      <button (click)="agregarPedido()"
+              class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-bold text-lg">
+        ✅ Agregar Pedido
+      </button>
+      <button (click)="limpiarFormulario()"
+              class="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg hover:bg-gray-500 font-bold">
+        🔄 Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- PASO 4: Resumen de Pedidos -->
+  <div *ngIf="pedidos_a_crear.length > 0" class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-2xl font-bold mb-4">4️⃣ Resumen - {{ pedidos_a_crear.length }} Pedido(s)</h2>
+
+    <div class="space-y-3 mb-6">
+      <div *ngFor="let ped of pedidos_a_crear; let i = index" 
+           class="bg-gray-50 border-2 border-gray-300 p-4 rounded-lg flex justify-between items-start">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 mb-2">
+            <p class="font-bold text-lg">{{ getNombreCliente() }}</p>
+            <span *ngIf="ped.modo === 'personalizado'" class="bg-pink-200 text-pink-800 px-2 py-1 rounded text-xs font-bold">🎁 PERSONALIZADO</span>
+            <span *ngIf="ped.modo === 'normal'" class="bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs font-bold">📦 NORMAL</span>
+          </div>
+          
+          <!-- Modo Normal -->
+          <div *ngIf="ped.modo === 'normal'" class="text-sm text-gray-600 mb-2">
+            <p>📍 {{ ped.destino_id }} | 📅 {{ ped.dia_entrega }} ({{ convertirHora12(ped.hora_inicio) }} - {{ convertirHora12(ped.hora_fin) }})</p>
+          </div>
+
+          <!-- Modo Personalizado -->
+          <div *ngIf="ped.modo === 'personalizado'" class="text-sm text-gray-600 mb-2">
+            <p>👤 {{ obtenerNombreEncomendista(ped.encomendista_id) }} | 📍 {{ ped.direccion_personalizada }} | 📅 {{ ped.dia_entrega }}</p>
+          </div>
+
+          <p class="text-sm text-gray-600">👕 {{ ped.cantidad_prendas }} prendas <span *ngIf="ped.modo === 'personalizado'"> | 🏪 {{ getTiendaNombre(ped.tienda_id) }}</span></p>
+          <div class="text-sm text-gray-600 mt-2 space-y-1 bg-white p-2 rounded border border-gray-200">
+            <p>💲 Prendas: <strong>${{ ped.costo_prendas?.toFixed(2) || '0.00' }}</strong></p>
+            <p>📦 Envío: <strong>${{ ped.monto_envio.toFixed(2) }}</strong></p>
+            <p class="font-bold text-green-600 border-t border-gray-300 pt-1 mt-1">💰 TOTAL: <strong>${{ ped.total?.toFixed(2) || (ped.costo_prendas + ped.monto_envio).toFixed(2) }}</strong></p>
+          </div>
+          <p *ngIf="ped.notas" class="text-sm text-gray-600 mt-1">📝 {{ ped.notas }}</p>
+        </div>
+        <button (click)="eliminarPedido(i)"
+                class="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 font-bold ml-4">
+          🗑️ Eliminar
+        </button>
+      </div>
+    </div>
+
+    <!-- Botones finales -->
+    <div class="flex gap-3">
+      <button (click)="guardarPedidos()"
+              [disabled]="guardando"
+              [class.opacity-50]="guardando"
+              [class.cursor-not-allowed]="guardando"
+              class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-bold text-lg transition-all">
+        <span *ngIf="!guardando">✅ Guardar {{ pedidos_a_crear.length }} Pedido(s)</span>
+        <span *ngIf="guardando">⏳ Guardando...</span>
+      </button>
+      <button (click)="limpiarTodo()"
+              [disabled]="guardando"
+              [class.opacity-50]="guardando"
+              [class.cursor-not-allowed]="guardando"
+              class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-bold text-lg transition-all">
+        🔄 Limpiar Todo
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,561 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">📦 Pedidos</h1>
+      <p class="text-gray-500 mt-2">Listado de todos los pedidos ({{ pedidos.length }} total)</p>
+    </div>
+    <!-- Botón para importar Excel -->
+    <button 
+      (click)="abrirImportarExcel()"
+      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2 transition">
+      📊 Importar Excel
+    </button>
+  </div>
+
+  <!-- Estadísticas de Pedidos -->
+  <div *ngIf="pedidos.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- Sin Finalizar -->
+    <div class="bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">📋 Sin Finalizar</div>
+      <div class="text-3xl font-bold">{{ obtenerEstadisticas().sinFinalizar }}</div>
+      <div class="text-xs opacity-75 mt-1">(Para búsqueda semanal)</div>
+    </div>
+
+    <!-- Pendientes -->
+    <div class="bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">🟡 Pendiente</div>
+      <div class="text-3xl font-bold">{{ obtenerEstadisticas().pendientes }}</div>
+    </div>
+
+    <!-- Enviados -->
+    <div class="bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">✈️ Enviado</div>
+      <div class="text-3xl font-bold">{{ obtenerEstadisticas().enviados }}</div>
+    </div>
+
+    <!-- Liberados -->
+    <div class="bg-gradient-to-br from-rose-400 to-rose-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">🔓 Liberado</div>
+      <div class="text-3xl font-bold">{{ obtenerEstadisticas().liberados }}</div>
+    </div>
+
+    <!-- Este Miércoles -->
+    <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">{{ obtenerTextoProximoEnvio().miercoles }}</div>
+      <div class="text-3xl font-bold">{{ contarPedidosMiercoles() }}</div>
+      <div class="text-xs opacity-75 mt-1">pedidos pendientes</div>
+    </div>
+
+    <!-- Este Sábado -->
+    <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-lg p-4 text-white shadow-lg">
+      <div class="text-sm opacity-90">{{ obtenerTextoProximoEnvio().sabado }}</div>
+      <div class="text-3xl font-bold">{{ contarPedidosSabado() }}</div>
+      <div class="text-xs opacity-75 mt-1">pedidos pendientes</div>
+    </div>
+
+    <!-- Por Empacar para Próximo Envío -->
+    <div *ngIf="obtenerTextoProximoEnvio().miercoles.includes('Este') ? contarPorEmpacarMiercoles() > 0 : contarPorEmpacarSabado() > 0"
+         class="bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg p-4 text-white shadow-lg border-2 border-orange-700">
+      <div class="text-sm opacity-90 font-bold">📦 Por Empacar</div>
+      <div class="text-3xl font-bold">{{ obtenerTextoProximoEnvio().miercoles.includes('Este') ? contarPorEmpacarMiercoles() : contarPorEmpacarSabado() }}</div>
+      <div class="text-xs opacity-90 mt-1">para próximo envío</div>
+    </div>
+  </div>
+
+  <!-- Mensaje si no hay pedidos -->
+  <div *ngIf="pedidos.length === 0" class="bg-yellow-100 border-2 border-yellow-300 rounded-lg p-6 text-center">
+    <p class="text-xl text-yellow-900">📭 No hay pedidos registrados aún</p>
+    <p class="text-gray-600 mt-2">Crea un pedido en "Crear Pedido" para que aparezca aquí</p>
+  </div>
+
+  <!-- Filters -->
+  <div *ngIf="pedidos.length > 0" class="bg-white rounded-lg shadow p-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Filtro por Estado -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Filtrar por Estado</label>
+        <select 
+          [(ngModel)]="filtroEstado"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+          <option *ngFor="let estado of estados" [value]="estado">
+            {{ estado === 'todos' ? '✨ Todos los estados' : (estado === 'sin-finalizar' ? '📋 Sin Finalizar' : '• ' + formatearEstado(estado)) }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Filtro Fecha Desde -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">📅 Desde</label>
+        <input 
+          [(ngModel)]="filtroFechaDesde"
+          type="date"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+      </div>
+
+      <!-- Filtro Fecha Hasta -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">📅 Hasta</label>
+        <input 
+          [(ngModel)]="filtroFechaHasta"
+          type="date"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+      </div>
+    </div>
+    
+    <!-- Botón para limpiar filtros -->
+    <button *ngIf="filtroEstado !== 'todos' || filtroFechaDesde || filtroFechaHasta"
+            (click)="filtroEstado = 'todos'; filtroFechaDesde = ''; filtroFechaHasta = ''"
+            class="mt-4 px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-medium">
+      🔄 Limpiar Filtros
+    </button>
+
+    <!-- Botones de PDF -->
+    <div class="mt-4 flex gap-3 flex-wrap">
+      <button *ngIf="pedidosSeleccionados.size > 0"
+              (click)="abrirGeneradorStickers()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2">
+        📄 Generar Stickers ({{ pedidosSeleccionados.size }})
+      </button>
+
+      <button *ngIf="pedidosSeleccionados.size > 0"
+              (click)="limpiarSeleccion()"
+              class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2">
+        ✕ Limpiar Selección
+      </button>
+
+      <button *ngIf="filtroEstado === 'pendiente' && getPedidosFiltrados().length > 0"
+              (click)="descargarStickersPorFecha()"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2">
+        🗓️ Preview Pendientes ({{ filtroFechaDesde || filtroFechaHasta ? 'Filtrado' : 'Todos' }})
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de Preview de Stickers -->
+  <app-sticker-preview-modal 
+    [mostrar]="mostrarModalPreview"
+    [pedidos]="pedidosParaPreview"
+    [fechaEnvio]="fechaEnvio"
+    (cerrarModal)="mostrarModalPreview = false"
+    (descargarPdfEvent)="manejarDescargarDesdePreview($event)">
+  </app-sticker-preview-modal>
+
+
+  <!-- Table -->
+  <div *ngIf="pedidos.length > 0" class="bg-white rounded-lg shadow overflow-x-auto">
+    <table class="w-full">
+      <thead class="bg-blue-600 text-white">
+        <tr>
+          <th class="px-4 py-3 text-center text-sm font-semibold w-12">✓</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">ID Pedido</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">📦 Código</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">🏪 Tienda</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">👤 Perfil</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold cursor-pointer hover:bg-blue-700 transition"
+              (click)="alternarOrdenamiento('cliente')"
+              [title]="ordenarPor === 'cliente' ? (direccionOrden === 'asc' ? 'Orden ascendente (A-Z)' : 'Orden descendente (Z-A)') : 'Haz clic para ordenar por cliente'">
+            👤 Cliente {{ obtenerIndicadorOrdenamiento('cliente') }}
+          </th>
+          <th class="px-6 py-3 text-left text-sm font-semibold cursor-pointer hover:bg-blue-700 transition"
+              (click)="alternarOrdenamiento('encomendista')"
+              [title]="ordenarPor === 'encomendista' ? (direccionOrden === 'asc' ? 'Orden ascendente (A-Z)' : 'Orden descendente (Z-A)') : 'Haz clic para ordenar por encomendista'">
+            👥 Encomendista {{ obtenerIndicadorOrdenamiento('encomendista') }}
+          </th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">Destino</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">Prendas</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">💰 Total</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">📅 Fecha Entrega</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">🕐 Hora Entrega</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">Estado</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <ng-container *ngFor="let pedido of getPedidosFiltrados()">
+          <tr class="hover:bg-gray-50 transition relative" 
+              [class.bg-blue-50]="estaPedidoSeleccionado(pedido.id!) && !estaPedidoVencido(pedido) && !obtenerClaseAtenuacionPedido(pedido)"
+              [class.bg-red-50]="estaPedidoVencido(pedido) && !estaPedidoSeleccionado(pedido.id!)"
+              [class.bg-yellow-50]="obtenerClaseAtenuacionPedido(pedido)"
+              [class.bg-orange-100]="debeSerEmpacado(pedido) && pedido.estado !== 'empacada'"
+              [class.border-l-4]="obtenerClaseAtenuacionPedido(pedido) || (debeSerEmpacado(pedido) && pedido.estado !== 'empacada')"
+              [class.border-l-yellow-400]="obtenerClaseAtenuacionPedido(pedido)"
+              [class.border-l-orange-500]="debeSerEmpacado(pedido) && pedido.estado !== 'empacada'">
+            <td class="px-4 py-4 text-center">
+              <input 
+                type="checkbox" 
+                [checked]="estaPedidoSeleccionado(pedido.id!)"
+                (change)="alternarSeleccionPedido(pedido.id!)"
+                [disabled]="pedidosSeleccionados.size >= 8 && !estaPedidoSeleccionado(pedido.id!)"
+                class="w-5 h-5 cursor-pointer accent-blue-600"
+                [title]="pedidosSeleccionados.size >= 8 && !estaPedidoSeleccionado(pedido.id!) ? 'Máximo 8 stickers' : ''"/>
+            </td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">
+              {{ pedido.id }}
+              <span *ngIf="estaPedidoVencido(pedido)" class="ml-2 text-red-600 font-bold">⚠️ VENCIDO</span>
+            </td>
+            <td class="px-6 py-4 text-sm font-bold text-blue-600 bg-blue-50 rounded">
+              {{ pedido.codigo_pedido || 'Generando...' }}
+            </td>
+            <td class="px-6 py-4 text-sm font-semibold">
+              <span class="px-3 py-1 rounded-full text-xs font-bold" 
+                    [style]="'background-color: ' + (pedido.color_sticker || '#ec4899') + '; color: ' + obtenerColorTexto(pedido.color_sticker)">
+                {{ pedido.nombre_tienda || 'N/A' }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm font-semibold">
+              <span class="px-3 py-1 rounded-full text-white text-xs font-bold" 
+                    [style]="'background-color: ' + obtenerColorPerfil(pedido.nombre_perfil || '')">
+                {{ pedido.nombre_perfil || 'N/A' }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ obtenerNombreCliente(pedido.cliente_id) }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.encomendista_id ? obtenerNombreEncomendista(pedido.encomendista_id) : 'Personalizado' }}</td>
+            <td class="px-3 py-4 text-sm text-gray-600 whitespace-normal break-words max-w-xs">{{ (pedido.direccion_personalizada && pedido.direccion_personalizada.trim()) ? pedido.direccion_personalizada : (pedido.destino_id ? pedido.destino_id : 'N/A') }}</td>
+            <td class="px-6 py-4 text-sm text-center font-medium">{{ pedido.cantidad_prendas }}</td>
+            <td class="px-6 py-4 text-sm font-semibold text-green-600">${{ (pedido.total || 0).toFixed(2) }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 font-medium">
+              <span *ngIf="pedido.hora_inicio && pedido.hora_fin">
+                {{ pedido.hora_inicio }} - {{ pedido.hora_fin }}
+              </span>
+              <span *ngIf="!pedido.hora_inicio && pedido.modo === 'personalizado'" class="text-gray-500">Personalizado</span>
+              <span *ngIf="!pedido.hora_inicio && pedido.modo !== 'personalizado'" class="text-gray-500">-</span>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="px-3 py-1 rounded-full text-xs font-medium">
+                {{ formatearEstado(pedido.estado) }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm space-x-2 flex flex-wrap gap-2">
+              <button (click)="verPedido(pedido)" class="text-indigo-600 hover:text-indigo-900 font-medium text-xs whitespace-nowrap">⚙️ Estado</button>
+              <button (click)="abrirZoom(generarQR(pedido.codigo_pedido))" class="text-blue-600 hover:text-blue-900 font-medium text-xs whitespace-nowrap">📱 Ver QR</button>
+              <button *ngIf="pedido.foto_paquete" (click)="abrirZoom(pedido.foto_paquete)" class="text-orange-600 hover:text-orange-900 font-medium text-xs whitespace-nowrap">📦 Ver Imagen</button>
+              <button *ngIf="pedido.estado === 'empacada' && !pedido.foto_paquete" (click)="abrirModalCargarImagen(pedido)" class="text-amber-600 hover:text-amber-900 font-medium text-xs whitespace-nowrap">📷 Cargar Imagen</button>
+              <button (click)="eliminarPedido(pedido)" class="text-red-600 hover:text-red-900 font-medium text-xs whitespace-nowrap">🗑️</button>
+            </td>
+          </tr>
+          <!-- Fila expandible con productos -->
+          <tr *ngIf="estaPedidoExpandido(pedido.id)" class="bg-purple-50 border-t-4 border-purple-300">
+            <td colspan="10" class="px-6 py-6">
+              <div class="bg-white rounded-lg p-4 border-2 border-purple-200">
+                <!-- Códigos de Productos -->
+                <div class="mb-6 pb-4 border-b-2 border-purple-100">
+                  <h4 class="text-sm font-bold text-purple-900 mb-2">📝 Códigos de Productos</h4>
+                  <div class="bg-purple-100 rounded px-4 py-3">
+                    <p class="text-sm text-purple-800 font-mono">{{ obtenerCodigosDePedido(pedido) }}</p>
+                  </div>
+                </div>
+
+                <!-- Imágenes de Productos -->
+                <h4 class="text-lg font-bold text-purple-900 mb-4">📷 Productos en este Pedido</h4>
+                <div *ngIf="obtenerProductosDePedido(pedido).length === 0" class="text-gray-600 text-center py-4">
+                  <p>No hay productos asociados a este pedido</p>
+                </div>
+                <div *ngIf="obtenerProductosDePedido(pedido).length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div *ngFor="let producto of obtenerProductosDePedido(pedido)" class="text-center relative">
+                    <!-- Etiqueta RESERVADO con viñeta -->
+                    <div class="absolute top-1 right-1 z-10 flex items-center gap-1">
+                      <span class="text-red-600 text-xl">●</span>
+                      <div class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow">RESERVADO</div>
+                    </div>
+                    <div class="bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition border-2 border-gray-200"
+                         (click)="abrirZoom(producto.url_imagen)">
+                      <img [src]="producto.url_thumbnail" 
+                           alt="{{ producto.codigo }}"
+                           class="w-full h-32 object-cover hover:opacity-80 transition">
+                      <p class="text-xs font-bold mt-2 px-2 truncate">{{ producto.codigo }}</p>
+                      <p class="text-xs text-gray-600 px-2 pb-2">Álbum: {{ producto.album }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal de Zoom -->
+  <div *ngIf="mostrarZoom && imagenZoom" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+       (click)="cerrarZoom()">
+    <div class="relative max-w-4xl max-h-screen p-4" (click)="$event.stopPropagation()">
+      <img [src]="imagenZoom" alt="Zoom" class="max-w-full max-h-screen object-contain rounded-lg">
+      <button (click)="cerrarZoom()"
+              class="absolute top-4 right-4 bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-700 font-bold text-xl">
+        ✕
+      </button>
+      <p class="text-white text-center mt-4 text-sm">Haz clic en la imagen o en la X para cerrar</p>
+    </div>
+  </div>
+
+  <!-- Modal de Cambio de Estado -->
+  <div *ngIf="mostrarModalEstado && pedidoSeleccionado" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-t-lg">
+        <h2 class="text-2xl font-bold">🔄 Cambiar Estado del Pedido</h2>
+        <p class="text-blue-100 text-sm mt-1">ID: {{ pedidoSeleccionado.id }}</p>
+        <p class="text-blue-100 text-sm">Cliente: {{ pedidoSeleccionado.cliente_nombre }}</p>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-6">
+        <!-- Estado Actual -->
+        <div class="mb-6 pb-6 border-b">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Estado Actual</label>
+          <div class="bg-gray-100 px-4 py-3 rounded-lg">
+            <span [ngClass]="getEstadoBadgeColor(pedidoSeleccionado.estado)" 
+                  class="inline-block px-3 py-1 rounded-full text-sm font-medium">
+              {{ formatearEstado(pedidoSeleccionado.estado) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Nuevo Estado -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nuevo Estado</label>
+          <select 
+            [(ngModel)]="nuevoEstado"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
+            <option value="pendiente">🟡 Pendiente</option>
+            <option value="empacada">📦 Empacada</option>
+            <option value="enviado">✈️ Enviado</option>
+            <option value="retirado">✅ Retirado</option>
+            <option value="no-retirado">❌ No Retirado</option>
+            <option value="retirado-local">📍 Retirado del Local</option>
+            <option value="cancelado">🚫 Cancelado</option>
+            <option value="liberado">🔓 Liberado (Libera las prendas)</option>
+          </select>
+        </div>
+
+        <!-- Subir foto cuando es EMPACADA -->
+        <div *ngIf="nuevoEstado === 'empacada'" class="mb-6 pb-6 border-b-2 border-green-300 bg-green-50 p-4 rounded-lg">
+          <label class="block text-sm font-bold text-green-900 mb-3">📸 Foto del Paquete Empacado</label>
+          <p class="text-xs text-green-700 mb-3">Carga una foto del paquete empacado (JPG, PNG)</p>
+          
+          <div class="flex items-center gap-3">
+            <input 
+              type="file"
+              #fotoPaquete
+              (change)="onFotoSeleccionada($event)"
+              accept="image/*"
+              class="flex-1 px-3 py-2 border border-green-300 rounded-lg text-sm cursor-pointer hover:bg-green-100"
+              placeholder="Selecciona una imagen">
+          </div>
+
+          <!-- Preview de la foto si se cargó -->
+          <div *ngIf="fotoSeleccionada" class="mt-3 pt-3 border-t border-green-200">
+            <p class="text-xs font-medium text-green-900 mb-2">✓ Foto seleccionada:</p>
+            <img [src]="fotoPreview" alt="Preview" class="w-full max-h-40 object-cover rounded">
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="mb-6 pb-6 border-b">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Vista Previa</label>
+          <div class="bg-gray-100 px-4 py-3 rounded-lg">
+            <span [ngClass]="getEstadoBadgeColor(nuevoEstado)" 
+                  class="inline-block px-3 py-1 rounded-full text-sm font-medium">
+              {{ formatearEstado(nuevoEstado) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex gap-3 justify-end">
+        <button (click)="cerrarModalEstado()"
+                class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition">
+          Cancelar
+        </button>
+        <button (click)="guardarCambioEstado()"
+                class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+          Guardar Cambio
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Cargar Imagen de Paquete -->
+  <div *ngIf="mostrarModalCargarImagen && pedidoParaCargarImagen" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-4 rounded-t-lg">
+        <h3 class="text-xl font-bold">📷 Cargar Imagen de Paquete</h3>
+        <p class="text-orange-100 text-sm mt-1">Pedido: {{ pedidoParaCargarImagen.codigo_pedido }}</p>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-6">
+        <!-- Input de imagen -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">📸 Seleccionar Imagen</label>
+          <input 
+            type="file" 
+            accept="image/*"
+            (change)="onImagenPaqueteSeleccionada($event)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+        </div>
+
+        <!-- Preview de imagen -->
+        <div *ngIf="imagenPaquetePreview" class="mb-4">
+          <p class="text-sm font-medium text-gray-700 mb-2">Vista Previa:</p>
+          <img [src]="imagenPaquetePreview" alt="Preview" class="w-full h-48 object-contain rounded-lg border-2 border-orange-200">
+        </div>
+
+        <div *ngIf="!imagenPaquetePreview" class="mb-4 bg-gray-100 rounded-lg p-6 text-center">
+          <p class="text-gray-500 text-sm">No hay imagen seleccionada</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex gap-3 justify-end">
+        <button (click)="cerrarModalCargarImagen()"
+                class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition">
+          Cancelar
+        </button>
+        <button (click)="guardarImagenPaquete()"
+                [disabled]="!imagenPaqueteBase64"
+                class="px-4 py-2 text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition">
+          Guardar Imagen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de preview de stickers -->
+  <app-sticker-preview-modal
+    [mostrar]="mostrarModalPreview"
+    [pedidos]="pedidosParaPreview"
+    [fechaEnvio]="fechaEnvio"
+    (cerrarModal)="mostrarModalPreview = false"
+    (descargarPdfEvent)="manejarDescargarDesdePreview($event)">
+  </app-sticker-preview-modal>
+
+  <!-- Modal de Selección de Stickers (máximo 10) -->
+  <div *ngIf="mostrarSelectorStickers" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-6 flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold">🎫 Seleccionar Stickers</h2>
+          <p class="text-blue-100 text-sm mt-1">Máximo 10 pedidos por página</p>
+        </div>
+        <div class="text-3xl font-bold">{{ pedidosSeleccionados.size }}/10</div>
+      </div>
+
+      <!-- Indicador de límite -->
+      <div class="px-8 bg-gradient-to-r from-blue-50 to-indigo-50 py-3 border-b border-blue-200">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-700">Seleccionados: <span class="text-blue-600">{{ pedidosSeleccionados.size }}</span> / 8</span>
+          <div class="h-2 bg-gray-300 rounded-full w-32">
+            <div class="h-full bg-blue-600 rounded-full transition-all" [style.width.%]="(pedidosSeleccionados.size / 8) * 100"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de pedidos para seleccionar -->
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div *ngFor="let pedido of getPedidosFiltrados()" 
+               class="border-2 rounded-lg p-4 cursor-pointer transition"
+               [class.border-blue-500]="estaPedidoSeleccionado(pedido.id!)"
+               [class.bg-blue-50]="estaPedidoSeleccionado(pedido.id!)"
+               [class.border-gray-300]="!estaPedidoSeleccionado(pedido.id!)"
+               [class.opacity-50]="pedidosSeleccionados.size >= 10 && !estaPedidoSeleccionado(pedido.id!)"
+               [class.cursor-not-allowed]="pedidosSeleccionados.size >= 10 && !estaPedidoSeleccionado(pedido.id!)"
+               (click)="!estaPedidoSeleccionado(pedido.id!) && pedidosSeleccionados.size >= 10 ? null : alternarSeleccionPedido(pedido.id!)">
+            <label class="flex items-start gap-3" [class.cursor-pointer]="!(pedidosSeleccionados.size >= 10 && !estaPedidoSeleccionado(pedido.id!))">
+              <input 
+                type="checkbox" 
+                [checked]="estaPedidoSeleccionado(pedido.id!)"
+                [disabled]="pedidosSeleccionados.size >= 10 && !estaPedidoSeleccionado(pedido.id!)"
+                class="w-5 h-5 mt-1 accent-blue-600"
+                [class.cursor-pointer]="!(pedidosSeleccionados.size >= 10 && !estaPedidoSeleccionado(pedido.id!))"
+                (change)="$event.stopPropagation()">
+              <div class="flex-1">
+                <div class="font-bold text-gray-900">{{ obtenerNombreCliente(pedido.cliente_id) }}</div>
+                <div class="text-sm text-gray-600">ID: {{ pedido.id }}</div>
+                <div class="text-sm text-gray-500">Destino: {{ (pedido.direccion_personalizada && pedido.direccion_personalizada.trim()) ? pedido.direccion_personalizada : (pedido.destino_id ? pedido.destino_id : 'N/A') }}</div>
+                <div class="text-sm text-gray-500">Encomienda: {{ pedido.encomendista_id ? obtenerNombreEncomendista(pedido.encomendista_id) : 'Personalizado' }}</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Mensaje si alcanzó máximo -->
+        <div *ngIf="pedidosSeleccionados.size >= 8" class="mt-6 bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4">
+          <p class="text-yellow-900 font-semibold">⚠️ Límite alcanzado: 8 stickers máximo</p>
+          <p class="text-yellow-800 text-sm mt-1">Deselecciona algún pedido para agregar otros.</p>
+        </div>
+      </div>
+
+      <!-- Footer con botones -->
+      <div class="sticky bottom-0 bg-gray-50 px-8 py-4 flex gap-3 justify-end border-t-2 border-gray-200">
+        <button (click)="cerrarSelectorStickers()"
+                class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold">
+          ✕ Cancelar
+        </button>
+        <button (click)="limpiarSeleccion()"
+                class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold">
+          🔄 Limpiar
+        </button>
+        <button (click)="abrirGeneradorStickers()"
+                [disabled]="pedidosSeleccionados.size === 0"
+                [class.opacity-50]="pedidosSeleccionados.size === 0"
+                [class.cursor-not-allowed]="pedidosSeleccionados.size === 0"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:from-gray-400 disabled:to-gray-400">
+          ✅ Generar {{ pedidosSeleccionados.size }} Stickers
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Selección de Fecha de Envío -->
+  <div *ngIf="mostrarModalFechaEnvio" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="text-4xl">📅</span>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Fecha de Envío</h2>
+          <p class="text-gray-600 text-sm">Selecciona el día de entrega</p>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-pink-200 rounded-lg p-4 mb-6">
+        <p class="text-sm text-gray-600 mb-2">📌 Próxima fecha disponible:</p>
+        <div class="flex items-center gap-2">
+          <input 
+            type="date" 
+            [(ngModel)]="fechaTemporal"
+            class="flex-1 px-4 py-2 border-2 border-pink-300 rounded-lg focus:outline-none focus:border-pink-500 text-lg font-semibold">
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Se auto-calcula: próximo miércoles o sábado</p>
+      </div>
+
+      <div class="space-y-3">
+        <button
+          (click)="confirmarFechaEnvio()"
+          class="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 rounded-lg font-bold hover:shadow-lg transition-shadow">
+          ✅ Confirmar y Previsualizar
+        </button>
+        <button
+          (click)="cancelarFechaEnvio()"
+          class="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-colors">
+          ❌ Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Importación de Excel -->
+  <app-importar-excel-modal
+    [mostrar]="mostrarImportarExcel"
+    (cerrarModal)="mostrarImportarExcel = false"
+    (importarDatos)="procesarDatosExcel($event)">
+  </app-importar-excel-modal>
+

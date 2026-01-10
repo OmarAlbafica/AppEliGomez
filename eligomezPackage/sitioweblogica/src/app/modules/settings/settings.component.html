@@ -1,0 +1,108 @@
+<div class="container mx-auto p-6">
+  <h1 class="text-4xl font-bold mb-8">⚙️ Configuración y Limpieza de Datos</h1>
+
+  <!-- Mensaje -->
+  <div *ngIf="mensaje" 
+       [ngClass]="mensaje.tipo === 'éxito' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'"
+       class="border rounded px-4 py-3 mb-6">
+    {{ mensaje.texto }}
+  </div>
+
+  <!-- Progress Bar durante eliminación -->
+  <div *ngIf="eliminando" class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 mb-6">
+    <div class="mb-4">
+      <p class="font-bold text-yellow-800 mb-2">📊 Progreso de Eliminación</p>
+      <p class="text-sm text-yellow-700">{{ procesoActual }}</p>
+    </div>
+    
+    <!-- Progress Bar -->
+    <div class="w-full bg-gray-300 rounded-full h-4 overflow-hidden mb-2">
+      <div [style.width.%]="progreso" 
+           class="bg-gradient-to-r from-yellow-400 to-yellow-600 h-full transition-all duration-300 flex items-center justify-center">
+        <span *ngIf="progreso > 10" class="text-xs font-bold text-white">{{ progreso }}%</span>
+      </div>
+    </div>
+    
+    <div class="flex justify-between text-xs text-gray-600">
+      <span>{{ procesoActualIndex }} / {{ totalProceso }}</span>
+      <span>{{ progreso }}%</span>
+    </div>
+  </div>
+
+  <!-- Grid de opciones -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Eliminar Clientes Inactivos -->
+    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+      <h2 class="text-2xl font-bold mb-4">👥 Clientes Inactivos</h2>
+      <p class="text-gray-600 mb-4">Elimina permanentemente todos los clientes marcados como inactivos.</p>
+      
+      <div class="bg-red-50 border border-red-200 rounded p-4 mb-4">
+        <p class="font-bold text-red-800">⚠️ Encontrados: <span class="text-2xl">{{ clientesInactivos.length }}</span></p>
+        <p class="text-sm text-red-700 mt-2">Esta acción es irreversible</p>
+      </div>
+
+      <button (click)="eliminarClientesInactivos()" 
+              [disabled]="clientesInactivos.length === 0 || eliminando"
+              class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-bold transition">
+        <span *ngIf="!eliminando">🗑️ Eliminar {{ clientesInactivos.length }} Clientes</span>
+        <span *ngIf="eliminando">⏳ Eliminando...</span>
+      </button>
+
+      <div *ngIf="clientesInactivos.length > 0" class="mt-4 max-h-48 overflow-y-auto bg-gray-50 rounded p-3">
+        <p class="text-xs font-bold text-gray-600 mb-2">Clientes a eliminar:</p>
+        <ul class="text-sm space-y-1">
+          <li *ngFor="let cliente of clientesInactivos" class="text-gray-700">
+            • {{ cliente.nombre }} ({{ cliente.telefono }})
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Eliminar Encomendistas Inactivas -->
+    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+      <h2 class="text-2xl font-bold mb-4">🚚 Encomendistas Inactivas</h2>
+      <p class="text-gray-600 mb-4">Elimina permanentemente todas las encomendistas marcadas como inactivas.</p>
+      
+      <div class="bg-purple-50 border border-purple-200 rounded p-4 mb-4">
+        <p class="font-bold text-purple-800">⚠️ Encontradas: <span class="text-2xl">{{ encomendistasInactivas.length }}</span></p>
+        <p class="text-sm text-purple-700 mt-2">Esta acción es irreversible</p>
+      </div>
+
+      <button (click)="eliminarEncomendistasInactivas()" 
+              [disabled]="encomendistasInactivas.length === 0 || eliminando"
+              class="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-bold transition">
+        <span *ngIf="!eliminando">🗑️ Eliminar {{ encomendistasInactivas.length }} Encomendistas</span>
+        <span *ngIf="eliminando">⏳ Eliminando...</span>
+      </button>
+
+      <div *ngIf="encomendistasInactivas.length > 0" class="mt-4 max-h-48 overflow-y-auto bg-gray-50 rounded p-3">
+        <p class="text-xs font-bold text-gray-600 mb-2">Encomendistas a eliminar:</p>
+        <ul class="text-sm space-y-1">
+          <li *ngFor="let encomendista of encomendistasInactivas" class="text-gray-700">
+            • {{ encomendista.nombre }} ({{ encomendista.telefono || 'Sin teléfono' }})
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Información general -->
+    <div class="bg-blue-50 rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+      <h2 class="text-2xl font-bold mb-4">ℹ️ Información</h2>
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="font-bold text-blue-900">Total de Clientes:</p>
+          <p class="text-blue-700">{{ clientesTotal }} ({{ clientesInactivos.length }} inactivos)</p>
+        </div>
+        <div>
+          <p class="font-bold text-blue-900">Total de Encomendistas:</p>
+          <p class="text-blue-700">{{ encomendistasTotal }} ({{ encomendistasInactivas.length }} inactivas)</p>
+        </div>
+        <div class="bg-white rounded p-3 mt-4">
+          <p class="text-xs text-gray-600">⚠️ Los datos inactivos se marcan así al eliminarlos de sus respectivos módulos. Esta sección permite limpiarlos completamente de la base de datos.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

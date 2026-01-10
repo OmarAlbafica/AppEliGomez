@@ -1,0 +1,12 @@
+.footer_app {
+  background-color: #f0f2f4;
+  text-align: center;
+  padding: 1rem 0;
+  color: #111418;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  width: 100%;
+}

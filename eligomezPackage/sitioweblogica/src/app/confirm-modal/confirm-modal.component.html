@@ -1,0 +1,22 @@
+<div *ngIf="showModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10000">
+  <div class="bg-white p-6 rounded-lg shadow-lg w-96 relative z-10">
+    <div class="border-b pb-2 mb-4 flex justify-center">
+      <h2 class="text-primary text-lg font-bold">{{ header }}</h2>
+    </div>
+    <p class="text-primary text-base leading-normal mb-4">{{ message }}</p>
+    <div class="flex justify-around">
+      <button
+        class="flex w-24 cursor-pointer items-center justify-center font-sans text-lg leading-none py-2 px-4 border border-solid border-gray-800 bg-gray-800 text-white uppercase font-semibold rounded-lg transition duration-300 ease-in-out hover:bg-gray-700 hover:shadow-lg"
+        (click)="confirmAction()"
+      >
+        <span class="truncate">Sí</span>
+      </button>
+      <button
+        class="flex w-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#f0f2f4] text-[#111418] text-sm font-bold leading-normal tracking-[0.015em]"
+        (click)="cancelAction()"
+      >
+        <span class="truncate">No</span>
+      </button>
+    </div>
+  </div>
+</div>
