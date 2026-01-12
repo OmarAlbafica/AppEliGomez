@@ -144,6 +144,14 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
     this.cargarEncomendistas();
     this.cargarProductos();
     this.cargarTiendas();
+    
+    // Seleccionar la primera tienda automáticamente cuando se carguen
+    setTimeout(() => {
+      if (this.tiendas.length > 0 && this.tiendas[0].id) {
+        this.tienda_id = this.tiendas[0].id;
+        this.seleccionarTienda();
+      }
+    }, 500);
   }
 
   ngOnDestroy() {
@@ -188,15 +196,8 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
    */
   cargarTiendas() {
     const sub = this.tiendasService.cargarTiendas().subscribe((tiendas: Tienda[]) => {
-      console.log('📦 Tiendas cargadas:', tiendas.length);
       this.tiendas = tiendas;
-      
-      // Auto-seleccionar la primera tienda
-      if (this.tiendas.length > 0) {
-        this.tienda_id = this.tiendas[0].id || '';
-        this.tienda_seleccionada = this.tiendas[0];
-        console.log('🏪 Tienda auto-seleccionada:', this.tiendas[0].nombre_pagina);
-      }
+      console.log('Tiendas cargadas:', tiendas.length);
     });
     this.subscriptions.push(sub);
   }
@@ -672,12 +673,6 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     console.log('%cEncomendista ID:', 'color: purple; font-weight: bold', this.encomendista_id);
     console.log('%cCliente ID:', 'color: red; font-weight: bold', this.cliente_id);
     
-    // Validación de tienda (es obligatoria)
-    if (!this.tienda_id) {
-      this.mostrarMensaje('error', '🏪 Debes seleccionar una tienda');
-      return;
-    }
-
     if (!this.cliente_id) {
       this.mostrarMensaje('error', 'Debes seleccionar o crear un cliente');
       return;
@@ -731,6 +726,9 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     // Obtener horario - en modo normal de dias proximos, en personalizado de inputs
     let hora_inicio = this.hora_inicio_personalizada;
     let hora_fin = this.hora_fin_personalizada;
+    
+    // Calcular fecha si no está definida (en personalizado, si no selecciona fecha específica)
+    let fechaEntrega = this.dia_entrega_fecha;
     if (!fechaEntrega && this.dia_entrega) {
       // Calcular la próxima ocurrencia del día seleccionado
       const proximasFechas = this.calcularProximasFechas(this.dia_entrega, 1);

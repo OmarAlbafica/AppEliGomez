@@ -17,6 +17,8 @@ import { Pedido } from '../services/pedidosService';
 import productosService, { Producto } from '../services/productosService';
 import { BackButton } from '../components/BackButton';
 import { styles } from '../styles/styles';
+import { useAppTheme } from '../context/ThemeContext';
+import { formatDate12Hours, formatDateOnly } from '../utils/dateUtils';
 
 const Picker = RNPicker as any;
 
@@ -46,7 +48,12 @@ const estadoLabels: { [key: string]: string } = {
   remunero: '💰 Remunerado',
 };
 
+
 export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) => {
+  const theme = useAppTheme();
+  const scale = (size: number) => theme.scale(size);
+  const detailStyles = createDetailStyles(scale, theme);
+  
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,42 +233,43 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#0066cc" />
+      <View style={[styles.container, styles.centerContent, { backgroundColor: theme.colors.background }] }>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header con botón < */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingTop: 8 }}>
+      <View style={[{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(16), paddingTop: scale(8), backgroundColor: theme.colors.surface }, { borderBottomColor: theme.colors.border, borderBottomWidth: 1 }]}>
         <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={styles.title}>📋 Historial de Pedidos</Text>
+        <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(20) }]}>📋 Historial de Pedidos</Text>
       </View>
 
       {/* Info sobre Empaques */}
       <View style={{ 
-        backgroundColor: '#FFF3CD', 
-        padding: 12, 
-        marginHorizontal: 16, 
-        borderRadius: 8, 
-        marginBottom: 16,
+        backgroundColor: theme.colors.warning + '20',
+        padding: scale(12), 
+        marginHorizontal: scale(16), 
+        borderRadius: scale(8), 
+        marginBottom: scale(16),
         borderLeftWidth: 4,
-        borderLeftColor: '#FFC107'
+        borderLeftColor: theme.colors.warning
       }}>
-        <Text style={{ fontSize: 12, color: '#856404', fontWeight: '500' }}>
+        <Text style={{ fontSize: scale(12), color: theme.colors.text, fontWeight: '500' }}>
           📦 Los pedidos con badge <Text style={{ fontWeight: '700' }}>⚠️ Empacar mañana</Text> deben ser empacados hoy para el envío de mañana.
         </Text>
-        <Text style={{ fontSize: 11, color: '#856404', marginTop: 4 }}>
+        <Text style={{ fontSize: scale(11), color: theme.colors.text, marginTop: scale(4) }}>
           💡 Mañana saldrán los siguientes pedidos que irán siendo enviados el miércoles.
         </Text>
       </View>
 
       {/* Filtro */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Filtrar por Estado</Text>
-        <Picker selectedValue={filtroEstado} onValueChange={setFiltroEstado} style={styles.picker}>
+      <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(14) }]}>Filtrar por Estado</Text>
+        <Picker selectedValue={filtroEstado} onValueChange={setFiltroEstado} style={[styles.picker, { color: theme.colors.text }]}>
           <Picker.Item label="Todos los estados" value="" />
           {estados
             .filter((e) => e !== '')
@@ -272,16 +280,16 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
       </View>
 
       {/* Contador */}
-      <View style={styles.alertBox}>
-        <Text style={styles.alertBoxText}>
+      <View style={[styles.alertBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <Text style={[styles.alertBoxText, { color: theme.colors.text, fontSize: scale(13) }]}>
           Total: {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'pedido' : 'pedidos'}
         </Text>
       </View>
 
       {pedidosFiltrados.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.title}>📭</Text>
-          <Text style={styles.emptyStateText}>No hay pedidos con este estado</Text>
+        <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
+          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No hay pedidos con este estado</Text>
         </View>
       ) : (
         <FlatList
@@ -291,89 +299,85 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
           renderItem={({ item }) => (
             <TouchableOpacity
               style={{
-                backgroundColor: '#fff',
-                borderRadius: 12,
-                marginHorizontal: 16,
-                marginVertical: 8,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
+                backgroundColor: theme.colors.surface,
+                borderRadius: scale(12),
+                marginHorizontal: scale(16),
+                marginBottom: scale(12),
+                paddingHorizontal: scale(16),
+                paddingVertical: scale(14),
                 borderLeftWidth: 5,
-                borderLeftColor: estadoColors[item.estado] || '#ccc',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
-                shadowRadius: 4,
+                borderLeftColor: estadoColors[item.estado] || theme.colors.border,
                 elevation: 3,
               }}
               onPress={() => handleAbrirDetalle(item)}
               activeOpacity={0.7}
             >
               {/* Encabezado: Código y Estado */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(12) }}>
                 <View>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1F2937' }}>
+                  <Text style={{ fontSize: scale(16), fontWeight: '700', color: theme.colors.text }}>
                     {item.codigo_pedido}
                   </Text>
                 </View>
                 <View
                   style={{
-                    backgroundColor: estadoColors[item.estado] || '#ccc',
-                    paddingVertical: 5,
-                    paddingHorizontal: 10,
-                    borderRadius: 6,
+                    backgroundColor: estadoColors[item.estado] || theme.colors.border,
+                    paddingVertical: scale(5),
+                    paddingHorizontal: scale(10),
+                    borderRadius: scale(6),
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
+                  <Text style={{ color: '#fff', fontSize: scale(11), fontWeight: '600' }}>
                     {estadoLabels[item.estado]}
                   </Text>
                 </View>
               </View>
 
               {/* Información principal */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 2 }}>Cliente</Text>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+              <View style={{ marginBottom: scale(12) }}>
+                <Text style={{ fontSize: scale(13), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Cliente</Text>
+                <Text style={{ fontSize: scale(15), fontWeight: '600', color: theme.colors.text }}>
                   {item.cliente_nombre || 'Sin nombre'}
                 </Text>
               </View>
 
               {/* Grid de 2 columnas - Encomendista y Tienda */}
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', gap: scale(12), marginBottom: scale(10) }}>
                 {/* Encomendista */}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>Encomendista</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                  <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Encomendista</Text>
+                  <Text style={{ fontSize: scale(13), fontWeight: '600', color: theme.colors.text }}>
                     {item.encomendista_nombre || 'Sin asignar'}
                   </Text>
                 </View>
 
                 {/* Tienda */}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>Tienda</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                  <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Tienda</Text>
+                  <Text style={{ fontSize: scale(13), fontWeight: '600', color: theme.colors.text }}>
                     {item.nombre_tienda || 'Sin tienda'}
                   </Text>
                 </View>
               </View>
 
               {/* Grid de 2 columnas - Perfil de Reserva y Destino */}
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', gap: scale(12), marginBottom: scale(10) }}>
                 {/* Perfil de Reserva */}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>Perfil de Reserva</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                  <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Perfil de Reserva</Text>
+                  <Text style={{ fontSize: scale(13), fontWeight: '600', color: theme.colors.text }}>
                     {item.nombre_perfil || 'Sin perfil'}
                   </Text>
                 </View>
 
                 {/* Destino */}
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>Destino</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                  <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Destino</Text>
+                  <Text style={{ fontSize: scale(13), fontWeight: '600', color: theme.colors.text }}>
                     {item.destino_nombre && item.destino_nombre.trim() ? item.destino_nombre : 'No especificado'}
                   </Text>
                   {item.direccion_personalizada && (
-                    <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }} numberOfLines={1}>
+                    <Text style={{ fontSize: scale(11), color: theme.colors.textSecondary, marginTop: scale(4) }} numberOfLines={1}>
                       📍 {item.direccion_personalizada.substring(0, 40)}...
                     </Text>
                   )}
@@ -381,18 +385,18 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
               </View>
 
               {/* Fecha de Entrega */}
-              <View style={{ marginBottom: 10 }}>
-                <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>Entrega</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
-                  {item.fecha_entrega_programada ? new Date(item.fecha_entrega_programada).toLocaleDateString('es-ES') : 'Sin fecha'}
+              <View style={{ marginBottom: scale(10) }}>
+                <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(2) }}>Entrega</Text>
+                <Text style={{ fontSize: scale(13), fontWeight: '600', color: theme.colors.text }}>
+                  {formatDateOnly(item.fecha_entrega_programada)}
                 </Text>
               </View>
 
               {/* Monto */}
               {item.total && (
-                <View style={{ marginBottom: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 4 }}>Total</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#059669' }}>
+                <View style={{ marginBottom: scale(10), paddingTop: scale(10), borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                  <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: scale(4) }}>Total</Text>
+                  <Text style={{ fontSize: scale(16), fontWeight: '700', color: theme.colors.success }}>
                     ${item.total.toLocaleString('es-ES')}
                   </Text>
                 </View>
@@ -402,16 +406,16 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
               {pedidosService.debeSerEmpacado(item) && (
                 <View
                   style={{
-                    backgroundColor: '#FEE2E2',
-                    paddingVertical: 8,
-                    paddingHorizontal: 10,
-                    borderRadius: 6,
-                    marginTop: 10,
+                    backgroundColor: theme.colors.error,
+                    paddingVertical: scale(8),
+                    paddingHorizontal: scale(10),
+                    borderRadius: scale(6),
+                    marginTop: scale(10),
                     borderLeftWidth: 3,
-                    borderLeftColor: '#DC2626',
+                    borderLeftColor: theme.colors.error,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#991B1B' }}>
+                  <Text style={{ fontSize: scale(12), fontWeight: '600', color: theme.colors.text }}>
                     Debe empacar hoy
                   </Text>
                 </View>
@@ -420,17 +424,16 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
           )}
         />
       )}
-
       {/* Botón Cargar Más */}
       {pedidos.length > 0 && pedidos.length < totalPedidos && (
         <View style={{ padding: 16, paddingBottom: 20 }}>
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: '#667eea' }]}
+            style={[styles.primaryButton, { backgroundColor: theme.colors.primary }]}
             onPress={handleCargarMas}
             disabled={loadingMore}
           >
             {loadingMore ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.primary} />
             ) : (
               <Text style={styles.primaryButtonText}>
                 📥 Cargar más ({pedidos.length} de {totalPedidos})
@@ -493,40 +496,40 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                   <View style={detailStyles.row}>
                     <Text style={detailStyles.label}>Fecha de Creación:</Text>
                     <Text style={detailStyles.value}>
-                      {pedidoSeleccionado.fecha_creacion ? new Date(pedidoSeleccionado.fecha_creacion).toLocaleDateString() : 'Sin fecha'}
+                      {formatDate12Hours(pedidoSeleccionado.fecha_creacion)}
                     </Text>
                   </View>
                   {pedidoSeleccionado.fecha_entrega_programada && (
                     <View style={detailStyles.row}>
                       <Text style={detailStyles.label}>Fecha Programada:</Text>
                       <Text style={detailStyles.value}>
-                        {new Date(pedidoSeleccionado.fecha_entrega_programada).toLocaleDateString()}
+                        {formatDateOnly(pedidoSeleccionado.fecha_entrega_programada)}
                       </Text>
                     </View>
                   )}
                 </View>
 
                 {pedidoSeleccionado.total && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Monto Total</Text>
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#2E7D32' }}>
+                  <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Monto Total</Text>
+                    <Text style={{ fontSize: scale(16), fontWeight: 'bold', color: theme.colors.success }}>
                       ${pedidoSeleccionado.total.toLocaleString()}
                     </Text>
                   </View>
                 )}
 
                 {pedidoSeleccionado.notas && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Notas</Text>
-                    <Text style={{ fontSize: 13, color: '#666', lineHeight: 20 }}>
+                  <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Notas</Text>
+                    <Text style={{ fontSize: scale(13), color: theme.colors.textSecondary, lineHeight: 20 }}>
                       {pedidoSeleccionado.notas}
                     </Text>
                   </View>
                 )}
 
                 {/* Sección de Productos */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>📦 Productos</Text>
+                <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>📦 Productos</Text>
                   <View style={{ marginBottom: 12 }}>
                     <View style={detailStyles.row}>
                       <Text style={detailStyles.label}>Cantidad de Prendas:</Text>
@@ -545,18 +548,18 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
 
                 {/* QR del Pedido */}
                 {pedidoSeleccionado.id && qrGenerado && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🔲 QR del Pedido</Text>
-                    <View style={{ alignItems: 'center', paddingVertical: 20, backgroundColor: '#f9f9f9', borderRadius: 8 }}>
+                  <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>🔲 QR del Pedido</Text>
+                    <View style={{ alignItems: 'center', paddingVertical: 20, backgroundColor: theme.colors.background, borderRadius: 8 }}>
                       <View style={{ 
                         width: 220, 
                         height: 220, 
-                        backgroundColor: '#fff',
+                        backgroundColor: theme.colors.surface,
                         justifyContent: 'center',
                         alignItems: 'center',
                         borderRadius: 8,
                         borderWidth: 2,
-                        borderColor: '#ddd',
+                        borderColor: theme.colors.border,
                         padding: 10
                       }}>
                         <Image
@@ -565,7 +568,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                           resizeMode="contain"
                         />
                       </View>
-                      <Text style={{ fontSize: 12, color: '#999', marginTop: 12, textAlign: 'center', fontWeight: '600' }}>
+                      <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginTop: 12, textAlign: 'center', fontWeight: '600' }}>
                         {pedidoSeleccionado.codigo_pedido}
                       </Text>
                     </View>
@@ -574,13 +577,13 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
 
                 {/* Fotos del Pedido */}
                 {(pedidoSeleccionado.foto_paquete || obtenerProductosDePedido(pedidoSeleccionado).length > 0) && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📸 Imágenes</Text>
+                  <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>📸 Imágenes</Text>
                     
                     {/* Foto del paquete */}
                     {pedidoSeleccionado.foto_paquete && (
                       <View style={{ marginBottom: 16 }}>
-                        <Text style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Foto del Paquete Empacado:</Text>
+                        <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 8 }}>Foto del Paquete Empacado:</Text>
                         <View style={{ position: 'relative' }}>
                           <Image
                             source={{ uri: pedidoSeleccionado.foto_paquete }}
@@ -588,7 +591,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                               width: '100%',
                               height: 200,
                               borderRadius: 8,
-                              backgroundColor: '#f0f0f0',
+                              backgroundColor: theme.colors.surface,
                             }}
                             resizeMode="cover"
                           />
@@ -609,7 +612,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                               setModalImagen(true);
                             }}
                           >
-                            <Text style={{ fontSize: 20 }}>👁️</Text>
+                            <Text style={{ fontSize: scale(20) }}>👁️</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -618,7 +621,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                     {/* Productos del Pedido - Grilla de Thumbnails */}
                     {obtenerProductosDePedido(pedidoSeleccionado).length > 0 && (
                       <View style={{ marginTop: 16 }}>
-                        <Text style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>Productos en este Pedido:</Text>
+                        <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 12 }}>Productos en este Pedido:</Text>
                         <View style={{
                           flexDirection: 'row',
                           flexWrap: 'wrap',
@@ -640,9 +643,9 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                                 aspectRatio: 1,
                                 borderRadius: 8,
                                 overflow: 'hidden',
-                                backgroundColor: '#f0f0f0',
+                                backgroundColor: theme.colors.surface,
                                 borderWidth: 2,
-                                borderColor: '#e5e7eb'
+                                borderColor: theme.colors.border
                               }}
                             >
                               {producto.url_thumbnail || producto.url_imagen || producto.imagen_url ? (
@@ -653,7 +656,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                                 />
                               ) : (
                                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                  <Text style={{ fontSize: 24 }}>📦</Text>
+                                  <Text style={{ fontSize: scale(24) }}>📦</Text>
                                 </View>
                               )}
                               <View style={{
@@ -664,7 +667,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
                                 padding: 4
                               }}>
-                                <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>
+                                <Text style={{ fontSize: scale(9), color: '#fff', fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>
                                   {producto.codigo}
                                 </Text>
                               </View>
@@ -687,7 +690,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                       marginBottom: 16,
                     }}
                   >
-                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                    <Text style={{ color: '#fff', fontSize: scale(16), fontWeight: '600' }}>
                       {estadoLabels[pedidoSeleccionado.estado]}
                     </Text>
                   </View>
@@ -711,13 +714,13 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.selectButton, { backgroundColor: '#dc3545' }]}
+                  style={[styles.selectButton, { backgroundColor: theme.colors.error }]}
                   onPress={() => {
                     handleEliminarPedido(pedidoSeleccionado.id!);
                     setModalDetalle(false);
                   }}
                 >
-                  <Text style={styles.selectButtonText}>🗑️ Eliminar Pedido</Text>
+                  <Text style={[styles.selectButtonText, { color: '#fff' }]}>🗑️ Eliminar Pedido</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -742,7 +745,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
             }}
             onPress={() => setModalImagen(false)}
           >
-            <Text style={{ fontSize: 32, color: '#fff' }}>✕</Text>
+            <Text style={{ fontSize: scale(32), color: '#fff' }}>✕</Text>
           </TouchableOpacity>
           
           {imagenSeleccionada && (
@@ -762,32 +765,32 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
       {/* Botón Regresar */}
       <View style={{ padding: 16, paddingBottom: 20 }}>
         <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: '#6c757d' }]}
+          style={[styles.primaryButton, { backgroundColor: theme.colors.textSecondary }]}
           onPress={() => onNavigate?.('home')}
         >
-          <Text style={styles.primaryButtonText}>REGRESAR</Text>
+          <Text style={[styles.primaryButtonText, { color: '#fff' }]}>REGRESAR</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 };
 
-const detailStyles = StyleSheet.create({
+const createDetailStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: scale(8),
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
   },
   label: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   value: {
-    fontSize: 13,
-    color: '#333',
+    fontSize: scale(13),
+    color: theme.colors.text,
     fontWeight: '500',
   },
 });

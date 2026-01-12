@@ -42,6 +42,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   tiendaSeleccionada: Tienda | null = null;  // NUEVO: Tienda seleccionada para crear pedido
 
   filtroEstado = 'todos';
+  filtroNombre = '';
   estados = ['todos', 'sin-finalizar', 'pendiente', 'reservado', 'empacada', 'enviado', 'retirado', 'no-retirado', 'cancelado', 'retirado-local', 'liberado'];
 
   // Modal de cambio de estado
@@ -289,6 +290,18 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   getPedidosFiltrados() {
     const pedidosFiltrados = this.pedidos.filter(p => {
+      // Filtro por nombre/búsqueda
+      if (this.filtroNombre.trim()) {
+        const busqueda = this.filtroNombre.toLowerCase();
+        const coincide = (
+          (p.cliente_nombre && p.cliente_nombre.toLowerCase().includes(busqueda)) ||
+          (p.codigo_pedido && p.codigo_pedido.toLowerCase().includes(busqueda)) ||
+          (p.nombre_tienda && p.nombre_tienda.toLowerCase().includes(busqueda)) ||
+          (p.encomendista_nombre && p.encomendista_nombre.toLowerCase().includes(busqueda))
+        );
+        if (!coincide) return false;
+      }
+
       // Filtro por estado
       if (this.filtroEstado === 'sin-finalizar') {
         // Sin finalizar = NO está en: liberado, retirado-local, cancelado
@@ -417,6 +430,9 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.pedidoSeleccionado = pedido;
     this.nuevoEstado = pedido.estado;
     this.mostrarModalEstado = true;
+    // Limpiar foto si la hay
+    this.fotoSeleccionada = null;
+    this.fotoPreview = null;
   }
 
   /**
@@ -428,6 +444,31 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.nuevoEstado = '';
     this.fotoSeleccionada = null;
     this.fotoPreview = null;
+  }
+
+  /**
+   * Verifica si un pedido tiene foto del paquete
+   */
+  tieneFotoPaquete(pedido: PedidoCompleto): boolean {
+    return !!pedido.foto_paquete;
+  }
+
+  /**
+   * Verifica si el pedido está en estado empacada o posterior
+   */
+  esEstadoEmpacadoOPosterior(estado: string): boolean {
+    const estadosEmpacadoOPosterior = ['empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'liberado'];
+    return estadosEmpacadoOPosterior.includes(estado);
+  }
+
+  /**
+   * Abre zoom de la foto del paquete
+   */
+  verFotoPaquete(pedido: PedidoCompleto) {
+    if (pedido.foto_paquete) {
+      this.imagenZoom = pedido.foto_paquete;
+      this.mostrarZoom = true;
+    }
   }
 
   /**
@@ -484,24 +525,37 @@ export class PedidosComponent implements OnInit, OnDestroy {
         // Para otros estados, actualización normal
         const pedidoActualizado = { ...this.pedidoSeleccionado, estado: this.nuevoEstado as any };
         
-        // Si el nuevo estado es "empacada" y hay foto, guardar como base64
-        if (this.nuevoEstado === 'empacada' && this.fotoSeleccionada && this.fotoPreview) {
+        // Si el nuevo estado es "empacada" y hay foto nueva, subirla a Storage
+        if (this.nuevoEstado === 'empacada' && this.fotoSeleccionada) {
           try {
-            if (typeof this.fotoPreview === 'string') {
-              pedidoActualizado.foto_paquete = this.fotoPreview;
-              console.log('✅ Foto guardada como base64');
-            }
+            console.log('📤 Subiendo foto a Storage...');
+            const urlFoto = await this.pedidosService.subirFotoPaquete(
+              this.pedidoSeleccionado.id,
+              this.fotoSeleccionada
+            );
+            pedidoActualizado.foto_paquete = urlFoto;
+            console.log('✅ Foto subida correctamente a Storage:', urlFoto);
           } catch (error) {
-            console.error('❌ Error procesando foto:', error);
-            alert('Error al procesar la foto. El estado se actualizará sin foto.');
+            console.error('❌ Error subiendo foto:', error);
+            alert('Error al subir la foto. El estado se actualizará sin foto.');
           }
         }
 
         await this.pedidosService.actualizarPedido(pedidoActualizado);
+        
+        // Actualizar el pedido en la lista local para reflejar cambios inmediatamente
+        const indexPedido = this.pedidos.findIndex(p => p.id === this.pedidoSeleccionado?.id);
+        if (indexPedido !== -1) {
+          this.pedidos[indexPedido] = { ...this.pedidos[indexPedido], ...pedidoActualizado };
+        }
+        
         this.cerrarModalEstado();
         alert('Estado actualizado correctamente');
-        // Recargar pedidos para reflejar cambios
-        this.cargarPedidos();
+        
+        // Recargar pedidos después de 1 segundo para sincronizar con Firebase
+        setTimeout(() => {
+          this.cargarPedidos();
+        }, 1000);
       }
     } catch (error) {
       console.error('Error al actualizar estado:', error);
@@ -543,6 +597,20 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'liberado': 'bg-pink-100 text-pink-800'
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
+  }
+
+  getEstadoBadgeColorMobile(estado: string): string {
+    const colors: { [key: string]: string } = {
+      'pendiente': 'bg-yellow-500 text-white',
+      'empacada': 'bg-blue-500 text-white',
+      'enviado': 'bg-purple-500 text-white',
+      'retirado': 'bg-green-500 text-white',
+      'no-retirado': 'bg-orange-500 text-white',
+      'cancelado': 'bg-red-500 text-white',
+      'retirado-local': 'bg-indigo-500 text-white',
+      'liberado': 'bg-pink-500 text-white'
+    };
+    return colors[estado] || 'bg-gray-500 text-white';
   }
 
   formatearEstado(estado: string): string {
@@ -1002,12 +1070,16 @@ export class PedidosComponent implements OnInit, OnDestroy {
    * Cuenta pedidos a empacar para envío de miércoles (no empacados)
    */
   contarPorEmpacarMiercoles(): number {
+    const proximoEnvio = this.obtenerTextoProximoEnvio();
+    const fechaTarget = proximoEnvio.fechaMiercoles;
+    
     return this.pedidos.filter(p => {
       if (p.estado === 'cancelado' || p.estado === 'empacada') return false;
       const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
       const diaEntrega = fechaEntrega.getDay();
-      // Miércoles (3), Jueves (4), Viernes (5)
-      return [3, 4, 5].includes(diaEntrega);
+      const fechaDiaEntrega = fechaEntrega.getDate();
+      // Solo contar si es miércoles (3) Y tiene la fecha exacta del próximo envío
+      return diaEntrega === 3 && fechaDiaEntrega === fechaTarget;
     }).length;
   }
 
@@ -1015,12 +1087,16 @@ export class PedidosComponent implements OnInit, OnDestroy {
    * Cuenta pedidos a empacar para envío de sábado (no empacados)
    */
   contarPorEmpacarSabado(): number {
+    const proximoEnvio = this.obtenerTextoProximoEnvio();
+    const fechaTarget = proximoEnvio.fechaSabado;
+    
     return this.pedidos.filter(p => {
       if (p.estado === 'cancelado' || p.estado === 'empacada') return false;
       const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
       const diaEntrega = fechaEntrega.getDay();
-      // Sábado (6), Domingo (0), Lunes (1), Martes (2)
-      return [6, 0, 1, 2].includes(diaEntrega);
+      const fechaDiaEntrega = fechaEntrega.getDate();
+      // Solo contar si es sábado (6) Y tiene la fecha exacta del próximo envío
+      return diaEntrega === 6 && fechaDiaEntrega === fechaTarget;
     }).length;
   }
 

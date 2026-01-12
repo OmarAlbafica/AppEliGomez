@@ -335,7 +335,7 @@ export class PedidosService {
   }
 
   /**
-   * Sube la foto del paquete empacado a Firebase Storage
+   * Sube la foto del paquete empacado a través de Cloud Function (evita CORS)
    * Retorna la URL descargable de la imagen
    */
   async subirFotoPaquete(pedidoId: string, archivo: File): Promise<string> {
@@ -343,25 +343,46 @@ export class PedidosService {
       const usuario_id = auth.currentUser?.uid;
       if (!usuario_id) throw new Error('Usuario no autenticado');
 
-      // Crear ruta: pedidos/{usuario_id}/{pedidoId}/paquete_{timestamp}
-      const timestamp = Date.now();
-      const extension = archivo.name.split('.').pop() || 'jpg';
-      const rutaStorage = `pedidos/${usuario_id}/${pedidoId}/paquete_${timestamp}.${extension}`;
+      console.log(`📸 Preparando foto para subir...`);
 
-      console.log(`📸 Subiendo foto a: ${rutaStorage}`);
+      // Convertir archivo a base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const base64String = reader.result as string;
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(archivo);
+      });
 
-      // Crear referencia de almacenamiento
-      const storageRef = ref(storage, rutaStorage);
+      const fotoBas64 = await base64Promise;
+      console.log(`📤 Enviando a Cloud Function...`);
 
-      // Subir el archivo
-      const snapshot = await uploadBytes(storageRef, archivo);
-      console.log('✅ Archivo subido:', snapshot.ref.fullPath);
+      // Llamar al endpoint de Cloud Function
+      const CLOUD_FUNCTION_URL = 'https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2/subirFotoPaquete';
+      
+      const response = await fetch(CLOUD_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fotoBas64,
+          usuario_id,
+          pedidoId
+        })
+      });
 
-      // Obtener URL descargable
-      const urlDescargable = await getDownloadURL(snapshot.ref);
-      console.log('✅ URL obtenida:', urlDescargable);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error subiendo foto ${response.status}: ${errorData}`);
+      }
 
-      return urlDescargable;
+      const result = await response.json();
+      console.log(`✅ Foto subida exitosamente:`, result.url);
+
+      return result.url;
     } catch (error) {
       console.error('❌ Error subiendo foto del paquete:', error);
       throw error;

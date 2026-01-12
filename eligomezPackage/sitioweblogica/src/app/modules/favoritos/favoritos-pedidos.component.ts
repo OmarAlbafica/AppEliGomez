@@ -1,6 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ResponsiveService } from '../../service/responsive/responsive.service';
 import { ClientesService, Cliente } from '../../service/clientes/clientes.service';
 import { FavoritosPedidosService, FavoritoPedido } from '../../service/favoritos/favoritos-pedidos.service';
 import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal-confirmacion.service';
@@ -12,7 +13,9 @@ import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal
   templateUrl: './favoritos-pedidos.component.html',
   styleUrls: ['./favoritos-pedidos.component.css']
 })
-export class FavoritosPedidosComponent implements OnInit {
+export class FavoritosPedidosComponent implements OnInit, OnDestroy {
+  isMobile: boolean = false;
+  private subscription: any;
   clientes: Cliente[] = [];
   favoritos: FavoritoPedido[] = [];
   clienteSeleccionado: Cliente | null = null;
@@ -21,14 +24,21 @@ export class FavoritosPedidosComponent implements OnInit {
   mensaje: { tipo: 'éxito' | 'error'; texto: string } | null = null;
 
   constructor(
+    private responsiveService: ResponsiveService,
     private clientesService: ClientesService,
     private favoritosPedidosService: FavoritosPedidosService,
     private modalService: ModalConfirmacionService
   ) {}
 
   ngOnInit() {
+    this.isMobile = this.responsiveService.getIsMobile();
+    this.subscription = this.responsiveService.isMobile$.subscribe((val: boolean) => this.isMobile = val);
     // Los clientes se cargarán desde crear-pedido
     this.cargarFavoritos();
+  }
+
+  ngOnDestroy(): void {
+    if (this.subscription) this.subscription.unsubscribe();
   }
 
   async cargarClientes() {

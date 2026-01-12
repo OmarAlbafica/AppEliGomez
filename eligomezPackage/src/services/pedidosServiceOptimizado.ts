@@ -16,7 +16,7 @@
 
 import { auth } from './firebase';
 
-const API_BASE_URL = 'https://us-central1-eli-gomez-web.cloudfunctions.net/apiv2';
+const API_BASE_URL = 'https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2';
 
 export interface ProductoCompleto {
   id: string;
@@ -70,54 +70,131 @@ export interface CambioEstado {
 }
 
 export interface PedidoCompleto {
-  // Datos base
+  // IDs principales
   id: string;
   codigo_pedido: string;
+  
+  // Estado
   estado: string;
   modo: 'normal' | 'personalizado';
   
-  // IDs
+  // Cliente
   cliente_id: string;
-  encomendista_id?: string;
+  cliente_datos?: {
+    id: string;
+    nombre: string;
+    telefono?: string;
+    correo?: string;
+    direccion?: string;
+    [key: string]: any;
+  };
+  telefono_cliente?: string;
+  
+  // Tienda
   tienda_id: string;
+  nombre_tienda?: string;
+  nombre_perfil?: string;
+  usuario_id?: string;
   
-  // Datos completos enriquecidos
-  cliente_datos?: ClienteCompleto;
-  encomendista_datos?: EncomendistaDatos;
-  destino_datos?: DestinoCompleto;
-  productos_datos?: ProductoCompleto[];
-  cambios_estado?: CambioEstado[];
+  // Encomendista y Destino
+  encomendista_id?: string;
+  encomendista_datos?: {
+    id: string;
+    nombre: string;
+    telefono?: string;
+    local?: string;
+    [key: string]: any;
+  };
+  destino_id?: string;
+  destino_datos?: {
+    nombre: string;
+    horario_actual?: any;
+    local?: string;
+    [key: string]: any;
+  };
   
-  // Detalles del pedido
+  // Productos
   cantidad_prendas: number;
+  productos_id?: string[];
+  productos_codigos?: string[];
+  productos_datos?: ProductoCompleto[];
+  
+  // Montos
   costo_prendas: number;
-  monto_envio: number;
+  monto_envio?: number;
   total: number;
-  notas?: string;
   
   // Entrega
   dia_entrega: string;
   hora_inicio?: string;
   hora_fin?: string;
-  fecha_entrega_programada?: Date | string;
+  fecha_entrega_programada?: any; // Puede ser Firestore timestamp o Date
   
   // Dirección personalizada (si aplica)
   direccion_personalizada?: string;
   
-  // Imágenes
+  // Auditoría
+  fecha_creacion?: string;
+  fecha_ultima_actualizacion?: string;
+  created_on?: 'APP' | 'WEB';
+  
+  // Notas
+  notas?: string;
+  
+  // Cambios de estado
+  cambios_estado?: CambioEstado[];
+  
+  // Foto
   foto_paquete?: string;
   
-  // Auditoría
-  fecha_creacion?: Date | string;
-  fecha_ultima_actualizacion?: Date | string;
-  created_on?: 'APP' | 'WEB';
-  activo: boolean;
+  // Disponibilidad
+  activo?: boolean;
   
   // Otros campos adicionales
   [key: string]: any;
 }
 
 class PedidosServiceOptimizado {
+  /**
+   * 🔧 CORRECTOR DE URLs - Arregla URLs con apiv2 → apiV2
+   * Problema: La API a veces devuelve URLs con apiv2 (minúscula) en lugar de apiV2 (mayúscula V)
+   */
+  private corregirURLs(pedido: PedidoCompleto): PedidoCompleto {
+    // Corregir foto_paquete
+    if (pedido.foto_paquete && pedido.foto_paquete.includes('/apiv2/')) {
+      console.log(`🔧 Corrigiendo URL de foto_paquete: apiv2 → apiV2`);
+      pedido.foto_paquete = pedido.foto_paquete.replace('/apiv2/', '/apiV2/');
+    }
+
+    // Corregir URLs de productos
+    if (pedido.productos_datos && Array.isArray(pedido.productos_datos)) {
+      pedido.productos_datos = pedido.productos_datos.map((producto) => {
+        if (producto.url_imagen && producto.url_imagen.includes('/apiv2/')) {
+          console.log(`🔧 Corrigiendo URL de producto: apiv2 → apiV2`);
+          producto.url_imagen = producto.url_imagen.replace('/apiv2/', '/apiV2/');
+        }
+        if (producto.url_thumbnail && producto.url_thumbnail.includes('/apiv2/')) {
+          producto.url_thumbnail = producto.url_thumbnail.replace('/apiv2/', '/apiV2/');
+        }
+        return producto;
+      });
+    }
+
+    return pedido;
+  }
+
+  /**
+   * Convierte timestamp Firestore a Date
+   */
+  private convertirFirestoreTimestamp(timestamp: any): Date {
+    if (!timestamp) return new Date();
+    if (typeof timestamp === 'string') return new Date(timestamp);
+    if (timestamp._seconds) {
+      return new Date(timestamp._seconds * 1000);
+    }
+    if (timestamp instanceof Date) return timestamp;
+    return new Date(timestamp);
+  }
   /**
    * Obtiene UN pedido con TODA la información integrada
    * Incluye: cliente, encomendista, destino, productos, cambios de estado
@@ -138,7 +215,7 @@ class PedidosServiceOptimizado {
         return null;
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       if (!data.success) {
         console.error(`❌ Error en respuesta:`, data.error);
@@ -146,10 +223,54 @@ class PedidosServiceOptimizado {
       }
 
       console.log(`✅ Pedido obtenido completamente`, data.pedido);
-      return data.pedido as PedidoCompleto;
+      
+      // 🔧 Corregir URLs que vengan mal formadas
+      const pedidoCorrecto = this.corregirURLs(data.pedido as PedidoCompleto);
+      
+      return pedidoCorrecto;
 
     } catch (error) {
       console.error(`❌ Error en obtenerPedidoCompleto:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene UN pedido por su CÓDIGO (ej: EG20260108003)
+   * Primero busca el ID del pedido por código, luego obtiene todos los datos
+   * 
+   * ⚡ Ideal para escaneo QR - pasas el código y obtienes el pedido completo
+   * 
+   * @param codigoPedido - Código del pedido (ej: "EG20260108003")
+   * @returns Objeto PedidoCompleto con toda la información
+   */
+  async obtenerPedidoPorCodigo(codigoPedido: string): Promise<PedidoCompleto | null> {
+    try {
+      console.log(`[📦 PedidosServiceOptimizado] Buscando pedido por código: ${codigoPedido}`);
+
+      const response = await fetch(`${API_BASE_URL}/pedido/codigo/${codigoPedido}`);
+
+      if (!response.ok) {
+        console.error(`⚠️ Error ${response.status}:`, await response.text());
+        return null;
+      }
+
+      const data = await response.json() as any;
+
+      if (!data.success) {
+        console.error(`❌ Error en respuesta:`, data.error);
+        return null;
+      }
+
+      console.log(`✅ Pedido obtenido por código`, data.pedido);
+      
+      // 🔧 Corregir URLs que vengan mal formadas
+      const pedidoCorrecto = this.corregirURLs(data.pedido as PedidoCompleto);
+      
+      return pedidoCorrecto;
+
+    } catch (error) {
+      console.error(`❌ Error en obtenerPedidoPorCodigo:`, error);
       return null;
     }
   }
@@ -180,7 +301,7 @@ class PedidosServiceOptimizado {
         return [];
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       if (!data.success) {
         console.error(`❌ Error en respuesta:`, data.error);
@@ -188,7 +309,11 @@ class PedidosServiceOptimizado {
       }
 
       console.log(`✅ ${data.pedidos.length} pedidos obtenidos`);
-      return data.pedidos as PedidoCompleto[];
+      
+      // 🔧 Corregir URLs en todos los pedidos
+      const pedidosCorrecto = (data.pedidos as PedidoCompleto[]).map(p => this.corregirURLs(p));
+      
+      return pedidosCorrecto;
 
     } catch (error) {
       console.error(`❌ Error en obtenerPedidosPorEstado:`, error);
@@ -216,7 +341,7 @@ class PedidosServiceOptimizado {
         return [];
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       if (!data.success) {
         console.error(`❌ Error en respuesta:`, data.error);
@@ -224,7 +349,24 @@ class PedidosServiceOptimizado {
       }
 
       console.log(`✅ ${data.pedidos.length} pedidos obtenidos`);
-      return data.pedidos as PedidoCompleto[];
+      
+      // Loguear el primer pedido para verificar estructura completa
+      if (data.pedidos.length > 0) {
+        console.log(`📋 Estructura del primer pedido:`, {
+          codigo: data.pedidos[0].codigo_pedido,
+          cliente: data.pedidos[0].cliente_datos?.nombre,
+          encomendista: data.pedidos[0].encomendista_datos?.nombre,
+          destino: data.pedidos[0].destino_id,
+          total: data.pedidos[0].total,
+          estado: data.pedidos[0].estado,
+          productos_count: data.pedidos[0].productos_id?.length || 0,
+        });
+      }
+      
+      // 🔧 Corregir URLs en todos los pedidos
+      const pedidosCorrecto = (data.pedidos as PedidoCompleto[]).map(p => this.corregirURLs(p));
+      
+      return pedidosCorrecto;
 
     } catch (error) {
       console.error(`❌ Error en obtenerTodosPedidos:`, error);
@@ -277,7 +419,7 @@ class PedidosServiceOptimizado {
         return false;
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       if (!data.success) {
         console.error(`❌ Error en respuesta:`, data.error);

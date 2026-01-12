@@ -15,6 +15,7 @@ import pedidosService from '../services/pedidosService';
 import { Pedido } from '../services/pedidosService';
 import { BackButton } from '../components/BackButton';
 import { styles } from '../styles/styles';
+import { formatDate12Hours } from '../utils/dateUtils';
 
 const Picker = RNPicker as any;
 
@@ -168,7 +169,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ onNavigate }) => {
               <Text style={detailStyles.label}>Fecha de Creación:</Text>
               <Text style={detailStyles.value}>
                 {pedidoEncontrado.fecha_creacion
-                  ? new Date(pedidoEncontrado.fecha_creacion).toLocaleDateString()
+                  ? formatDate12Hours(pedidoEncontrado.fecha_creacion)
                   : 'N/A'}
               </Text>
             </View>

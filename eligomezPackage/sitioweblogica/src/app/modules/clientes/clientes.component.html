@@ -219,7 +219,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr *ngFor="let pedido of pedidosDelCliente" class="hover:bg-gray-50 transition">
-              <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ pedido.codigo_pedido || pedido.id?.substring(0, 8) }}...</td>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ pedido.codigo_pedido || pedido.id.substring(0, 8) }}...</td>
               <td class="px-4 py-3 text-sm text-gray-600">{{ pedido.fecha_creacion | date:'dd/MM/yyyy' }}</td>
               <td class="px-4 py-3 text-sm font-semibold text-green-700">${{ pedido.total || (pedido.costo_prendas || 0) + (pedido.monto_envio || 0) }}</td>
               <td class="px-4 py-3 text-sm">

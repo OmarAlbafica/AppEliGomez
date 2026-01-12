@@ -28,6 +28,8 @@ import { Picker as RNPicker } from '@react-native-picker/picker';
 
 // 🔑 IMPORTAR SERVICIO OPTIMIZADO (NO el anterior)
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
+import { BackButton } from '../components/BackButton';
+import { useAppTheme, useTheme } from '../context/ThemeContext';
 // import { productosService } from '../services/productosService'; // YA NO NECESARIO
 
 interface HistorialScreenOptimizadoProps {
@@ -52,6 +54,35 @@ const estadoColors: { [key: string]: string } = {
 export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps> = ({
   onNavigate,
 }) => {
+  const { theme } = useTheme();
+  const scale = (size: number) => theme.scale(size);
+  
+  // Crear estilos dinámicamente con theme y scale
+  const styles = createStyles(scale, theme);
+  const detailStyles = createDetailStyles(scale, theme);
+
+  // Componente auxiliar para mostrar filas en detalles
+  const DetailRow = ({
+    label,
+    value,
+    highlight,
+  }: {
+    label: string;
+    value?: string;
+    highlight?: boolean;
+  }) => {
+    if (!value) return null;
+
+    return (
+      <View style={[detailStyles.row, highlight && detailStyles.rowHighlight]}>
+        <Text style={detailStyles.label}>{label}:</Text>
+        <Text style={[detailStyles.value, highlight && detailStyles.valueHighlight]}>
+          {value}
+        </Text>
+      </View>
+    );
+  };
+
   // Estados
   const [pedidos, setPedidos] = useState<PedidoCompleto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +93,14 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoCompleto | null>(null);
   const [modalImagen, setModalImagen] = useState(false);
   const [imagenSeleccionada, setImagenSeleccionada] = useState<string>('');
+  
+  // Modal Galería de Productos
+  const [modalGaleria, setModalGaleria] = useState(false);
+  const [productoSeleccionado, setProductoSeleccionado] = useState(0);
+  
+  // Modal Zoom de Producto
+  const [modalZoom, setModalZoom] = useState(false);
+  const [imagenZoom, setImagenZoom] = useState<string>('');
 
   // ============================================================
   // 🚀 CARGAR HISTORIAL - VERSIÓN OPTIMIZADA
@@ -157,9 +196,10 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // ============================================================
   const renderPedidoCard = ({ item }: { item: PedidoCompleto }) => {
     // 🔑 Acceder directamente a datos del cliente/encomendista (YA están completos)
-    const clienteNombre = item.cliente_datos?.nombre || item.cliente_nombre || 'Cliente desconocido';
-    const encomendistaNombre = item.encomendista_datos?.nombre || item.encomendista_nombre || 'Encomendista desconocido';
-    const destinoNombre = item.destino_datos?.nombre || item.destino_nombre || 'Destino personalizado';
+    const clienteNombre = item.cliente_datos?.nombre || 'Cliente desconocido';
+    const encomendistaNombre = item.encomendista_datos?.nombre || 'Encomendista desconocido';
+    const destinoNombre = item.destino_id || 'Destino personalizado';
+    const tiendaNombre = item.nombre_tienda || 'Tienda';
 
     return (
       <TouchableOpacity
@@ -186,6 +226,14 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
             <Text style={styles.value}>{clienteNombre}</Text>
           </View>
 
+          {/* Teléfono */}
+          {item.telefono_cliente && (
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>📞 Tel:</Text>
+              <Text style={styles.value}>{item.telefono_cliente}</Text>
+            </View>
+          )}
+
           {/* Encomendista */}
           <View style={styles.infoRow}>
             <Text style={styles.label}>🚚 Encomendista:</Text>
@@ -208,17 +256,37 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
           <View style={styles.infoRow}>
             <Text style={styles.label}>📦 Productos:</Text>
             <Text style={styles.value}>
-              {item.productos_datos?.length || 0} prendas
+              {item.cantidad_prendas} prendas
             </Text>
           </View>
 
-          {/* Botón de foto (si existe) */}
-          {item.foto_paquete && item.estado === 'empacada' && (
+          {/* BOTÓN VER IMÁGENES DE PRODUCTOS */}
+          {item.productos_datos && item.productos_datos.length > 0 && (
             <TouchableOpacity
-              style={styles.fotoButton}
+              style={styles.verProductosButton}
+              onPress={() => {
+                console.log('🖼️ Abriendo galería de productos:', item.productos_datos?.length);
+                setPedidoSeleccionado(item);
+                setProductoSeleccionado(0);
+                setModalGaleria(true);
+              }}
+            >
+              <Text style={styles.verProductosButtonText}>
+                📸 Ver productos ({item.productos_datos.length})
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Botón de foto del paquete (si existe y tiene URL válida) */}
+          {item.foto_paquete && item.foto_paquete.trim() && item.foto_paquete.startsWith('http') && (
+            <TouchableOpacity
+              style={[
+                styles.fotoButton,
+                styles.fotoButtonActive,
+              ]}
               onPress={() => handleVerFoto(item)}
             >
-              <Text style={styles.fotoButtonText}>🖼️ Ver foto de paquete</Text>
+              <Text style={styles.fotoButtonText}>📸 Ver foto de paquete</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -231,9 +299,9 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // ============================================================
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
-        <Text style={styles.loadingText}>Cargando pedidos...</Text>
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.text, fontSize: scale(14) }]}>Cargando pedidos...</Text>
       </View>
     );
   }
@@ -242,19 +310,21 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // 🎨 PANTALLA PRINCIPAL
   // ============================================================
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Encabezado */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📋 Historial</Text>
+      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+        <BackButton onPress={() => onNavigate?.('home')} color="#fff" />
+        <Text style={[styles.headerTitle, { color: '#fff', fontSize: scale(18) }]}>📋 Historial</Text>
+        <View style={{ width: 24 }} />
       </View>
 
       {/* Filtro de estado */}
-      <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Filtrar por estado:</Text>
+      <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+        <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(14) }]}>Filtrar por estado:</Text>
         <Picker
           selectedValue={filtroEstado}
           onValueChange={handleCambiarEstadoFiltro}
-          style={styles.picker}
+          style={[styles.picker, { color: theme.colors.text }]}
         >
           <Picker.Item label="Todos los estados" value="" />
           <Picker.Item label="⏳ Pendiente" value="pendiente" />
@@ -268,7 +338,6 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
           <Picker.Item label="💰 Remunerado" value="remunero" />
         </Picker>
       </View>
-
       {/* Lista de pedidos */}
       {pedidos.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -319,11 +388,18 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
                     {renderEstadoTag(pedidoSeleccionado.estado)}
                   </View>
 
+                  {/* TIENDA Y PERFIL */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>🏪 Tienda</Text>
+                    <DetailRow label="Nombre" value={pedidoSeleccionado.nombre_tienda} />
+                    <DetailRow label="Perfil" value={pedidoSeleccionado.nombre_perfil} />
+                  </View>
+
                   {/* CLIENTE COMPLETO */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>👤 Cliente</Text>
                     <DetailRow label="Nombre" value={pedidoSeleccionado.cliente_datos?.nombre} />
-                    <DetailRow label="Teléfono" value={pedidoSeleccionado.cliente_datos?.telefono} />
+                    <DetailRow label="Teléfono" value={pedidoSeleccionado.telefono_cliente || pedidoSeleccionado.cliente_datos?.telefono} />
                     <DetailRow label="Correo" value={pedidoSeleccionado.cliente_datos?.correo} />
                     <DetailRow label="Dirección" value={pedidoSeleccionado.cliente_datos?.direccion} />
                   </View>
@@ -336,42 +412,49 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
                     <DetailRow label="Local" value={pedidoSeleccionado.encomendista_datos?.local} />
                   </View>
 
-                  {/* DESTINO COMPLETO */}
+                  {/* DESTINO */}
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>📍 Destino</Text>
-                    <DetailRow label="Nombre" value={pedidoSeleccionado.destino_datos?.nombre} />
-                    <DetailRow label="Local" value={pedidoSeleccionado.destino_datos?.local} />
+                    <DetailRow label="Destino ID" value={pedidoSeleccionado.destino_id} />
+                    {pedidoSeleccionado.direccion_personalizada && (
+                      <DetailRow label="Dirección" value={pedidoSeleccionado.direccion_personalizada} />
+                    )}
                   </View>
 
-                  {/* PRODUCTOS COMPLETOS */}
+                  {/* ENTREGA */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>📅 Entrega</Text>
+                    <DetailRow label="Día" value={pedidoSeleccionado.dia_entrega} />
+                    <DetailRow label="Hora" value={`${pedidoSeleccionado.hora_inicio} - ${pedidoSeleccionado.hora_fin}`} />
+                  </View>
+
+                  {/* PRODUCTOS CON IMÁGENES GRANDES */}
                   {pedidoSeleccionado.productos_datos && pedidoSeleccionado.productos_datos.length > 0 && (
                     <View style={styles.detailSection}>
-                      <Text style={styles.sectionTitle}>📦 Productos ({pedidoSeleccionado.productos_datos.length})</Text>
+                      <Text style={styles.sectionTitle}>📦 Productos ({pedidoSeleccionado.cantidad_prendas})</Text>
                       {pedidoSeleccionado.productos_datos.map((producto, idx) => (
-                        <View key={idx} style={styles.productoItem}>
-                          <Text style={styles.productoNombre}>{producto.nombre || 'Sin nombre'}</Text>
-                          <DetailRow label="Código" value={producto.codigo} />
-                          <DetailRow label="Precio" value={`$${producto.precio}`} />
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* CAMBIOS DE ESTADO */}
-                  {pedidoSeleccionado.cambios_estado && pedidoSeleccionado.cambios_estado.length > 0 && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.sectionTitle}>📊 Historial de cambios</Text>
-                      {pedidoSeleccionado.cambios_estado.map((cambio, idx) => (
-                        <View key={idx} style={styles.cambioItem}>
-                          <Text style={styles.cambioText}>
-                            {cambio.estado_anterior} → {cambio.estado_nuevo}
-                          </Text>
-                          <Text style={styles.cambioFecha}>
-                            {new Date(cambio.fecha).toLocaleString()}
-                          </Text>
-                          {cambio.notas && (
-                            <Text style={styles.cambioNotas}>Notas: {cambio.notas}</Text>
+                        <View key={idx} style={styles.productoDetailCard}>
+                          {producto.url_imagen && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                console.log('🖼️ Abriendo modal de producto:', {
+                                  codigo: producto.codigo,
+                                  url_imagen: producto.url_imagen,
+                                });
+                                setImagenSeleccionada(producto.url_imagen);
+                                setModalImagen(true);
+                              }}
+                            >
+                              <Image
+                                source={{ uri: producto.url_imagen }}
+                                style={styles.productoDetailImage}
+                              />
+                            </TouchableOpacity>
                           )}
+                          <View style={styles.productoInfo}>
+                            <Text style={styles.productoDetailCodigo}>Código: {producto.codigo}</Text>
+                            <Text style={styles.productoDetailAlbum}>Álbum: {producto.album}</Text>
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -381,9 +464,17 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>💰 Monto</Text>
                     <DetailRow label="Prendas" value={`$${pedidoSeleccionado.costo_prendas}`} />
-                    <DetailRow label="Envío" value={`$${pedidoSeleccionado.monto_envio}`} />
+                    <DetailRow label="Envío" value={`$${pedidoSeleccionado.monto_envio || 0}`} />
                     <DetailRow label="TOTAL" value={`$${pedidoSeleccionado.total}`} highlight />
                   </View>
+
+                  {/* NOTAS */}
+                  {pedidoSeleccionado.notas && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>📝 Notas</Text>
+                      <Text style={styles.notasText}>{pedidoSeleccionado.notas}</Text>
+                    </View>
+                  )}
                 </>
               )}
             </ScrollView>
@@ -391,46 +482,268 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
         </View>
       </Modal>
 
-      {/* Modal de imagen */}
+      {/* Modal de imagen - FULLSCREEN */}
       <Modal
         visible={modalImagen}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setModalImagen(false)}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => {
+          console.log('🔙 Cerrando modal imagen');
+          setModalImagen(false);
+        }}
       >
-        <View style={styles.imageModal}>
-          <TouchableOpacity onPress={() => setModalImagen(false)} style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {/* Encabezado con botón cerrar */}
+          <View style={{ 
+            backgroundColor: '#000', 
+            paddingTop: 16, 
+            paddingHorizontal: 16,
+            paddingBottom: 8,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Text style={{ color: '#fff', fontSize: scale(16), fontWeight: 'bold' }}>📸 Imagen</Text>
+            <TouchableOpacity
+              onPress={() => {
+                console.log('❌ Cerrando modal por botón');
+                setModalImagen(false);
+              }}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: '#fff', fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Imagen fullscreen */}
+          {imagenSeleccionada ? (
             <Image
               source={{ uri: imagenSeleccionada }}
-              style={styles.fullImage}
+              style={{ flex: 1, resizeMode: 'contain', backgroundColor: '#000' }}
+              onLoad={() => console.log('✅ Imagen cargada en fullImage:', imagenSeleccionada)}
+              onError={(error) => console.error('❌ Error cargando imagen:', error)}
             />
-          </TouchableOpacity>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: scale(16) }}>Sin imagen disponible</Text>
+            </View>
+          )}
         </View>
       </Modal>
-    </View>
-  );
-};
 
-/**
- * 🔧 Componente auxiliar para mostrar filas en detalles
- */
-const DetailRow = ({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value?: string;
-  highlight?: boolean;
-}) => {
-  if (!value) return null;
+      {/* Modal Galería de Productos */}
+      <Modal
+        visible={modalGaleria}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => {
+          console.log('🔙 Cerrando modal galería productos');
+          setModalGaleria(false);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+          {/* Encabezado */}
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            paddingTop: 16,
+            paddingHorizontal: 16,
+            paddingBottom: 12,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+          }}>
+            <Text style={{ color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }}>📸 Productos</Text>
+            <TouchableOpacity
+              onPress={() => {
+                console.log('❌ Cerrando galería');
+                setModalGaleria(false);
+              }}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-  return (
-    <View style={[detailStyles.row, highlight && detailStyles.rowHighlight]}>
-      <Text style={detailStyles.label}>{label}:</Text>
-      <Text style={[detailStyles.value, highlight && detailStyles.valueHighlight]}>
-        {value}
-      </Text>
+          {/* Contenido */}
+          {pedidoSeleccionado?.productos_datos && pedidoSeleccionado.productos_datos.length > 0 ? (
+            <ScrollView style={{ flex: 1, padding: 16 }} showsVerticalScrollIndicator={false}>
+              {/* Imagen grande del producto seleccionado */}
+              <View style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 8,
+                height: 300,
+                justifyContent: 'center',
+                alignItems: 'center',
+                elevation: 2,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}>
+                {pedidoSeleccionado.productos_datos[productoSeleccionado]?.url_imagen ? (
+                  <Image
+                    source={{ uri: pedidoSeleccionado.productos_datos[productoSeleccionado].url_imagen }}
+                    style={{ width: '100%', height: '100%', resizeMode: 'contain', borderRadius: 8 }}
+                    onLoad={() => console.log('✅ Imagen galería cargada')}
+                    onError={(error) => console.error('❌ Error imagen galería:', error)}
+                  />
+                ) : (
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: scale(14) }}>Sin imagen</Text>
+                )}
+              </View>
+
+              {/* Botón Ampliar */}
+              {pedidoSeleccionado?.productos_datos?.[productoSeleccionado]?.url_imagen && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    marginBottom: 16,
+                    elevation: 2
+                  }}
+                  onPress={() => {
+                    console.log('👁️ Ampliando imagen del producto');
+                    const urlImagen = pedidoSeleccionado?.productos_datos?.[productoSeleccionado]?.url_imagen;
+                    if (urlImagen) {
+                      setImagenZoom(urlImagen);
+                      setModalZoom(true);
+                    }
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: scale(14), fontWeight: 'bold' }}>👁️ Ampliar</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Info del producto */}
+              <View style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 16,
+                elevation: 1,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}>
+                <Text style={{ fontSize: scale(14), fontWeight: 'bold', color: theme.colors.text, marginBottom: 4 }}>
+                  {pedidoSeleccionado.productos_datos[productoSeleccionado]?.nombre || 'Producto'}
+                </Text>
+                <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  Código: {pedidoSeleccionado.productos_datos[productoSeleccionado]?.codigo}
+                </Text>
+                {pedidoSeleccionado.productos_datos[productoSeleccionado]?.album && (
+                  <Text style={{ fontSize: scale(12), color: theme.colors.primary, fontWeight: '500' }}>
+                    Álbum: {pedidoSeleccionado.productos_datos[productoSeleccionado].album}
+                  </Text>
+                )}
+              </View>
+
+              {/* Selector de productos - Miniaturas */}
+              {pedidoSeleccionado.productos_datos.length > 1 && (
+                <View>
+                  <Text style={{ fontSize: scale(12), fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 8 }}>
+                    Selecciona un producto:
+                  </Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                  }}>
+                    {pedidoSeleccionado.productos_datos.map((producto, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => {
+                          console.log(`📌 Seleccionado producto ${idx + 1}`);
+                          setProductoSeleccionado(idx);
+                        }}
+                        style={{
+                          width: '48%',
+                          aspectRatio: 1,
+                          borderRadius: 8,
+                          overflow: 'hidden',
+                          borderWidth: 3,
+                          borderColor: productoSeleccionado === idx ? theme.colors.primary : theme.colors.border,
+                          backgroundColor: theme.colors.surface,
+                          elevation: productoSeleccionado === idx ? 4 : 1,
+                        }}
+                      >
+                        {producto.url_imagen ? (
+                          <Image
+                            source={{ uri: producto.url_imagen }}
+                            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                          />
+                        ) : (
+                          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                            <Text style={{ color: theme.colors.textSecondary, fontSize: scale(12) }}>No imagen</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: scale(16) }}>Sin productos</Text>
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      {/* Modal Zoom de Producto */}
+      <Modal
+        visible={modalZoom}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => {
+          console.log('🔙 Cerrando modal zoom');
+          setModalZoom(false);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+          {/* Encabezado */}
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            paddingTop: 16,
+            paddingHorizontal: 16,
+            paddingBottom: 8,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+          }}>
+            <Text style={{ color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }}>🔍 Zoom Producto</Text>
+            <TouchableOpacity
+              onPress={() => {
+                console.log('❌ Cerrando zoom');
+                setModalZoom(false);
+              }}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Imagen fullscreen con zoom */}
+          {imagenZoom ? (
+            <Image
+              source={{ uri: imagenZoom }}
+              style={{ flex: 1, resizeMode: 'contain', backgroundColor: theme.colors.background }}
+              onLoad={() => console.log('✅ Imagen zoom cargada')}
+              onError={(error) => console.error('❌ Error imagen zoom:', error)}
+            />
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: theme.colors.text, fontSize: scale(16) }}>Sin imagen disponible</Text>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -438,57 +751,62 @@ const DetailRow = ({
 // ============================================================
 // 🎨 ESTILOS
 // ============================================================
-const styles = StyleSheet.create({
+const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 14,
-    color: '#666',
+    fontSize: scale(14),
+    color: theme.colors.textSecondary,
   },
   header: {
-    backgroundColor: '#667eea',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 16,
     paddingTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: scale(18),
     fontWeight: 'bold',
     color: '#fff',
+    flex: 1,
+    textAlign: 'center',
   },
   filterContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
   },
   filterLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     marginBottom: 8,
     fontWeight: '600',
   },
   picker: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.surface,
     borderRadius: 6,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   listContent: {
     padding: 12,
   },
   pedidoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     marginBottom: 12,
     elevation: 2,
@@ -500,7 +818,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.background,
   },
   cardTitle: {
     flexDirection: 'row',
@@ -508,9 +826,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   codigoPedido: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: theme.colors.text,
   },
   estadoTag: {
     paddingHorizontal: 8,
@@ -518,18 +836,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   estadoTagText: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
     color: '#fff',
   },
   monto: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: 'bold',
-    color: '#667eea',
+    color: theme.colors.success,
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
+    backgroundColor: theme.colors.border,
   },
   cardContent: {
     padding: 12,
@@ -539,29 +857,86 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   label: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   value: {
-    fontSize: 12,
-    color: '#1a1a1a',
+    fontSize: scale(12),
+    color: theme.colors.text,
     fontWeight: '600',
   },
   fotoButton: {
     marginTop: 8,
     paddingVertical: 8,
-    backgroundColor: '#667eea',
+    backgroundColor: theme.colors.surface,
     borderRadius: 4,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  fotoButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   fotoButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: scale(12),
+  },
+  verProductosButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 6,
+    alignItems: 'center',
+    elevation: 2,
+  },
+  verProductosButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: scale(13),
+  },
+  productosGallery: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  galleryTitle: {
+    fontSize: scale(12),
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  imageContainer: {
+    width: '48%',
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  productoImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  productoCodigo: {
+    padding: 6,
+    fontSize: scale(10),
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    backgroundColor: theme.colors.background,
   },
   emptyContainer: {
     flex: 1,
@@ -569,14 +944,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: 'bold',
-    color: '#666',
+    color: theme.colors.text,
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: scale(14),
+    color: theme.colors.textSecondary,
   },
   // Modal
   modalOverlay: {
@@ -585,7 +960,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '90%',
@@ -600,59 +975,87 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
   },
   closeButton: {
-    fontSize: 24,
-    color: '#999',
+    fontSize: scale(24),
+    color: theme.colors.primary,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: theme.colors.text,
   },
   detailSection: {
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: 'bold',
-    color: '#667eea',
+    color: theme.colors.primary,
     marginBottom: 10,
   },
   productoItem: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.background,
     padding: 10,
     borderRadius: 6,
     marginBottom: 8,
   },
   productoNombre: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: theme.colors.text,
     marginBottom: 6,
   },
   cambioItem: {
-    backgroundColor: '#f0f4ff',
+    backgroundColor: theme.colors.background,
     padding: 10,
     borderRadius: 6,
     marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
   },
   cambioText: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
-    color: '#667eea',
+    color: theme.colors.primary,
   },
   cambioFecha: {
-    fontSize: 11,
-    color: '#999',
+    fontSize: scale(11),
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   cambioNotas: {
-    fontSize: 11,
-    color: '#666',
+    fontSize: scale(11),
+    color: theme.colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  productoDetailCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  productoDetailImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+  },
+  productoInfo: {
+    padding: 10,
+  },
+  productoDetailCodigo: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  productoDetailAlbum: {
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
   },
   imageModal: {
     flex: 1,
@@ -661,37 +1064,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fullImage: {
-    width: '100%',
-    height: '100%',
+    width: '90%',
+    height: '90%',
     resizeMode: 'contain',
+  },
+  notasText: {
+    fontSize: scale(13),
+    color: theme.colors.text,
+    fontStyle: 'italic',
+    padding: 10,
+    backgroundColor: theme.colors.background,
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
   },
 });
 
-const detailStyles = StyleSheet.create({
+const createDetailStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
   },
   rowHighlight: {
-    backgroundColor: '#fff3cd',
+    backgroundColor: theme.colors.warning + '20',
     paddingHorizontal: 8,
     borderRadius: 4,
   },
   label: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   value: {
-    fontSize: 13,
-    color: '#333',
+    fontSize: scale(13),
+    color: theme.colors.text,
     fontWeight: '500',
   },
   valueHighlight: {
-    color: '#667eea',
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
 });

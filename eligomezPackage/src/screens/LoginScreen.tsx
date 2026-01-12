@@ -10,12 +10,20 @@ import {
   Alert,
 } from 'react-native';
 import { authService, Usuario } from '../services/authService';
+import { useAppTheme } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
+
 
 interface LoginScreenProps {
   onLoginSuccess: (usuario: Usuario) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+  const { theme, toggleTheme, setFontScale } = useTheme();
+  const scale = (size: number) => theme.scale(size);
+  const styles = createStyles(scale, theme);
+  const [showSettings, setShowSettings] = useState(false);
+  
   const [modo, setModo] = useState<'login' | 'registro'>('login');
   const [identificador, setIdentificador] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -95,128 +103,181 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>🔐</Text>
-        <Text style={styles.title}>Encomiendas</Text>
-        <Text style={styles.subtitle}>Sistema de Gestión de Envíos</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }] }>
+        <Text style={[styles.logo, { fontSize: theme.fontScale * 48, color: theme.colors.primary }]}>🔐</Text>
+        <Text style={[styles.title, { fontSize: theme.fontScale * 28, color: theme.colors.text }]}>Encomiendas</Text>
+        <Text style={[styles.subtitle, { fontSize: theme.fontScale * 14, color: theme.colors.textSecondary }]}>Sistema de Gestión de Envíos</Text>
       </View>
 
-      <View style={styles.tabContainer}>
+      {/* Botón de Settings */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 16 }}>
         <TouchableOpacity
-          style={[styles.tab, modo === 'login' && styles.tabActive]}
+          style={{ backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }}
+          onPress={() => setShowSettings(true)}
+        >
+          <Text style={{ color: '#fff', fontSize: theme.fontScale * 14, fontWeight: 'bold' }}>⚙️ Settings</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal de Settings */}
+      {showSettings && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.background + 'CC', justifyContent: 'center', alignItems: 'center', zIndex: 999 }}>
+          <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 24, minWidth: 280, elevation: 4 }}>
+            <Text style={{ fontSize: theme.fontScale * 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>Configuración</Text>
+            <TouchableOpacity
+              style={{ marginBottom: 16, backgroundColor: theme.colors.primary, borderRadius: 8, padding: 10 }}
+              onPress={toggleTheme}
+            >
+              <Text style={{ color: '#fff', fontSize: theme.fontScale * 14, textAlign: 'center' }}>
+                {theme.isDark ? '🌞 Modo Claro' : '🌙 Modo Oscuro'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={{ color: theme.colors.textSecondary, marginBottom: 8, fontSize: theme.fontScale * 13 }}>Tamaño de fuente:</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+              {[1, 1.25, 1.5, 1.75, 2].map((fs) => (
+                <TouchableOpacity
+                  key={fs}
+                  style={{ backgroundColor: theme.fontScale === fs ? theme.colors.primary : theme.colors.divider, borderRadius: 8, padding: 8, marginHorizontal: 2 }}
+                  onPress={() => setFontScale(fs as any)}
+                >
+                  <Text style={{ color: theme.fontScale === fs ? '#fff' : theme.colors.text, fontSize: theme.fontScale * 13 }}>{fs}x</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={{ alignSelf: 'center', marginTop: 8 }}
+              onPress={() => setShowSettings(false)}
+            >
+              <Text style={{ color: theme.colors.primary, fontSize: theme.fontScale * 14 }}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.divider }] }>
+        <TouchableOpacity
+          style={[styles.tab, modo === 'login' && [styles.tabActive, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setModo('login')}
         >
-          <Text style={[styles.tabText, modo === 'login' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, modo === 'login' && [styles.tabTextActive, { color: theme.colors.primary, fontSize: theme.fontScale * 15 }]]}>
             Iniciar Sesión
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, modo === 'registro' && styles.tabActive]}
+          style={[styles.tab, modo === 'registro' && [styles.tabActive, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setModo('registro')}
         >
-          <Text style={[styles.tabText, modo === 'registro' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, modo === 'registro' && [styles.tabTextActive, { color: theme.colors.primary, fontSize: theme.fontScale * 15 }]]}>
             Registrarse
           </Text>
         </TouchableOpacity>
       </View>
 
       {modo === 'login' ? (
-        <View style={styles.form}>
-          <Text style={styles.label}>Usuario o Email</Text>
+        <View style={[styles.form, { backgroundColor: theme.colors.surface }] }>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Usuario o Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="usuario o email@ejemplo.com"
+            placeholderTextColor={theme.colors.textSecondary}
             value={identificador}
             onChangeText={setIdentificador}
             editable={!loading}
           />
 
-          <Text style={styles.label}>Contraseña</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Contraseña</Text>
+          <View style={[styles.passwordContainer, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }] }>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}
               placeholder="••••••••"
+              placeholderTextColor={theme.colors.textSecondary}
               secureTextEntry={!mostrarPassword}
               value={contrasena}
               onChangeText={setContrasena}
               editable={!loading}
             />
             <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)}>
-              <Text style={styles.eyeIcon}>{mostrarPassword ? '👁' : '👁‍🗨'}</Text>
+              <Text style={[styles.eyeIcon, { fontSize: theme.fontScale * 18, color: theme.colors.primary }]}>{mostrarPassword ? '👁' : '👁‍🗨'}</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, loading && styles.buttonDisabled, { backgroundColor: theme.colors.primary }]}
             onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>🔓 Iniciar Sesión</Text>
+              <Text style={[styles.buttonText, { fontSize: theme.fontScale * 16 }]}>🔓 Iniciar Sesión</Text>
             )}
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.form}>
-          <Text style={styles.label}>Nombre</Text>
+        <View style={[styles.form, { backgroundColor: theme.colors.surface }] }>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Nombre</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="Tu nombre"
+            placeholderTextColor={theme.colors.textSecondary}
             value={nombre}
             onChangeText={setNombre}
             editable={!loading}
           />
 
-          <Text style={styles.label}>Apellido</Text>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Apellido</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="Tu apellido"
+            placeholderTextColor={theme.colors.textSecondary}
             value={apellido}
             onChangeText={setApellido}
             editable={!loading}
           />
 
-          <Text style={styles.label}>Correo</Text>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Correo</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="email@ejemplo.com"
+            placeholderTextColor={theme.colors.textSecondary}
             value={correo}
             onChangeText={setCorreo}
             keyboardType="email-address"
             editable={!loading}
           />
 
-          <Text style={styles.label}>Usuario</Text>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Usuario</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="Tu usuario"
+            placeholderTextColor={theme.colors.textSecondary}
             value={usuario}
             onChangeText={setUsuario}
             editable={!loading}
           />
 
-          <Text style={styles.label}>Contraseña</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Contraseña</Text>
+          <View style={[styles.passwordContainer, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }] }>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}
               placeholder="••••••••"
+              placeholderTextColor={theme.colors.textSecondary}
               secureTextEntry={!mostrarPassword}
               value={contrasena}
               onChangeText={setContrasena}
               editable={!loading}
             />
             <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)}>
-              <Text style={styles.eyeIcon}>{mostrarPassword ? '👁' : '👁‍🗨'}</Text>
+              <Text style={[styles.eyeIcon, { fontSize: theme.fontScale * 18, color: theme.colors.primary }]}>{mostrarPassword ? '👁' : '👁‍🗨'}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Confirmar Contraseña</Text>
+          <Text style={[styles.label, { fontSize: theme.fontScale * 14, color: theme.colors.text }]}>Confirmar Contraseña</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: theme.fontScale * 14, color: theme.colors.text, backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
             placeholder="••••••••"
+            placeholderTextColor={theme.colors.textSecondary}
             secureTextEntry={!mostrarPassword}
             value={confirmContrasena}
             onChangeText={setConfirmContrasena}
@@ -224,14 +285,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           />
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, loading && styles.buttonDisabled, { backgroundColor: theme.colors.primary }]}
             onPress={handleRegistro}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>📝 Registrarse</Text>
+              <Text style={[styles.buttonText, { fontSize: theme.fontScale * 16 }]}>📝 Registrarse</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -240,35 +301,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   header: {
     alignItems: 'center',
     paddingVertical: 40,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
   },
   logo: {
-    fontSize: 48,
     marginBottom: 12,
   },
   title: {
-    fontSize: 28,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: theme.colors.text,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
     marginTop: 4,
+    color: theme.colors.textSecondary,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
   },
   tab: {
     flex: 1,
@@ -277,65 +334,64 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomWidth: 3,
-    borderBottomColor: '#667eea',
+    borderBottomColor: theme.colors.primary,
   },
   tabText: {
-    color: '#999',
     fontWeight: '600',
+    color: theme.colors.textSecondary,
   },
   tabTextActive: {
-    color: '#667eea',
+    color: theme.colors.primary,
   },
   form: {
     padding: 20,
+    backgroundColor: theme.colors.background,
   },
   label: {
-    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
     marginTop: 12,
+    color: theme.colors.text,
   },
   input: {
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderRadius: 8,
+    backgroundColor: theme.colors.surface,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
+    color: theme.colors.text,
   },
   eyeIcon: {
     paddingHorizontal: 12,
-    fontSize: 18,
   },
   button: {
-    backgroundColor: '#667eea',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+    backgroundColor: theme.colors.primary,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    color: '#fff',
   },
 });
+

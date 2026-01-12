@@ -19,6 +19,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   encomendistas: Encomendista[] = [];
   encomendistasLista: Encomendista[] = [];
   busqueda: string = '';
+  filtroNombreEncomendista: string = '';
   
   // Ordenamiento
   ordenarPor = 'nombre';
@@ -992,8 +993,19 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   }
 
   getEncomendistasOrdenadas(): Encomendista[] {
-    const sorted = [...this.encomendistas];
-    sorted.sort((a, b) => {
+    let filtered = [...this.encomendistas];
+    
+    // Aplicar filtro de búsqueda
+    if (this.filtroNombreEncomendista.trim()) {
+      const busqueda = this.filtroNombreEncomendista.toLowerCase();
+      filtered = filtered.filter(e => 
+        e.nombre.toLowerCase().includes(busqueda) ||
+        (e.telefono && e.telefono.toLowerCase().includes(busqueda))
+      );
+    }
+    
+    // Ordenar
+    filtered.sort((a, b) => {
       const valorA = a.nombre.toLowerCase();
       const valorB = b.nombre.toLowerCase();
       
@@ -1003,7 +1015,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
         return valorB.localeCompare(valorA);
       }
     });
-    return sorted;
+    return filtered;
   }
 
   /**

@@ -29,10 +29,11 @@
                    class="w-16 h-16 rounded-full object-cover border-2 flex-shrink-0"
                    [style]="'border-color: ' + (pedido?.color_sticker || '#ec4899')">
               
-              <!-- Imagen de Contactos -->
-              <img src="assets/images/contactos.png" 
-                   alt="Contactos" 
-                   class="w-16 h-auto flex-shrink-0 object-contain">
+              <!-- Contactos con SVGs -->
+              <!-- Contactos imagen flotante -->
+              <div class="absolute left-0 top-20">
+                <img src="assets/images/contactos.png" alt="Contactos" class="w-24 h-auto object-cover">
+              </div>
               
               <!-- QR empujado al fondo -->
               <div class="w-12 h-12 bg-white rounded border-2 flex-shrink-0 overflow-hidden flex items-center justify-center" [style]="'border-color: ' + (pedido?.color_sticker || '#ec4899')">

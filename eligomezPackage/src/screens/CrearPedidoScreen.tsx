@@ -20,12 +20,17 @@ import favoritosService, { FavoritoPedido } from '../services/favoritosService';
 import tiendasService, { Tienda } from '../services/tiendasService';
 import productosService, { Producto } from '../services/productosService';
 import { normalizarTexto, generarCodigoPedido, formatearFecha, calcularProximasFechas } from '../utils/pedidoUtils';
+import { useAppTheme, useTheme } from '../context/ThemeContext';
 
 interface Props {
   onNavigate?: (screen: string) => void;
 }
 
 export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
+  const { theme } = useTheme();
+  const scale = (size: number) => theme.scale(size);
+  const styles = createStyles(scale, theme);
+  
   // Estado general
   const [loading, setLoading] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -606,77 +611,78 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={styles.title}>Crear Pedido</Text>
+        <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(18) }]}>Crear Pedido</Text>
       </View>
 
       {mensaje && (
-        <View style={[styles.mensaje, { backgroundColor: mensaje.tipo === 'éxito' ? '#4CAF50' : '#FF6B6B' }]}>
-          <Text style={styles.mensajeTexto}>{mensaje.texto}</Text>
+        <View style={[styles.mensaje, { backgroundColor: mensaje.tipo === 'éxito' ? theme.colors.success : theme.colors.error }]}>
+          <Text style={[styles.mensajeTexto, { color: theme.colors.background }]}>{mensaje.texto}</Text>
         </View>
       )}
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={[styles.content, { backgroundColor: theme.colors.background }]}>
         {/* TIENDA - SIEMPRE VISIBLE, ES OBLIGATORIA */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📦 Tienda <Text style={{ color: '#EF4444' }}>*</Text></Text>
+        <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(14) }]}>📦 Tienda <Text style={{ color: theme.colors.error }}>*</Text></Text>
           {tiendaSeleccionada ? (
             <View>
-              <View style={styles.selectedItem}>
-                <Text style={styles.selectedText}>{tiendaSeleccionada.nombre_pagina}</Text>
+              <View style={[styles.selectedItem, { backgroundColor: theme.colors.primaryLight, borderLeftColor: theme.colors.primary }]}>
+                <Text style={[styles.selectedText, { color: theme.colors.text }]}>{tiendaSeleccionada.nombre_pagina}</Text>
                 <TouchableOpacity onPress={() => setTiendaSeleccionada(null)}>
-                  <Text style={styles.changeButton}>Cambiar</Text>
+                  <Text style={[styles.changeButton, { color: theme.colors.primary }]}>Cambiar</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
             <>
-              <Text style={styles.label}>Selecciona una tienda para continuar</Text>
+              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Selecciona una tienda para continuar</Text>
               <FlatList
                 scrollEnabled={false}
                 data={tiendas}
                 keyExtractor={(item) => item.id || Math.random().toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity 
-                    style={styles.listItem} 
+                    style={[styles.listItem, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]} 
                     onPress={() => {
                       setTiendaSeleccionada(item);
                       console.log('🏪 Tienda seleccionada:', item.nombre_pagina);
                     }}
                   >
-                    <Text style={styles.listItemText}>{item.nombre_pagina}</Text>
-                    <Text style={styles.listItemSubtext}>{item.nombre_perfil_reserva}</Text>
+                    <Text style={[styles.listItemText, { color: theme.colors.text, fontSize: scale(14) }]}>{item.nombre_pagina}</Text>
+                    <Text style={[styles.listItemSubtext, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>{item.nombre_perfil_reserva}</Text>
                   </TouchableOpacity>
                 )}
               />
             </>
+
           )}
         </View>
 
         {/* CLIENTE - SOLO VISIBLE SI HAY TIENDA SELECCIONADA */}
         {tiendaSeleccionada && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>👤 Cliente</Text>
+          <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(14) }]}>👤 Cliente</Text>
             {clienteSeleccionado ? (
             <View>
-              <View style={styles.selectedItem}>
-                <Text style={styles.selectedText}>{clienteSeleccionado.nombre}</Text>
+              <View style={[styles.selectedItem, { backgroundColor: theme.colors.primaryLight, borderLeftColor: theme.colors.primary }]}>
+                <Text style={[styles.selectedText, { color: theme.colors.text }]}>{clienteSeleccionado.nombre}</Text>
                 <TouchableOpacity onPress={() => setClienteSeleccionado(null)}>
-                  <Text style={styles.changeButton}>Cambiar</Text>
+                  <Text style={[styles.changeButton, { color: theme.colors.primary }]}>Cambiar</Text>
                 </TouchableOpacity>
               </View>
               {favoritosPorCliente.length > 0 && (
-                <View style={styles.favoritosContainer}>
-                  <Text style={styles.favoritosLabel}>⭐ Favoritos Guardados:</Text>
+                <View style={[styles.favoritosContainer, { borderTopColor: theme.colors.border }]}>
+                  <Text style={[styles.favoritosLabel, { color: theme.colors.text }]}>⭐ Favoritos Guardados:</Text>
                   {favoritosPorCliente.map((fav, idx) => (
                     <TouchableOpacity
                       key={idx}
@@ -700,8 +706,9 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
           ) : (
             <>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
                 placeholder="Buscar cliente..."
+                placeholderTextColor={theme.colors.textSecondary}
                 value={busquedaCliente}
                 onChangeText={buscarClientes}
               />
@@ -711,17 +718,18 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                   data={clientesFiltrados}
                   keyExtractor={(item) => item.id || Math.random().toString()}
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.listItem} onPress={() => seleccionarCliente(item)}>
-                      <Text style={styles.listItemText}>{item.nombre}</Text>
-                      <Text style={styles.listItemSubtext}>{item.telefono}</Text>
+                    <TouchableOpacity style={[styles.listItem, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]} onPress={() => seleccionarCliente(item)}>
+                      <Text style={[styles.listItemText, { color: theme.colors.text, fontSize: scale(14) }]}>{item.nombre}</Text>
+                      <Text style={[styles.listItemSubtext, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>{item.telefono}</Text>
                     </TouchableOpacity>
                   )}
                 />
               )}
-              <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoCliente(true)}>
-                <Text style={styles.buttonText}>+ Crear Cliente</Text>
+              <TouchableOpacity style={[styles.buttonSecondary, { backgroundColor: theme.colors.border }]} onPress={() => setModalNuevoCliente(true)}>
+                <Text style={[styles.buttonText, { color: theme.colors.text }]}>+ Crear Cliente</Text>
               </TouchableOpacity>
             </>
+
           )}
           </View>
         )}
@@ -729,20 +737,21 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
         {clienteSeleccionado && (
           <>
             {/* ENCOMENDISTA */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🚚 Encomendista</Text>
+            <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(14) }]}>🚚 Encomendista</Text>
               {encomendistaSel ? (
-                <View style={styles.selectedItem}>
-                  <Text style={styles.selectedText}>{encomendistaSel.nombre}</Text>
+                <View style={[styles.selectedItem, { backgroundColor: theme.colors.primaryLight, borderLeftColor: theme.colors.primary }]}>
+                  <Text style={[styles.selectedText, { color: theme.colors.text }]}>{encomendistaSel.nombre}</Text>
                   <TouchableOpacity onPress={() => setEncomendistaSel(null)}>
-                    <Text style={styles.changeButton}>Cambiar</Text>
+                    <Text style={[styles.changeButton, { color: theme.colors.primary }]}>Cambiar</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
                     placeholder="Buscar encomendista..."
+                    placeholderTextColor={theme.colors.textSecondary}
                     value={busquedaEncomendista}
                     onChangeText={buscarEncomendistas}
                   />
@@ -752,17 +761,17 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                       data={encomendistasFiltr}
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.listItem} onPress={() => seleccionarEncomendista(item)}>
-                          <Text style={styles.listItemText}>{item.nombre}</Text>
-                          <Text style={styles.listItemSubtext}>
+                        <TouchableOpacity style={[styles.listItem, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]} onPress={() => seleccionarEncomendista(item)}>
+                          <Text style={[styles.listItemText, { color: theme.colors.text, fontSize: scale(14) }]}>{item.nombre}</Text>
+                          <Text style={[styles.listItemSubtext, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>
                             {item.destinos?.length || 0} destinos
                           </Text>
                         </TouchableOpacity>
                       )}
                     />
                   )}
-                  <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoEncomendista(true)}>
-                    <Text style={styles.buttonText}>+ Crear Encomendista</Text>
+                  <TouchableOpacity style={[styles.buttonSecondary, { backgroundColor: theme.colors.border }]} onPress={() => setModalNuevoEncomendista(true)}>
+                    <Text style={[styles.buttonText, { color: theme.colors.text }]}>+ Crear Encomendista</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1358,10 +1367,10 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -1369,16 +1378,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: theme.colors.border,
   },
   title: {
     flex: 1,
-    fontSize: 18,
+    fontSize: scale(24),
     fontWeight: 'bold',
     marginLeft: 12,
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   mensaje: {
     padding: 12,
@@ -1398,38 +1407,38 @@ const styles = StyleSheet.create({
   section: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     padding: 12,
     borderRadius: 8,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: scale(18),
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   subsection: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: theme.colors.border,
   },
   subsectionTitle: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
     marginBottom: 8,
-    color: '#4B5563',
+    color: theme.colors.textSecondary,
   },
   input: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    color: '#1F2937',
-    fontSize: 14,
+    borderColor: theme.colors.border,
+    color: theme.colors.text,
+    fontSize: scale(16),
   },
   textarea: {
     minHeight: 80,
@@ -1439,50 +1448,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
+    backgroundColor: theme.colors.primary + '20',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
     borderLeftWidth: 4,
-    borderLeftColor: '#0EA5E9',
+    borderLeftColor: theme.colors.primary,
   },
   selectedText: {
-    color: '#1F2937',
+    color: theme.colors.text,
     fontWeight: '600',
     flex: 1,
   },
   changeButton: {
-    color: '#0EA5E9',
-    fontSize: 12,
+    color: theme.colors.primary,
+    fontSize: scale(12),
     fontWeight: '600',
   },
   listItem: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
     marginBottom: 2,
   },
   listItemText: {
-    color: '#1F2937',
+    color: theme.colors.text,
     fontWeight: '500',
-    fontSize: 14,
+    fontSize: scale(16),
   },
   listItemSubtext: {
-    color: '#6B7280',
-    fontSize: 12,
-    marginTop: 2,
+    color: theme.colors.textSecondary,
+    fontSize: scale(14),
+    marginTop: 4,
   },
   buttonSecondary: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
     marginTop: 8,
   },
   buttonText: {
-    color: '#374151',
+    color: theme.colors.text,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -1494,109 +1503,110 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
   },
   radioButtonSelected: {
-    backgroundColor: '#F0F9FF',
-    borderColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary + '20',
+    borderColor: theme.colors.primary,
   },
   radioText: {
-    color: '#1F2937',
-    fontSize: 14,
-    marginLeft: 8,
+    color: theme.colors.text,
+    fontSize: scale(16),
+    marginLeft: 10,
   },
   destino: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
   },
   destinoSelected: {
-    backgroundColor: '#F0F9FF',
-    borderColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary + '20',
+    borderColor: theme.colors.primary,
   },
   destinoText: {
-    color: '#1F2937',
+    color: theme.colors.text,
     fontWeight: '500',
+    fontSize: scale(16),
   },
   destinoSubtext: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontSize: scale(12),
     marginTop: 2,
   },
   diaButton: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
   },
   diaButtonSelected: {
-    backgroundColor: '#F0F9FF',
-    borderColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary + '20',
+    borderColor: theme.colors.primary,
   },
   diaButtonText: {
-    color: '#1F2937',
+    color: theme.colors.text,
     fontWeight: '500',
   },
   diaButtonTime: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontSize: scale(12),
     marginTop: 2,
   },
   fechaButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
   },
   fechaButtonSelected: {
-    backgroundColor: '#F0F9FF',
-    borderColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary + '20',
+    borderColor: theme.colors.primary,
   },
   fechaButtonText: {
-    color: '#1F2937',
-    fontSize: 13,
+    color: theme.colors.text,
+    fontSize: scale(13),
   },
   formGroup: {
     marginBottom: 12,
   },
   label: {
-    color: '#374151',
+    color: theme.colors.text,
     fontWeight: '600',
-    fontSize: 13,
-    marginBottom: 6,
+    fontSize: scale(16),
+    marginBottom: 8,
   },
   totalBox: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
+    backgroundColor: theme.colors.success + '20',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#10B981',
+    borderLeftColor: theme.colors.success,
   },
   totalLabel: {
-    color: '#374151',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   totalValue: {
-    color: '#10B981',
-    fontSize: 18,
+    color: theme.colors.success,
+    fontSize: scale(18),
     fontWeight: 'bold',
   },
   checkboxGroup: {
@@ -1608,26 +1618,26 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: theme.colors.border,
     borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
   checkboxChecked: {
-    backgroundColor: '#0EA5E9',
-    borderColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   checkmark: {
     color: '#FFF',
     fontWeight: 'bold',
   },
   checkboxLabel: {
-    color: '#1F2937',
+    color: theme.colors.text,
     fontWeight: '500',
   },
   loadingContainer: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.background,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -1636,12 +1646,12 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: scale(14),
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   buttonPrimary: {
-    backgroundColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 6,
@@ -1651,7 +1661,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: scale(14),
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -1663,22 +1673,22 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    color: '#1F2937',
+    borderColor: theme.colors.border,
+    color: theme.colors.text,
   },
   timeSeparator: {
-    color: '#6B7280',
+    color: theme.colors.textSecondary,
     fontWeight: 'bold',
   },
   emptyText: {
-    color: '#6B7280',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: scale(13),
     paddingVertical: 12,
   },
   modalOverlay: {
@@ -1687,7 +1697,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     padding: 16,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
@@ -1695,10 +1705,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1712,71 +1722,71 @@ const styles = StyleSheet.create({
   favoritoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 8,
     borderRadius: 6,
     borderLeftWidth: 4,
-    borderLeftColor: '#0EA5E9',
+    borderLeftColor: theme.colors.primary,
   },
   favoritoTitle: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   favoritoSubtext: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   favoritosContainer: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.colors.border,
   },
   favoritosLabel: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
     marginBottom: 8,
   },
   favoritoOptionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: theme.colors.warning + '20',
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 6,
     borderRadius: 6,
     borderLeftWidth: 3,
-    borderLeftColor: '#FBBF24',
+    borderLeftColor: theme.colors.warning,
   },
   favoritoOptionTitle: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   favoritoOptionSubtext: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   favoritoOptionArrow: {
-    color: '#FBBF24',
+    color: theme.colors.warning,
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: scale(16),
     marginLeft: 8,
   },
   usarButton: {
-    color: '#0EA5E9',
+    color: theme.colors.primary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: scale(14),
   },
   closeButton: {
-    fontSize: 20,
-    color: '#999',
+    fontSize: scale(20),
+    color: theme.colors.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1787,17 +1797,17 @@ const styles = StyleSheet.create({
   productosListContainer: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.colors.border,
     paddingTop: 12,
   },
   productItem: {
     flexDirection: 'column',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     padding: 12,
     marginBottom: 8,
     borderRadius: 6,
     borderLeftWidth: 3,
-    borderLeftColor: '#10B981',
+    borderLeftColor: theme.colors.success,
   },
   productImageDisplay: {
     position: 'relative',
@@ -1816,18 +1826,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#EF4444',
+    backgroundColor: theme.colors.error,
     borderRadius: 50,
     width: 32,
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: theme.colors.surface,
   },
   removeImageButtonText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: 'bold',
   },
   productItemContent: {
@@ -1841,13 +1851,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   productName: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   productPrice: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   cantidadControls: {
@@ -1860,26 +1870,26 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cantidadButtonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: 'bold',
   },
   cantidadText: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
     minWidth: 20,
     textAlign: 'center',
   },
   productSubtotal: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: 'bold',
-    color: '#10B981',
+    color: theme.colors.success,
     minWidth: 50,
     textAlign: 'right',
   },
@@ -1890,30 +1900,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   productoModalItemSelected: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: theme.colors.primary + '20',
     borderLeftWidth: 4,
-    borderLeftColor: '#0EA5E9',
+    borderLeftColor: theme.colors.primary,
   },
   productoModalInfo: {
     flex: 1,
   },
   productoModalName: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   productoModalPrice: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   productoCheckbox: {
-    fontSize: 18,
-    color: '#0EA5E9',
+    fontSize: scale(18),
+    color: theme.colors.primary,
     marginLeft: 8,
   },
   modalHeader: {
@@ -1923,7 +1933,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   modalProductosContent: {
     flex: 1,
@@ -1933,7 +1943,7 @@ const styles = StyleSheet.create({
   productosScrollView: {
     flex: 1,
     paddingHorizontal: 8,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
   },
   emptyContainer: {
     justifyContent: 'center',
@@ -1949,17 +1959,17 @@ const styles = StyleSheet.create({
   },
   productoCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.border,
     padding: 12,
     marginBottom: 12,
     alignItems: 'center',
   },
   productoCardSelected: {
-    borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
+    borderColor: theme.colors.success,
+    backgroundColor: theme.colors.success + '20',
   },
   productoImageContainer: {
     position: 'relative',
@@ -1976,58 +1986,58 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     right: 8,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 50,
     width: 36,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#0EA5E9',
+    borderColor: theme.colors.primary,
   },
   eyeButtonText: {
-    fontSize: 18,
+    fontSize: scale(18),
   },
   productoImagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 48,
+    fontSize: scale(48),
   },
   selectBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: theme.colors.success,
     borderRadius: 50,
     width: 32,
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#FFF',
+    borderColor: theme.colors.surface,
   },
   selectBadgeText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: 'bold',
   },
   productoCardName: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: theme.colors.text,
     textAlign: 'center',
     marginBottom: 4,
   },
   productoCardPrice: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: 'bold',
-    color: '#10B981',
+    color: theme.colors.success,
     marginBottom: 8,
   },
   cantidadControlsCard: {
@@ -2046,11 +2056,11 @@ const styles = StyleSheet.create({
   },
   cantidadButtonTextSmall: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: 'bold',
   },
   cantidadTextCard: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
     color: '#1F2937',
     minWidth: 18,
@@ -2058,19 +2068,19 @@ const styles = StyleSheet.create({
   },
   selectButton: {
     width: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 6,
   },
   selectButtonActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: theme.colors.success,
   },
   selectButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: scale(12),
   },
   imagenModalOverlay: {
     flex: 1,
@@ -2093,13 +2103,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 50,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   imagenCloseButtonText: {
-    fontSize: 24,
-    color: '#000',
+    fontSize: scale(24),
+    color: theme.colors.text,
     fontWeight: 'bold',
   },
   imagenAmpliada: {
@@ -2107,11 +2117,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   readOnlyValue: {
-    fontSize: 14,
-    color: '#1F2937',
+    fontSize: scale(14),
+    color: theme.colors.text,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     fontWeight: '600',
   },
@@ -2121,7 +2131,7 @@ const styles = StyleSheet.create({
   },
   modalResumenContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     flexDirection: 'column',
@@ -2135,7 +2145,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   modalResumenBody: {
     flex: 1,
@@ -2148,19 +2158,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.colors.border,
     justifyContent: 'space-between',
   },
   modalResumenFooter_buttonSecondary: {
     flex: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 6,
   },
   modalResumenFooter_buttonPrimary: {
     flex: 1,
-    backgroundColor: '#0EA5E9',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 6,
@@ -2169,27 +2179,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   resumenLabel: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   resumenLabelBold: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: theme.colors.text,
   },
   resumenValue: {
-    fontSize: 14,
-    color: '#1F2937',
+    fontSize: scale(14),
+    color: theme.colors.text,
     fontWeight: '500',
   },
   resumenValueBold: {
-    fontSize: 16,
-    color: '#10B981',
+    fontSize: scale(16),
+    color: theme.colors.success,
     fontWeight: 'bold',
   },
   resumenProducto: {
@@ -2197,18 +2207,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
     borderRadius: 6,
     marginBottom: 8,
   },
   resumenProductoNombre: {
-    fontSize: 13,
-    color: '#374151',
+    fontSize: scale(13),
+    color: theme.colors.text,
     flex: 1,
   },
   resumenProductoPrecio: {
-    fontSize: 13,
-    color: '#10B981',
+    fontSize: scale(13),
+    color: theme.colors.success,
     fontWeight: '600',
   },
   resumenTotalRow: {
@@ -2218,12 +2228,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   resumenFinalTotal: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: theme.colors.success + '20',
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 6,
     marginTop: 8,
     borderWidth: 2,
-    borderColor: '#10B981',
+    borderColor: theme.colors.success,
   },
 });
