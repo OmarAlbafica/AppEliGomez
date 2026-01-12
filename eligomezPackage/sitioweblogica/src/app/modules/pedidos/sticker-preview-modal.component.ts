@@ -373,4 +373,40 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
       return colorFondo;
     }
   }
+
+  /**
+   * Formatea el estado del pedido
+   */
+  formatearEstado(estado: string | undefined): string {
+    if (!estado) return '';
+    const estados: { [key: string]: string } = {
+      'pendiente': 'Pendiente',
+      'empacada': 'Empacada',
+      'enviado': 'Enviado',
+      'retirado': 'Retirado',
+      'no-retirado': 'No Retirado',
+      'cancelado': 'Cancelado',
+      'retirado-local': 'Retirado del Local',
+      'liberado': 'Liberado'
+    };
+    return estados[estado] || estado;
+  }
+
+  /**
+   * Obtiene el emoji/icono para cada estado
+   */
+  obtenerEmojiEstado(estado: string | undefined): string {
+    if (!estado) return '•';
+    const emojis: { [key: string]: string } = {
+      'pendiente': '🟡',
+      'empacada': '📦',
+      'enviado': '✈️',
+      'retirado': '✅',
+      'no-retirado': '❌',
+      'cancelado': '🚫',
+      'retirado-local': '📍',
+      'liberado': '🔓'
+    };
+    return emojis[estado] || '•';
+  }
 }

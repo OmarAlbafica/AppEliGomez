@@ -61,6 +61,17 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   const styles = createStyles(scale, theme);
   const detailStyles = createDetailStyles(scale, theme);
 
+  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
+  const convertirHora12 = (hora: string | undefined): string => {
+    if (!hora) return '';
+    const [h, m] = hora.split(':');
+    const hours = parseInt(h, 10);
+    const minutes = m || '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const horas12 = hours % 12 || 12;
+    return `${horas12}:${minutes} ${ampm}`;
+  };
+
   // Componente auxiliar para mostrar filas en detalles
   const DetailRow = ({
     label,
@@ -425,7 +436,7 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
                   <View style={styles.detailSection}>
                     <Text style={styles.sectionTitle}>📅 Entrega</Text>
                     <DetailRow label="Día" value={pedidoSeleccionado.dia_entrega} />
-                    <DetailRow label="Hora" value={`${pedidoSeleccionado.hora_inicio} - ${pedidoSeleccionado.hora_fin}`} />
+                    <DetailRow label="Hora" value={`${convertirHora12(pedidoSeleccionado.hora_inicio)} - ${convertirHora12(pedidoSeleccionado.hora_fin)}`} />
                   </View>
 
                   {/* PRODUCTOS CON IMÁGENES GRANDES */}

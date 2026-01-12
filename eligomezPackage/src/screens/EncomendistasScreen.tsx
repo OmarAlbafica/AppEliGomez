@@ -26,6 +26,8 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   const styles = createStyles(scale, theme);
 
   const [encomendistas, setEncomendistas] = useState<Encomendista[]>([]);
+  const [encomedistasFiltrados, setEncomedistasFiltrados] = useState<Encomendista[]>([]);
+  const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [modalNuevo, setModalNuevo] = useState(false);
@@ -91,12 +93,27 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       setLoading(true);
       const data = await encomendistasService.obtenerEncomendistas();
       setEncomendistas(data);
+      setEncomedistasFiltrados(data);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'No se pudieron cargar los encomendistas');
     } finally {
       setLoading(false);
     }
+  };
+
+  const filtrarEncomendistas = (texto: string) => {
+    setBusqueda(texto);
+    if (!texto.trim()) {
+      setEncomedistasFiltrados(encomendistas);
+      return;
+    }
+    const textoNormalizado = texto.toLowerCase();
+    const filtrados = encomendistas.filter((e) => 
+      e.nombre.toLowerCase().includes(textoNormalizado) ||
+      e.telefono?.toLowerCase().includes(textoNormalizado)
+    );
+    setEncomedistasFiltrados(filtrados);
   };
 
   const handleCrearEncomendista = async () => {
@@ -256,7 +273,7 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       await encomendistasService.actualizarEncomendista(encomendistaSelecionado.id!, {
         destinos: destinosActualizados,
       });
-      
+
       
       setModalEditarDestino(false);
       setDestinoEditando(null);
@@ -334,15 +351,36 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
         </TouchableOpacity>
       </View>
 
-      {encomendistas.length === 0 ? (
+      {/* Buscador */}
+      <View style={{ padding: 16, backgroundColor: theme.colors.surface, marginBottom: 8 }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.colors.background,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: 8,
+            padding: 12,
+            fontSize: scale(14),
+            color: theme.colors.text,
+          }}
+          placeholder="🔍 Buscar por nombre o teléfono..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={busqueda}
+          onChangeText={filtrarEncomendistas}
+        />
+      </View>
+
+      {encomedistasFiltrados.length === 0 ? (
         <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No hay encomendistas creados</Text>
+          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+            {busqueda ? 'No se encontraron resultados' : 'No hay encomendistas creados'}
+          </Text>
         </View>
       ) : (
         <FlatList
           scrollEnabled={false}
-          data={encomendistas}
+          data={encomedistasFiltrados}
           keyExtractor={(item) => item.id!}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]}>

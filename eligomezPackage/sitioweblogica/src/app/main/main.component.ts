@@ -28,6 +28,8 @@ export class MainComponent implements OnInit, OnDestroy {
     { label: 'Clientes', icon: '👥', route: '/main/clientes' },
     { label: 'Encomendistas', icon: '🚚', route: '/main/encomendistas' },
     { label: 'Pedidos', icon: '📋', route: '/main/pedidos' },
+    { label: 'Envios por Encomienda', icon: '📮', route: '/main/envios-por-encomienda' },
+    { label: 'Reporte Canvas', icon: '📸', route: '/main/reporte-imagenes' },
     { label: 'Favoritos', icon: '⭐', route: '/main/favoritos' },
     { label: 'Configuración', icon: '⚙️', route: '/main/settings' }
   ];

@@ -43,7 +43,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   filtroEstado = 'todos';
   filtroNombre = '';
-  estados = ['todos', 'sin-finalizar', 'pendiente', 'reservado', 'empacada', 'enviado', 'retirado', 'no-retirado', 'cancelado', 'retirado-local', 'liberado'];
+  estadosList = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
+  // Array con todos los filtros posibles incluyendo opciones especiales
+  estados = ['todos', 'urgentes-empacar', 'por-enviar', 'enviados', 'por-remunerar', 'por-retirar-hoy', 'pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
+  // Array SOLO para el modal de cambio de estado - solo los 8 estados principales
+  estadosParaModal = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
 
   // Modal de cambio de estado
   mostrarModalEstado = false;
@@ -302,11 +306,47 @@ export class PedidosComponent implements OnInit, OnDestroy {
         if (!coincide) return false;
       }
 
-      // Filtro por estado
-      if (this.filtroEstado === 'sin-finalizar') {
-        // Sin finalizar = NO está en: liberado, retirado-local, cancelado
-        const finalizados = ['liberado', 'retirado-local', 'cancelado'];
+      // Filtro por estado (incluyendo opciones especiales)
+      if (this.filtroEstado === 'urgentes-empacar') {
+        // Mostrar solo los urgentes
+        if (!this.esUrgente(p)) {
+          return false;
+        }
+      } else if (this.filtroEstado === 'por-enviar') {
+        // Por enviar = pendiente + empacada
+        if (!['pendiente', 'empacada'].includes(p.estado)) {
+          return false;
+        }
+      } else if (this.filtroEstado === 'enviados') {
+        // Enviados = estado enviado
+        if (p.estado !== 'enviado') {
+          return false;
+        }
+      } else if (this.filtroEstado === 'por-remunerar') {
+        // Por remunerar = NO enviado, retirados, no retirados desde la fecha actual hacia atrás
+        // NO está en: liberado, retirado-local, cancelado, pendiente, empacada
+        const finalizados = ['liberado', 'retirado-local', 'cancelado', 'pendiente', 'empacada'];
         if (finalizados.includes(p.estado)) {
+          return false;
+        }
+        // Además, solo mostrar desde hoy hacia atrás
+        const fechaPedido = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        if (fechaPedido > hoy) {
+          return false;
+        }
+      } else if (this.filtroEstado === 'por-retirar-hoy') {
+        // Por retirar hoy = fecha entrega es hoy Y estado es ENVIADO (aún no retirado)
+        if (p.estado !== 'enviado') {
+          return false;
+        }
+        const fechaPedido = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const mañana = new Date(hoy);
+        mañana.setDate(mañana.getDate() + 1);
+        if (fechaPedido < hoy || fechaPedido >= mañana) {
           return false;
         }
       } else if (this.filtroEstado !== 'todos' && p.estado !== this.filtroEstado) {
@@ -334,9 +374,49 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
     
     // SIEMPRE ordenar por fecha de entrega (la más próxima primero)
-    // luego por cliente o encomendista como criterio secundario
+    // Pero PRIMERO mostrar los pedidos urgentes (que van para el próximo envío)
+    // Si es filtro "por-retirar-hoy", ordenar por hora en lugar de fecha
     pedidosFiltrados.sort((a, b) => {
-      // Criterio primario: Fecha de entrega (más próxima primero)
+      // Si es filtro "por-retirar-hoy", ordenar por estado de prioridad y luego por hora
+      if (this.filtroEstado === 'por-retirar-hoy') {
+        // Función para obtener prioridad del estado
+        const obtenerPrioridad = (pedido: PedidoCompleto): number => {
+          const estado = this.obtenerEstadoPedido(pedido);
+          if (estado === 'Pendiente') return 1;      // Primero
+          if (estado === 'A punto') return 2;        // Segundo
+          if (estado === 'En Curso') return 3;       // Tercero
+          if (estado === 'Pasado') return 4;         // Último (gris)
+          return 5; // Fallback
+        };
+
+        const prioridadA = obtenerPrioridad(a);
+        const prioridadB = obtenerPrioridad(b);
+
+        // Si diferente prioridad, ordenar por prioridad
+        if (prioridadA !== prioridadB) {
+          return prioridadA - prioridadB;
+        }
+
+        // Si misma prioridad, ordenar por hora
+        const horaA = a.hora_inicio ? parseInt(a.hora_inicio.split(':')[0]) : 0;
+        const horaB = b.hora_inicio ? parseInt(b.hora_inicio.split(':')[0]) : 0;
+        const minutoA = a.hora_inicio ? parseInt(a.hora_inicio.split(':')[1]) : 0;
+        const minutoB = b.hora_inicio ? parseInt(b.hora_inicio.split(':')[1]) : 0;
+        
+        const tiempoA = horaA * 60 + minutoA;
+        const tiempoB = horaB * 60 + minutoB;
+        
+        return tiempoA - tiempoB;
+      }
+      
+      // Criterio primario: Si es urgente (va para próximo envío), mostrar primero
+      const aEsUrgente = this.esUrgente(a);
+      const bEsUrgente = this.esUrgente(b);
+      
+      if (aEsUrgente && !bEsUrgente) return -1; // a va primero (urgente)
+      if (!aEsUrgente && bEsUrgente) return 1;  // b va primero (urgente)
+      
+      // Criterio secundario: Fecha de entrega (más próxima primero)
       const fechaA = this.obtenerFechaEntrega(a.fecha_entrega_programada);
       const fechaB = this.obtenerFechaEntrega(b.fecha_entrega_programada);
       const difFechas = fechaA.getTime() - fechaB.getTime();
@@ -345,7 +425,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
         return difFechas;
       }
       
-      // Criterio secundario: cliente o encomendista según la selección
+      // Criterio terciario: cliente o encomendista según la selección
       if (this.ordenarPor === 'cliente') {
         const clienteA = this.obtenerNombreCliente(a.cliente_id).toLowerCase();
         const clienteB = this.obtenerNombreCliente(b.cliente_id).toLowerCase();
@@ -585,6 +665,61 @@ export class PedidosComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Retorna el color de borde/fondo para el card del pedido según su estado
+   */
+  obtenerColorEstadoCard(estado: string): { borderColor: string; bgColor: string; headerColor: string } {
+    const colores: { [key: string]: { borderColor: string; bgColor: string; headerColor: string } } = {
+      'pendiente': { borderColor: 'border-yellow-600', bgColor: 'bg-yellow-50', headerColor: 'bg-yellow-500' },
+      'empacada': { borderColor: 'border-pink-600', bgColor: 'bg-pink-50', headerColor: 'bg-pink-500' },
+      'enviado': { borderColor: 'border-purple-800', bgColor: 'bg-purple-50', headerColor: 'bg-purple-900' },
+      'retirado': { borderColor: 'border-green-700', bgColor: 'bg-green-50', headerColor: 'bg-green-600' },
+      'no-retirado': { borderColor: 'border-orange-700', bgColor: 'bg-orange-50', headerColor: 'bg-orange-600' },
+      'cancelado': { borderColor: 'border-red-900', bgColor: 'bg-red-50', headerColor: 'bg-red-800' },
+      'retirado-local': { borderColor: 'border-gray-900', bgColor: 'bg-gray-50', headerColor: 'bg-gray-900' },
+      'liberado': { borderColor: 'border-amber-900', bgColor: 'bg-amber-50', headerColor: 'bg-amber-800' }
+    };
+    return colores[estado] || { borderColor: 'border-gray-700', bgColor: 'bg-gray-50', headerColor: 'bg-gray-700' };
+  }
+
+  /**
+   * Retorna solo el color de borde para el card
+   */
+  obtenerBordeEstadoCard(estado: string): string {
+    return this.obtenerColorEstadoCard(estado).borderColor;
+  }
+
+  /**
+   * Retorna solo el color de fondo para el card body (clarito)
+   */
+  obtenerFondoEstadoCard(estado: string): string {
+    return this.obtenerColorEstadoCard(estado).bgColor;
+  }
+
+  /**
+   * Retorna el color del header del card (intenso oscuro)
+   */
+  obtenerHeaderEstadoCard(estado: string): string {
+    return this.obtenerColorEstadoCard(estado).headerColor;
+  }
+
+  /**
+   * Retorna las clases Tailwind para el gradient del modal según el estado
+   */
+  obtenerGradientModalEstado(estado: string): string {
+    const gradientes: { [key: string]: string } = {
+      'pendiente': 'from-yellow-600 to-yellow-700',
+      'empacada': 'from-blue-600 to-blue-700',
+      'enviado': 'from-purple-600 to-purple-700',
+      'retirado': 'from-green-600 to-green-700',
+      'no-retirado': 'from-orange-600 to-orange-700',
+      'cancelado': 'from-red-600 to-red-700',
+      'retirado-local': 'from-indigo-600 to-indigo-700',
+      'liberado': 'from-pink-600 to-pink-700'
+    };
+    return gradientes[estado] || 'from-gray-600 to-gray-700';
+  }
+
   getEstadoBadgeColor(estado: string): string {
     const colors: { [key: string]: string } = {
       'pendiente': 'bg-yellow-100 text-yellow-800',
@@ -615,6 +750,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   formatearEstado(estado: string): string {
     const estados: { [key: string]: string } = {
+      'todos': 'Todos',
+      'urgentes-empacar': 'Urgentes de Empacar',
+      'por-enviar': 'Por Enviar',
+      'enviados': 'Enviados',
+      'por-remunerar': 'Por Remunerar',
       'pendiente': 'Pendiente',
       'empacada': 'Empacada',
       'enviado': 'Enviado',
@@ -625,6 +765,115 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'liberado': 'Liberado'
     };
     return estados[estado] || estado;
+  }
+
+  /**
+   * Obtiene el estado del pedido para mostrar: Pendiente, A punto, En Curso o Pasado
+   * Solo se usa cuando filtro es 'por-retirar-hoy'
+   */
+  obtenerEstadoPedido(pedido: PedidoCompleto): string {
+    const ahora = new Date();
+    const horaActual = ahora.getHours() * 60 + ahora.getMinutes(); // En minutos
+
+    if (!pedido.hora_inicio || !pedido.hora_fin) {
+      return 'Pendiente';
+    }
+
+    // Convertir hora_inicio y hora_fin a minutos
+    const [horaInicio, minInicio] = pedido.hora_inicio.split(':').map(Number);
+    const [horaFin, minFin] = pedido.hora_fin.split(':').map(Number);
+    
+    const minutoInicio = horaInicio * 60 + minInicio;
+    const minutoFin = horaFin * 60 + minFin;
+    
+    // 30 minutos antes de la hora de inicio = "A punto"
+    const minutoAPunto = minutoInicio - 30;
+
+    if (horaActual < minutoAPunto) {
+      return 'Pendiente'; // ⏳
+    } else if (horaActual < minutoInicio) {
+      return 'A punto'; // ⏰
+    } else if (horaActual < minutoFin) {
+      return 'En Curso'; // ⚡
+    } else {
+      return 'Pasado'; // ✅
+    }
+  }
+
+  /**
+   * Obtiene el emoji/icono para cada estado
+   */
+  obtenerEmojiEstado(estado: string): string {
+    const emojis: { [key: string]: string } = {
+      'todos': '👁️',
+      'urgentes-empacar': '🚨',
+      'por-enviar': '📦',
+      'enviados': '✈️',
+      'por-remunerar': '💰',
+      'pendiente': '🟡',
+      'empacada': '📦',
+      'enviado': '✈️',
+      'retirado': '✅',
+      'no-retirado': '❌',
+      'cancelado': '🚫',
+      'retirado-local': '📍',
+      'liberado': '🔓'
+    };
+    return emojis[estado] || '•';
+  }
+
+  /**
+   * Calcula el próximo día de envío (miércoles o sábado)
+   */
+  calcularProximoDiaEnvio(): Date {
+    const hoy = new Date();
+    const diaSemana = hoy.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
+
+    let proximoEnvio = new Date(hoy);
+
+    // Si hoy es domingo (0) a martes (2), el próximo envío es miércoles
+    // Si hoy es miércoles (3) a viernes (5), el próximo envío es sábado
+    // Si hoy es sábado (6), el próximo envío es el miércoles siguiente
+
+    if (diaSemana === 0 || diaSemana === 1 || diaSemana === 2) {
+      // Domingo, lunes, martes -> próximo miércoles (3)
+      proximoEnvio.setDate(hoy.getDate() + (3 - diaSemana));
+    } else if (diaSemana === 3) {
+      // Si es miércoles, el próximo es sábado (en 3 días)
+      proximoEnvio.setDate(hoy.getDate() + 3);
+    } else if (diaSemana === 4 || diaSemana === 5) {
+      // Jueves, viernes -> próximo sábado
+      proximoEnvio.setDate(hoy.getDate() + (6 - diaSemana));
+    } else if (diaSemana === 6) {
+      // Sábado -> próximo miércoles (en 4 días)
+      proximoEnvio.setDate(hoy.getDate() + 4);
+    }
+
+    return proximoEnvio;
+  }
+
+  /**
+   * Verifica si un pedido debe empacarse con urgencia
+   * (está en rango del próximo envío y está en pendiente o empacada)
+   */
+  debeEmpacarConUrgencia(pedido: PedidoCompleto): boolean {
+    // Solo aplica si está en pendiente o empacada
+    if (!['pendiente', 'empacada'].includes(pedido.estado)) {
+      return false;
+    }
+
+    const proximoEnvio = this.calcularProximoDiaEnvio();
+    const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+
+    // Comparar solo la fecha (sin hora)
+    const fechaProxEnvio = new Date(proximoEnvio.getFullYear(), proximoEnvio.getMonth(), proximoEnvio.getDate());
+    const fechaEntregaNormal = new Date(fechaEntrega.getFullYear(), fechaEntrega.getMonth(), fechaEntrega.getDate());
+
+    // Calcular rango: desde proximoEnvio hasta 2 días antes del siguiente envío
+    const finRango = new Date(fechaProxEnvio);
+    finRango.setDate(finRango.getDate() + 2); // Rango de 3 días (ej: 14, 15, 16)
+
+    return fechaEntregaNormal >= fechaProxEnvio && fechaEntregaNormal <= finRango;
   }
 
   /**
@@ -1101,6 +1350,132 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Obtiene los pedidos que deben empacarse con urgencia (próximo envío, estado pendiente o reservado)
+   */
+  /**
+   * Calcula la fecha límite para empacar con urgencia
+   * Lógica SIMPLE:
+   * 1. Si HOY es MIÉ(3) o SAB(6) → límite = HOY + 7
+   * 2. Si NO es MIÉ ni SAB → retroceder hasta anterior MIÉ o SAB → límite = anterior + 7
+   */
+  calcularFechaLimiteUrgencia(): Date {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const diaHoy = hoy.getDay(); // 0=DOM, 1=LUN, 2=MAR, 3=MIÉ, 4=JUE, 5=VIE, 6=SAB
+    const diasSemana = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SAB'];
+    
+    console.log(`\n🔍 [calcularFechaLimiteUrgencia] HOY: ${hoy.toISOString().split('T')[0]} (${diasSemana[diaHoy]})`);
+    
+    let fechaDiaEnvio: Date;
+    
+    // Paso 1: Determinar el día de envío actual o anterior
+    if (diaHoy === 3 || diaHoy === 6) {
+      // HOY es MIÉ o SAB → ese es el día de envío
+      fechaDiaEnvio = new Date(hoy);
+      console.log(`  → HOY es día de envío (${diaHoy === 3 ? 'MIÉ' : 'SAB'})`);
+    } else {
+      // Otro día: retroceder hasta encontrar anterior MIÉ o SAB
+      fechaDiaEnvio = new Date(hoy);
+      fechaDiaEnvio.setDate(hoy.getDate() - 1);
+      
+      while (true) {
+        const dia = fechaDiaEnvio.getDay();
+        if (dia === 3 || dia === 6) {
+          // Encontrado
+          console.log(`  → Buscando anterior: encontrado ${dia === 3 ? 'MIÉ' : 'SAB'} en ${fechaDiaEnvio.toISOString().split('T')[0]}`);
+          break;
+        }
+        fechaDiaEnvio.setDate(fechaDiaEnvio.getDate() - 1);
+      }
+    }
+    
+    // Paso 2: Sumar 7 días al día de envío encontrado
+    let fechaLimite = new Date(fechaDiaEnvio);
+    fechaLimite.setDate(fechaDiaEnvio.getDate() + 7);
+    
+    console.log(`  → Fecha límite: ${fechaDiaEnvio.toISOString().split('T')[0]} + 7 = ${fechaLimite.toISOString().split('T')[0]}\n`);
+    
+    return fechaLimite;
+  }
+
+  /**
+   * Obtiene pedidos con urgencia para empacar
+   * Condición: estado PENDIENTE y fecha < fecha límite
+   */
+  obtenerPedidosUrgencia(): PedidoCompleto[] {
+    const fechaLimite = this.calcularFechaLimiteUrgencia();
+    
+    return this.pedidos.filter(p => {
+      // Solo PENDIENTE
+      if (p.estado !== 'pendiente') {
+        return false;
+      }
+      
+      const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      return fechaEntrega < fechaLimite;
+    });
+  }
+
+  /**
+   * Verifica si un pedido es urgente para empacar
+   */
+  esUrgente(pedido: PedidoCompleto): boolean {
+    const estadoLower = pedido.estado?.toLowerCase() ?? '';
+    console.log(`🔍 [esUrgente] ${pedido.cliente_nombre} - estado="${pedido.estado}" (toLowerCase="${estadoLower}")`);
+    
+    if (estadoLower !== 'pendiente') {
+      console.log(`   ❌ No es pendiente`);
+      return false;
+    }
+    
+    const fechaLimite = this.calcularFechaLimiteUrgencia();
+    const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+    const resultado = fechaEntrega < fechaLimite;
+    
+    console.log(`   ✅ Es pendiente: fecha=${fechaEntrega.toISOString().split('T')[0]} < límite=${fechaLimite.toISOString().split('T')[0]} = ${resultado}`);
+    
+    return resultado;
+  }
+
+  /**
+   * Obtiene el estado de entrega de un pedido (a punto, en curso, pasado)
+   * Solo para pedidos retirados HOY
+   * Compara la hora actual con las horas de inicio y fin
+   */
+  obtenerEstadoEntrega(pedido: PedidoCompleto): { estado: string; emoji: string; color: string } {
+    const ahora = new Date();
+    const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
+    
+    const horaInicio = pedido.hora_inicio 
+      ? parseInt(pedido.hora_inicio.split(':')[0]) * 60 + parseInt(pedido.hora_inicio.split(':')[1])
+      : 0;
+    
+    const horaFin = pedido.hora_fin 
+      ? parseInt(pedido.hora_fin.split(':')[0]) * 60 + parseInt(pedido.hora_fin.split(':')[1])
+      : 1440;
+    
+    // A punto: si la entrega es en los próximos 30 minutos
+    const estaPunto = horaActual >= (horaInicio - 30) && horaActual < horaInicio;
+    
+    // En curso: si estamos dentro del rango de horario
+    const estaEnCurso = horaActual >= horaInicio && horaActual < horaFin;
+    
+    // Pasado: si pasó la hora fin
+    const estaPasado = horaActual >= horaFin;
+    
+    if (estaPunto) {
+      return { estado: 'a-punto', emoji: '⏰', color: 'bg-yellow-100 border-yellow-400' };
+    } else if (estaEnCurso) {
+      return { estado: 'en-curso', emoji: '⚡', color: 'bg-blue-100 border-blue-400' };
+    } else if (estaPasado) {
+      return { estado: 'pasado', emoji: '✅', color: 'bg-green-100 border-green-400' };
+    } else {
+      return { estado: 'pendiente', emoji: '⏳', color: 'bg-gray-100 border-gray-400' };
+    }
+  }
+
+  /**
    * Abre el generador de stickers con pedidos seleccionados
    */
   abrirGeneradorStickers(): void {
@@ -1409,6 +1784,32 @@ export class PedidosComponent implements OnInit, OnDestroy {
       console.error('Error importando datos:', error);
       alert('❌ Error al importar los datos. Revisa la consola para más detalles.');
     }
+  }
+
+  /**
+   * Genera y copia el recordatorio personalizado para el cliente
+   */
+  copiarRecordatorio(pedido: PedidoCompleto) {
+    // Generar el mensaje personalizado
+    const nombreCliente = pedido.cliente_nombre || 'Estimada Cliente';
+    const horarioInicio = pedido.hora_inicio || '10:00';
+    const horarioFin = pedido.hora_fin || '15:00';
+    
+    // Convertir a formato 12h si es necesario
+    const hora12Inicio = this.convertirHora12(horarioInicio);
+    const hora12Fin = this.convertirHora12(horarioFin);
+    
+    const recordatorio = `Hola buen día bella ⛅ hoy le entregan su paquete 📦 me confirma cuando retire nena de ante mano gracias, Cualquier duda o consulta estamos ala orden
+Recuerde que el horario para retirar su paquete es de ${hora12Inicio} a ${hora12Fin}`;
+
+    // Copiar al portapapeles
+    navigator.clipboard.writeText(recordatorio).then(() => {
+      // Mostrar notificación de éxito
+      alert('✅ Recordatorio copiado al portapapeles\n\n' + recordatorio);
+    }).catch(err => {
+      console.error('Error al copiar:', err);
+      alert('❌ Error al copiar el recordatorio');
+    });
   }
 
   /**

@@ -1,16 +1,36 @@
 <div *ngIf="!isMobile" class="space-y-6">
   <!-- Header -->
-  <div class="flex items-center justify-between">
+  <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-6 text-white shadow-lg flex items-center justify-between">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900">📦 Pedidos</h1>
-      <p class="text-gray-500 mt-2">Listado de todos los pedidos ({{ pedidos.length }} total)</p>
+      <h1 class="text-4xl font-bold">🏪 Eli Gomez</h1>
+      <p class="text-purple-100 mt-2">Gestión de Pedidos - {{ pedidos.length }} pedidos total</p>
     </div>
     <!-- Botón para importar Excel -->
     <button 
       (click)="abrirImportarExcel()"
-      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2 transition">
+      class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium flex items-center gap-2 transition shadow-lg">
       📊 Importar Excel
     </button>
+  </div>
+
+  <!-- Banner de Urgencia - Empacar Con Urgencia -->
+  <div *ngIf="obtenerPedidosUrgencia().length > 0" class="bg-gradient-to-r from-red-600 to-red-700 rounded-lg p-4 text-white shadow-xl border-2 border-red-800">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1">
+        <h2 class="text-2xl font-black mb-2">🚨 EMPACAR CON URGENCIA</h2>
+        <p class="text-red-100 mb-3">{{ obtenerPedidosUrgencia().length }} pedidos deben empacarse para el próximo envío</p>
+        
+        <!-- Lista rápida de clientes -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div *ngFor="let pedido of obtenerPedidosUrgencia().slice(0, 8)" class="bg-red-800 p-2 rounded text-sm font-semibold">
+            {{ (pedido.cliente_nombre || 'Cliente').split(' ')[0] }}
+          </div>
+        </div>
+      </div>
+      <button (click)="filtroEstado = 'urgentes-empacar'" class="px-4 py-2 bg-white text-red-700 font-bold rounded-lg hover:bg-red-50 flex-shrink-0 transition">
+        Ver Todos
+      </button>
+    </div>
   </div>
 
   <!-- Estadísticas de Pedidos -->
@@ -71,16 +91,24 @@
 
   <!-- Filters -->
   <div *ngIf="pedidos.length > 0" class="bg-white rounded-lg shadow p-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <!-- Filtro por Estado -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Filtrar por Estado</label>
         <select 
           [(ngModel)]="filtroEstado"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
-          <option *ngFor="let estado of estados" [value]="estado">
-            {{ estado === 'todos' ? '✨ Todos los estados' : (estado === 'sin-finalizar' ? '📋 Sin Finalizar' : '• ' + formatearEstado(estado)) }}
-          </option>
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none text-sm">
+          <option value="todos">✨ Todos los estados</option>
+          <option value="urgentes-empacar">🚨 Urgentes de Empacar</option>
+          <option value="por-enviar">📤 Por Enviar (Pendientes + Empacadas)</option>
+          <option value="enviados">✈️ Enviados</option>
+          <option value="por-remunerar">💰 Por Remunerar</option>
+          <option value="por-retirar-hoy">✈️ Por Retirar HOY</option>
+          <optgroup label="Estados Individuales">
+            <option *ngFor="let estado of estadosList" [value]="estado">
+              {{ obtenerEmojiEstado(estado) }} {{ formatearEstado(estado) }}
+            </option>
+          </optgroup>
         </select>
       </div>
 
@@ -90,7 +118,7 @@
         <input 
           [(ngModel)]="filtroFechaDesde"
           type="date"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none text-sm">
       </div>
 
       <!-- Filtro Fecha Hasta -->
@@ -99,7 +127,26 @@
         <input 
           [(ngModel)]="filtroFechaHasta"
           type="date"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none text-sm">
+      </div>
+
+      <!-- Ordenar Por -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">📊 Agrupar/Ordenar por</label>
+        <select 
+          [(ngModel)]="ordenarPor"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none text-sm">
+          <option value="cliente">👤 Cliente</option>
+          <option value="encomendista">📍 Encomienda</option>
+        </select>
+      </div>
+
+      <!-- Info de Resultados -->
+      <div class="flex items-end">
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded w-full">
+          <p class="text-xs text-blue-700">📊 Resultados</p>
+          <p class="text-xl font-bold text-blue-900">{{ getPedidosFiltrados().length }}</p>
+        </div>
       </div>
     </div>
     
@@ -150,175 +197,192 @@
            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
   </div>
 
-  <!-- Table -->
-  <div *ngIf="pedidos.length > 0" class="bg-white rounded-lg shadow overflow-x-auto">
-    <table class="w-full">
-      <thead class="bg-blue-600 text-white">
-        <tr>
-          <th class="px-4 py-3 text-center text-sm font-semibold w-12">✓</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">ID Pedido</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">📦 Código</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">🏪 Tienda</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">👤 Perfil</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold cursor-pointer hover:bg-blue-700 transition"
-              (click)="alternarOrdenamiento('cliente')"
-              [title]="ordenarPor === 'cliente' ? (direccionOrden === 'asc' ? 'Orden ascendente (A-Z)' : 'Orden descendente (Z-A)') : 'Haz clic para ordenar por cliente'">
-            👤 Cliente {{ obtenerIndicadorOrdenamiento('cliente') }}
-          </th>
-          <th class="px-6 py-3 text-left text-sm font-semibold cursor-pointer hover:bg-blue-700 transition"
-              (click)="alternarOrdenamiento('encomendista')"
-              [title]="ordenarPor === 'encomendista' ? (direccionOrden === 'asc' ? 'Orden ascendente (A-Z)' : 'Orden descendente (Z-A)') : 'Haz clic para ordenar por encomendista'">
-            👥 Encomendista {{ obtenerIndicadorOrdenamiento('encomendista') }}
-          </th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">Destino</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">Prendas</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">💰 Total</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">📅 Fecha Entrega</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">🕐 Hora Entrega</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">Estado</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold">Acciones</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        <ng-container *ngFor="let pedido of getPedidosFiltrados()">
-          <tr class="hover:bg-gray-50 transition relative" 
-              [class.bg-blue-50]="estaPedidoSeleccionado(pedido.id!) && !estaPedidoVencido(pedido) && !obtenerClaseAtenuacionPedido(pedido)"
-              [class.bg-red-50]="estaPedidoVencido(pedido) && !estaPedidoSeleccionado(pedido.id!)"
-              [class.bg-yellow-50]="obtenerClaseAtenuacionPedido(pedido)"
-              [class.bg-orange-100]="debeSerEmpacado(pedido) && pedido.estado !== 'empacada'"
-              [class.border-l-4]="obtenerClaseAtenuacionPedido(pedido) || (debeSerEmpacado(pedido) && pedido.estado !== 'empacada')"
-              [class.border-l-yellow-400]="obtenerClaseAtenuacionPedido(pedido)"
-              [class.border-l-orange-500]="debeSerEmpacado(pedido) && pedido.estado !== 'empacada'">
-            <td class="px-4 py-4 text-center">
-              <input 
-                type="checkbox" 
-                [checked]="estaPedidoSeleccionado(pedido.id!)"
-                (change)="alternarSeleccionPedido(pedido.id!)"
-                [disabled]="pedidosSeleccionados.size >= 8 && !estaPedidoSeleccionado(pedido.id!)"
-                class="w-5 h-5 cursor-pointer accent-blue-600"
-                [title]="pedidosSeleccionados.size >= 8 && !estaPedidoSeleccionado(pedido.id!) ? 'Máximo 8 stickers' : ''"/>
-            </td>
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">
-              {{ pedido.id }}
-              <span *ngIf="estaPedidoVencido(pedido)" class="ml-2 text-red-600 font-bold">⚠️ VENCIDO</span>
-            </td>
-            <td class="px-6 py-4 text-sm font-bold text-blue-600 bg-blue-50 rounded">
-              {{ pedido.codigo_pedido || 'Generando...' }}
-            </td>
-            <td class="px-6 py-4 text-sm font-semibold">
-              <span class="px-3 py-1 rounded-full text-xs font-bold" 
-                    [style]="'background-color: ' + (pedido.color_sticker || '#ec4899') + '; color: ' + obtenerColorTexto(pedido.color_sticker)">
-                {{ pedido.nombre_tienda || 'N/A' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm font-semibold">
-              <span class="px-3 py-1 rounded-full text-white text-xs font-bold" 
-                    [style]="'background-color: ' + obtenerColorPerfil(pedido.nombre_perfil || '')">
-                {{ pedido.nombre_perfil || 'N/A' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ obtenerNombreCliente(pedido.cliente_id) }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.encomendista_id ? obtenerNombreEncomendista(pedido.encomendista_id) : 'Personalizado' }}</td>
-            <td class="px-3 py-4 text-sm text-gray-600 whitespace-normal break-words max-w-xs">{{ (pedido.direccion_personalizada && pedido.direccion_personalizada.trim()) ? pedido.direccion_personalizada : (pedido.destino_id ? pedido.destino_id : 'N/A') }}</td>
-            <td class="px-6 py-4 text-sm text-center font-medium">{{ pedido.cantidad_prendas }}</td>
-            <td class="px-6 py-4 text-sm font-semibold text-green-600">${{ (pedido.total || 0).toFixed(2) }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 font-medium">
-              <span *ngIf="pedido.hora_inicio && pedido.hora_fin">
-                {{ pedido.hora_inicio }} - {{ pedido.hora_fin }}
-              </span>
-              <span *ngIf="!pedido.hora_inicio && pedido.modo === 'personalizado'" class="text-gray-500">Personalizado</span>
-              <span *ngIf="!pedido.hora_inicio && pedido.modo !== 'personalizado'" class="text-gray-500">-</span>
-            </td>
-            <td class="px-6 py-4 text-sm">
-              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="px-3 py-1 rounded-full text-xs font-medium">
-                {{ formatearEstado(pedido.estado) }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm">
-              <div class="flex flex-col gap-2 w-32">
-                <!-- Frame Productos -->
-                <button (click)="alternarExpansion(pedido.id)"
-                        class="px-3 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-lg hover:from-violet-600 hover:to-violet-700 font-bold shadow-md hover:shadow-lg transition text-xs whitespace-nowrap text-center">
-                  📷 Prendas
-                </button>
-                
-                <!-- Frame Estado -->
-                <button (click)="verPedido(pedido)"
-                        class="px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg hover:from-indigo-600 hover:to-indigo-700 font-bold shadow-md hover:shadow-lg transition text-xs whitespace-nowrap text-center">
-                  ⚙️ Estado
-                </button>
+  <!-- Cards Grid (Desktop) -->
+  <div *ngIf="pedidos.length > 0" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div *ngFor="let pedido of getPedidosFiltrados()" 
+         [ngClass]="[
+           esUrgente(pedido) ? 'border-red-500 border-4 shadow-lg shadow-red-300' : 'border-2 hover:shadow-xl transition-all ' + obtenerBordeEstadoCard(pedido.estado), 
+           obtenerFondoEstadoCard(pedido.estado),
+           filtroEstado === 'por-retirar-hoy' && obtenerEstadoPedido(pedido) === 'Pasado' ? 'opacity-50 bg-gray-200' : ''
+         ]"
+         class="rounded-xl shadow-md hover:shadow-xl transition-all overflow-hidden">
+      
+      <!-- Banner de Urgencia (si aplica) -->
+      <div *ngIf="esUrgente(pedido)" class="bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-2 flex items-center gap-2">
+        <span class="text-xl font-black">🚨</span>
+        <span class="font-black">EMPACAR CON URGENCIA</span>
+      </div>
+      
+      <!-- Header Card -->
+      <div [ngClass]="'text-white px-4 py-3 ' + obtenerHeaderEstadoCard(pedido.estado)">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex-1">
+            <p class="font-bold text-lg">{{ pedido.cliente_nombre || 'Cliente' }}</p>
+            <p class="text-xs opacity-80">ID: {{ pedido.id.substring(0, 12) }}</p>
+          </div>
+          <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ml-2">
+            {{ formatearEstado(pedido.estado) }}
+          </span>
+        </div>
+        
+        <!-- Tienda Badge -->
+        <div class="flex gap-2 items-center text-xs">
+          <span class="px-2 py-1 rounded-full text-xs font-bold" 
+                [style]="'background-color: ' + (pedido.color_sticker || '#ec4899') + '; color: ' + obtenerColorTexto(pedido.color_sticker)">
+            🏪 {{ pedido.nombre_tienda || 'N/A' }}
+          </span>
+          <span class="px-2 py-1 rounded-full text-white text-xs font-bold bg-purple-700">
+            👤 {{ pedido.nombre_perfil || 'N/A' }}
+          </span>
+        </div>
+      </div>
 
-                <!-- Frame Ver Foto Paquete (si existe y estado es empacada o posterior) -->
-                <button *ngIf="pedido.foto_paquete && esEstadoEmpacadoOPosterior(pedido.estado)"
-                        (click)="verFotoPaquete(pedido)"
-                        class="px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 font-bold shadow-md hover:shadow-lg transition text-xs whitespace-nowrap text-center">
-                  📦 Ver Foto
-                </button>
-                
-                <!-- Frame Ver QR -->
-                <button (click)="abrirZoom(generarQR(pedido.codigo_pedido))"
-                        class="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-bold shadow-md hover:shadow-lg transition text-xs whitespace-nowrap text-center">
-                  📱 QR
-                </button>
-                
-                <!-- Frame Eliminar -->
-                <button (click)="eliminarPedido(pedido)"
-                        class="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 font-bold shadow-md hover:shadow-lg transition text-xs whitespace-nowrap text-center">
-                  🗑️ Borrar
-                </button>
-              </div>
-            </td>
-          </tr>
-          <!-- Fila expandible con productos -->
-          <tr *ngIf="estaPedidoExpandido(pedido.id)" class="bg-purple-50 border-t-4 border-purple-300">
-            <td colspan="10" class="px-6 py-6">
-              <div class="bg-white rounded-lg p-4 border-2 border-purple-200">
-                <!-- Códigos de Productos -->
-                <div class="mb-6 pb-4 border-b-2 border-purple-100">
-                  <h4 class="text-sm font-bold text-purple-900 mb-2">📝 Códigos de Productos</h4>
-                  <div class="bg-purple-100 rounded px-4 py-3">
-                    <p class="text-sm text-purple-800 font-mono">{{ obtenerCodigosDePedido(pedido) }}</p>
-                  </div>
-                </div>
+      <!-- Body Card -->
+      <div class="px-4 py-4 space-y-3">
+        <!-- Indicador de estado de entrega (solo si está en filtro "por-retirar-hoy") -->
+        <div *ngIf="filtroEstado === 'por-retirar-hoy'" 
+             [ngClass]="obtenerEstadoEntrega(pedido).color"
+             class="p-2 rounded border-l-4 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-gray-800">
+              {{ obtenerEstadoEntrega(pedido).emoji }} {{ obtenerEstadoEntrega(pedido).estado | uppercase }}
+            </span>
+            <span class="font-bold text-gray-700">
+              ⏰ {{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}
+            </span>
+          </div>
+        </div>
 
-                <!-- Imágenes de Productos -->
-                <h4 class="text-lg font-bold text-purple-900 mb-4">📷 Productos en este Pedido</h4>
-                <div *ngIf="obtenerProductosDePedido(pedido).length === 0" class="text-gray-600 text-center py-8 bg-gray-50 rounded-lg">
-                  <p class="text-sm">📭 No hay productos asociados a este pedido</p>
-                </div>
-                <div *ngIf="obtenerProductosDePedido(pedido).length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  <div *ngFor="let producto of obtenerProductosDePedido(pedido)" class="relative">
-                    <!-- Etiqueta RESERVADO -->
-                    <div class="absolute top-1 right-1 z-20 flex items-center gap-1">
-                      <span class="text-red-600 text-lg">●</span>
-                      <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow">RESERVADO</span>
-                    </div>
-                    
-                    <!-- Tarjeta del producto -->
-                    <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all border-2 border-purple-200 cursor-pointer group"
-                         (click)="abrirZoom(producto.url_imagen)">
-                      <!-- Imagen -->
-                      <div class="relative bg-gray-100 h-40 overflow-hidden">
-                        <img [src]="producto.url_thumbnail" 
-                             alt="{{ producto.codigo }}"
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform">
-                      </div>
-                      
-                      <!-- Info -->
-                      <div class="p-3 bg-gradient-to-b from-white to-purple-50">
-                        <p class="text-xs font-bold text-purple-900 truncate">{{ producto.codigo }}</p>
-                        <p class="text-xs text-gray-600">{{ producto.album }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <!-- Grid de información -->
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div class="bg-blue-50 p-2 rounded border-l-4 border-blue-400">
+            <p class="text-gray-500 text-xs">📍 Día</p>
+            <p class="font-bold text-gray-900">{{ pedido.dia_entrega || '?' }}</p>
+          </div>
+          <div class="bg-green-50 p-2 rounded border-l-4 border-green-400">
+            <p class="text-gray-500 text-xs">💰 Total</p>
+            <p class="font-bold text-gray-900">${{ (pedido.total || 0) | number:'1.2-2' }}</p>
+          </div>
+          <div class="bg-purple-50 p-2 rounded border-l-4 border-purple-400 col-span-2">
+            <p class="text-gray-500 text-xs">👤 Encomendista</p>
+            <p class="font-bold text-gray-900">{{ pedido.encomendista_nombre || 'N/A' }}</p>
+          </div>
+        </div>
+
+        <!-- Prendas -->
+        <div *ngIf="obtenerCodigosDePedido(pedido)" class="bg-yellow-50 p-2 rounded border-l-4 border-yellow-400 text-sm">
+          <p class="text-gray-500 text-xs">👕 Prendas</p>
+          <p class="font-bold text-gray-900 text-xs">{{ obtenerCodigosDePedido(pedido) }}</p>
+        </div>
+
+        <!-- Destino -->
+        <div class="bg-orange-50 p-2 rounded border-l-4 border-orange-400 text-sm">
+          <p class="text-gray-500 text-xs">🏪 Destino</p>
+          <p class="font-bold text-gray-900">
+            <ng-container *ngIf="pedido.direccion_personalizada; else destinyStandard">
+              {{ pedido.direccion_personalizada }}
+            </ng-container>
+            <ng-template #destinyStandard>
+              {{ pedido.destino_id || 'N/A' }}
+            </ng-template>
+          </p>
+        </div>
+
+        <!-- Hora y Fecha -->
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div class="bg-cyan-50 p-2 rounded border-l-4 border-cyan-400">
+            <p class="text-gray-500 text-xs">⏰ Horario Entrega</p>
+            <p class="font-bold text-gray-900 text-xs">
+              <ng-container *ngIf="pedido.hora_inicio && pedido.hora_fin">
+                {{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}
+              </ng-container>
+              <ng-container *ngIf="!pedido.hora_inicio && pedido.modo === 'personalizado'">
+                Personalizado
+              </ng-container>
+              <ng-container *ngIf="!pedido.hora_inicio && pedido.modo !== 'personalizado'">
+                -
+              </ng-container>
+            </p>
+          </div>
+          <div class="bg-indigo-50 p-2 rounded border-l-4 border-indigo-400">
+            <p class="text-gray-500 text-xs">📅 {{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</p>
+            <p class="font-bold text-gray-900 text-xs">Día de Entrega</p>
+          </div>
+        </div>
+
+        <!-- Foto + QR -->
+        <div class="grid grid-cols-2 gap-2">
+          <div *ngIf="pedido.foto_paquete; else sinFoto" class="relative cursor-pointer" (click)="abrirZoom(pedido.foto_paquete)">
+            <img [src]="pedido.foto_paquete" alt="Foto" class="w-full h-20 object-cover rounded border-2 border-blue-300 hover:border-blue-500 transition">
+            <p class="text-xs text-center mt-1 text-blue-700 font-medium">📷 Foto</p>
+          </div>
+          <ng-template #sinFoto>
+            <div class="bg-gray-100 h-20 rounded border-2 border-gray-300 flex items-center justify-center">
+              <p class="text-xs text-gray-500">Sin foto</p>
+            </div>
+          </ng-template>
+          
+          <div class="cursor-pointer flex flex-col items-center" (click)="abrirZoom(generarQR(pedido.codigo_pedido))">
+            <img [src]="generarQR(pedido.codigo_pedido)" alt="QR" class="w-full h-16 object-contain rounded border-2 border-purple-300 hover:border-purple-500 transition">
+            <p class="text-xs font-bold text-gray-800 mt-1 break-all text-center">{{ pedido.codigo_pedido || pedido.id }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Card - Botones -->
+      <div class="bg-gray-50 px-4 py-3 flex gap-2 border-t flex-wrap">
+        <button (click)="abrirModalEstado(pedido)" 
+                class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-3 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 font-bold shadow-md hover:shadow-lg transition text-xs">
+          📝 Estado
+        </button>
+        <button (click)="copiarRecordatorio(pedido)" 
+                class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-2 rounded-lg hover:from-green-600 hover:to-green-700 font-bold shadow-md hover:shadow-lg transition text-xs"
+                title="Copia el recordatorio para enviar al cliente">
+          📋 Copiar Recordatorio
+        </button>
+        <button (click)="eliminarPedido(pedido)" 
+                class="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-2 rounded-lg hover:from-red-600 hover:to-red-700 font-bold shadow-md hover:shadow-lg transition text-xs">
+          🗑️ Borrar
+        </button>
+      </div>
+
+      <!-- Expansible: Productos -->
+      <div *ngIf="estaPedidoExpandido(pedido.id)" class="border-t-2 border-purple-200 bg-purple-50 px-4 py-4">
+        <h4 class="text-sm font-bold text-purple-900 mb-3">📝 Códigos de Productos</h4>
+        <div class="bg-white rounded px-3 py-2 mb-4 border-l-4 border-purple-400">
+          <p class="text-xs text-purple-800 font-mono">{{ obtenerCodigosDePedido(pedido) }}</p>
+        </div>
+
+        <h4 class="text-sm font-bold text-purple-900 mb-3">📷 Productos</h4>
+        <div *ngIf="obtenerProductosDePedido(pedido).length === 0" class="text-gray-600 text-center py-6 bg-gray-100 rounded-lg text-xs">
+          📭 No hay productos
+        </div>
+        <div *ngIf="obtenerProductosDePedido(pedido).length > 0" class="grid grid-cols-4 gap-2">
+          <div *ngFor="let producto of obtenerProductosDePedido(pedido)" class="relative group">
+            <div class="bg-white rounded overflow-hidden shadow-md border-2 border-purple-200 cursor-pointer hover:shadow-lg transition"
+                 (click)="abrirZoom(producto.url_imagen)">
+              <div class="relative bg-gray-100 h-16 overflow-hidden">
+                <img [src]="producto.url_thumbnail" 
+                     alt="{{ producto.codigo }}"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform">
+                <span class="absolute top-0 right-0 bg-red-600 text-white text-xs px-1 font-bold">●</span>
               </div>
-            </td>
-          </tr>
-        </ng-container>
-      </tbody>
-    </table>
+              <div class="p-1 bg-purple-50">
+                <p class="text-xs font-bold text-purple-900 truncate">{{ producto.codigo }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón expandir/contraer -->
+      <div class="bg-white px-4 py-2 border-t text-center">
+        <button (click)="alternarExpansion(pedido.id)" 
+                class="text-purple-600 hover:text-purple-800 font-bold text-xs transition">
+          {{ estaPedidoExpandido(pedido.id) ? '▲ Ocultar Prendas' : '▼ Ver Prendas' }}
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal de Zoom -->
@@ -337,12 +401,12 @@
   <!-- Modal de Cambio de Estado -->
   <div *ngIf="mostrarModalEstado && pedidoSeleccionado" 
        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full">
-      <!-- Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-t-lg">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full border-t-4" [ngClass]="obtenerBordeEstadoCard(pedidoSeleccionado.estado)">
+      <!-- Header con color dinámico según estado actual del pedido -->
+      <div [ngClass]="'bg-gradient-to-r text-white px-6 py-4 rounded-t-lg ' + obtenerGradientModalEstado(pedidoSeleccionado.estado)">
         <h2 class="text-2xl font-bold">🔄 Cambiar Estado del Pedido</h2>
-        <p class="text-blue-100 text-sm mt-1">ID: {{ pedidoSeleccionado.id }}</p>
-        <p class="text-blue-100 text-sm">Cliente: {{ pedidoSeleccionado.cliente_nombre }}</p>
+        <p class="text-opacity-90 text-sm mt-1">ID: {{ pedidoSeleccionado.id }}</p>
+        <p class="text-opacity-90 text-sm">Cliente: {{ pedidoSeleccionado.cliente_nombre }}</p>
       </div>
 
       <!-- Body -->
@@ -360,19 +424,26 @@
 
         <!-- Nuevo Estado -->
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Nuevo Estado</label>
-          <select 
-            [(ngModel)]="nuevoEstado"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none">
-            <option value="pendiente">🟡 Pendiente</option>
-            <option value="empacada">📦 Empacada</option>
-            <option value="enviado">✈️ Enviado</option>
-            <option value="retirado">✅ Retirado</option>
-            <option value="no-retirado">❌ No Retirado</option>
-            <option value="retirado-local">📍 Retirado del Local</option>
-            <option value="cancelado">🚫 Cancelado</option>
-            <option value="liberado">🔓 Liberado (Libera las prendas)</option>
-          </select>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Nuevo Estado</label>
+          <div class="space-y-2">
+            <div *ngFor="let estado of estadosParaModal" 
+                 class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition"
+                 [ngClass]="nuevoEstado === estado ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'"
+                 (click)="nuevoEstado = estado">
+              <!-- SVG Radio Button Custom -->
+              <svg class="w-6 h-6 mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="11" [attr.stroke]="nuevoEstado === estado ? '#2563eb' : '#d1d5db'"></circle>
+                <circle *ngIf="nuevoEstado === estado" cx="12" cy="12" r="5" fill="#2563eb"></circle>
+              </svg>
+              
+              <!-- Emoji del estado -->
+              <span class="text-xl mr-2 flex-shrink-0">{{ obtenerEmojiEstado(estado) }}</span>
+              
+              <label class="text-sm font-medium text-gray-700 cursor-pointer flex-1">
+                {{ formatearEstado(estado) }}
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Subir foto cuando es EMPACADA -->
@@ -381,15 +452,19 @@
           <p class="text-xs text-green-700 mb-3" *ngIf="!pedidoSeleccionado.foto_paquete">Carga una foto del paquete empacado (JPG, PNG)</p>
           <p class="text-xs text-green-700 mb-3" *ngIf="pedidoSeleccionado.foto_paquete">📷 Ya tiene foto. Puedes reemplazarla con una nueva (JPG, PNG)</p>
           
-          <div class="flex items-center gap-3">
-            <input 
-              type="file"
-              #fotoPaquete
-              (change)="onFotoSeleccionada($event)"
-              accept="image/*"
-              class="flex-1 px-3 py-2 border border-green-300 rounded-lg text-sm cursor-pointer hover:bg-green-100"
-              placeholder="Selecciona una imagen">
-          </div>
+          <!-- Input de foto (oculto) -->
+          <input 
+            type="file"
+            #fotoPaquete
+            (change)="onFotoSeleccionada($event)"
+            accept="image/*"
+            style="display: none;">
+          
+          <!-- Botón para abrir selector -->
+          <button type="button" (click)="fotoPaquete.click()" 
+                  class="w-full px-3 py-2 border-2 border-dashed border-green-400 rounded-lg text-sm text-green-700 hover:border-green-600 hover:bg-green-100 cursor-pointer font-medium transition mb-3">
+            📁 Seleccionar Imagen
+          </button>
 
           <!-- Preview de la foto si se cargó -->
           <div *ngIf="fotoSeleccionada" class="mt-3 pt-3 border-t border-green-200">
@@ -613,10 +688,33 @@
 
 <!-- VISTA MOBILE -->
 <div *ngIf="isMobile" class="space-y-4 p-3">
-  <div class="flex items-center justify-between mb-4">
-    <h1 class="text-2xl font-bold text-gray-900">📦 Pedidos</h1>
-    <button (click)="abrirImportarExcel()" class="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-      📊 Importar
+  <!-- Header Mejorado -->
+  <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-4 text-white shadow-lg">
+    <div class="flex items-center justify-between">
+      <div class="flex-1">
+        <h1 class="text-3xl font-bold">🏪 Eli Gomez</h1>
+        <p class="text-purple-100 text-xs mt-1">{{ pedidos.length }} pedidos</p>
+      </div>
+      <button (click)="abrirImportarExcel()" class="bg-green-500 text-white px-3 py-2 rounded text-xs font-bold hover:bg-green-600">
+        📊 Importar
+      </button>
+    </div>
+  </div>
+
+  <!-- Banner de Urgencia - Empacar Con Urgencia (Mobile) -->
+  <div *ngIf="obtenerPedidosUrgencia().length > 0" class="bg-gradient-to-r from-red-600 to-red-700 rounded-lg p-3 text-white shadow-xl border-2 border-red-800">
+    <h2 class="text-lg font-black mb-2">🚨 EMPACAR CON URGENCIA</h2>
+    <p class="text-red-100 text-xs mb-2">{{ obtenerPedidosUrgencia().length }} pedidos para próximo envío</p>
+    
+    <!-- Lista rápida de clientes -->
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <div *ngFor="let pedido of obtenerPedidosUrgencia().slice(0, 4)" class="bg-red-800 p-2 rounded text-xs font-semibold text-center truncate">
+        {{ (pedido.cliente_nombre || 'Cliente').split(' ')[0] }}
+      </div>
+    </div>
+    
+    <button (click)="filtroEstado = 'urgentes-empacar'" class="w-full px-3 py-2 bg-white text-red-700 font-bold rounded-lg text-sm hover:bg-red-50 transition">
+      Ver Todos →
     </button>
   </div>
 
@@ -640,41 +738,287 @@
     </div>
   </div>
 
-  <!-- Búsqueda Mobile -->
-  <div>
-    <input [(ngModel)]="filtroEstado" type="text" placeholder="🔍 Buscar..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+  <!-- Búsqueda y Filtros Mobile -->
+  <div class="space-y-2">
+    <input [(ngModel)]="filtroNombre" type="text" placeholder="🔍 Buscar por nombre..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+    
+    <select 
+      [(ngModel)]="filtroEstado"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+      <option value="todos">✨ Todos los estados</option>
+      <option value="urgentes-empacar">🚨 Urgentes de Empacar</option>
+      <option value="por-enviar">📤 Por Enviar</option>
+      <option value="enviados">✈️ Enviados</option>
+      <option value="por-remunerar">💰 Por Remunerar</option>
+      <option value="por-retirar-hoy">✈️ Por Retirar HOY</option>
+      <optgroup label="Estados Individuales">
+        <option *ngFor="let estado of estadosList" [value]="estado">
+          {{ obtenerEmojiEstado(estado) }} {{ formatearEstado(estado) }}
+        </option>
+      </optgroup>
+    </select>
+
+    <select 
+      [(ngModel)]="ordenarPor"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+      <option value="cliente">👤 Agrupar por Cliente</option>
+      <option value="encomendista">📍 Agrupar por Encomienda</option>
+    </select>
   </div>
 
   <!-- Lista de Pedidos (Cards) -->
   <div class="space-y-3">
-    <div *ngFor="let pedido of pedidos.slice(0, 20)" 
-         class="bg-white border-2 border-gray-300 rounded-lg p-3">
-      <div class="flex items-start justify-between gap-2 mb-2">
-        <div class="flex-1">
-          <p class="font-bold text-gray-900 text-sm">{{ pedido.cliente_nombre || 'Cliente' }}</p>
-          <p class="text-xs text-gray-500">ID: {{ pedido.id.substring(0, 8) }}</p>
-        </div>
-        <span [ngClass]="getEstadoBadgeColorMobile(pedido.estado)" class="text-xs font-bold px-2 py-1 rounded">
-          {{ pedido.estado }}
-        </span>
+    <div *ngFor="let pedido of getPedidosFiltrados()" 
+         [ngClass]="[
+           esUrgente(pedido) ? 'border-red-500 border-4 shadow-lg shadow-red-300' : 'border-2 hover:shadow-xl transition-all ' + obtenerBordeEstadoCard(pedido.estado), 
+           obtenerFondoEstadoCard(pedido.estado),
+           filtroEstado === 'por-retirar-hoy' && obtenerEstadoPedido(pedido) === 'Pasado' ? 'opacity-50 bg-gray-200' : ''
+         ]"
+         class="rounded-lg p-3 space-y-2 shadow-md">
+      
+      <!-- Banner de urgencia si aplica -->
+      <div *ngIf="esUrgente(pedido)" class="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold text-center">
+        🚨 EMPACAR CON URGENCIA
       </div>
       
-      <p class="text-xs text-gray-600">📍 {{ pedido.dia_entrega || '?' }}</p>
-      <p class="text-sm font-bold text-gray-900 mt-1">💰 ${{ pedido.total || '0' }}</p>
-
-      <div class="flex gap-2 mt-2">
-        <button (click)="abrirModalEstado(pedido)" class="flex-1 bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600">
-          Ver
+      <!-- Header con nombre y estado -->
+      <div [ngClass]="'text-white px-3 py-2 rounded-lg ' + obtenerHeaderEstadoCard(pedido.estado)">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1">
+            <p class="font-bold text-sm">{{ pedido.cliente_nombre || 'Cliente' }}</p>
+            <p class="text-xs opacity-80">ID: {{ pedido.id.substring(0, 8) }}</p>
+          </div>
+          <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="text-xs font-bold px-2 py-1 rounded flex-shrink-0">
+            {{ formatearEstado(pedido.estado) }}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Contenedor del contenido con padding -->
+      <div class="px-3 py-2 space-y-2">
+      
+      <!-- Indicador de estado de entrega (solo si está en filtro "por-retirar-hoy") -->
+      <div *ngIf="filtroEstado === 'por-retirar-hoy'" 
+           [ngClass]="obtenerEstadoEntrega(pedido).color"
+           class="p-2 rounded border-l-4 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-gray-800">
+            {{ obtenerEstadoEntrega(pedido).emoji }} {{ obtenerEstadoEntrega(pedido).estado | uppercase }}
+          </span>
+          <span class="font-bold text-gray-700">
+            ⏰ {{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Información principal -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="bg-blue-50 p-2 rounded">
+          <p class="text-gray-500">📍 Día</p>
+          <p class="font-bold text-gray-900">{{ pedido.dia_entrega || '?' }}</p>
+        </div>
+        <div class="bg-green-50 p-2 rounded">
+          <p class="text-gray-500">💰 Total</p>
+          <p class="font-bold text-gray-900">${{ (pedido.total || 0) | number:'1.2-2' }}</p>
+        </div>
+        <div class="bg-purple-50 p-2 rounded col-span-2">
+          <p class="text-gray-500">👤 Encomendista</p>
+          <p class="font-bold text-gray-900">{{ pedido.encomendista_nombre || 'N/A' }}</p>
+        </div>
+      </div>
+      
+      <!-- Prendas -->
+      <div *ngIf="obtenerCodigosDePedido(pedido)" class="text-xs bg-yellow-50 p-2 rounded">
+        <p class="text-gray-500">👕 Prendas</p>
+        <p class="font-bold text-gray-900">{{ obtenerCodigosDePedido(pedido) }}</p>
+      </div>
+      
+      <!-- Destino -->
+      <div class="text-xs bg-orange-50 p-2 rounded">
+        <p class="text-gray-500">🏪 Destino</p>
+        <p class="font-bold text-gray-900">
+          <ng-container *ngIf="pedido.direccion_personalizada; else destinyStandard">
+            {{ pedido.direccion_personalizada }}
+          </ng-container>
+          <ng-template #destinyStandard>
+            {{ pedido.destino_id || 'N/A' }}
+          </ng-template>
+        </p>
+      </div>
+      
+      <!-- Hora -->
+      <div *ngIf="pedido.hora_inicio && pedido.hora_fin" class="text-xs bg-cyan-50 p-2 rounded">
+        <p class="text-gray-500">⏰ {{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</p>
+        <p class="font-bold text-gray-900">{{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}</p>
+      </div>
+      
+      <!-- Fecha de entrega -->
+      <div class="text-xs bg-indigo-50 p-2 rounded">
+        <p class="text-gray-500">📅 Fecha Entrega</p>
+        <p class="font-bold text-gray-900">{{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</p>
+      </div>
+      
+      <!-- Fotos de Productos -->
+      <div *ngIf="obtenerProductosDePedido(pedido).length > 0" class="bg-pink-50 p-2 rounded">
+        <p class="text-gray-500 text-xs mb-1">📸 Productos</p>
+        <div class="flex gap-1 overflow-x-auto pb-1">
+          <div *ngFor="let producto of obtenerProductosDePedido(pedido)" class="flex-shrink-0">
+            <img *ngIf="producto.url_thumbnail" 
+                 [src]="producto.url_thumbnail" 
+                 [alt]="producto.codigo" 
+                 class="w-16 h-16 object-cover rounded border border-pink-300 cursor-pointer"
+                 (click)="abrirZoom(producto.url_thumbnail)">
+            <div *ngIf="!producto.url_thumbnail" class="w-16 h-16 bg-gray-200 rounded border border-pink-300 flex items-center justify-center text-xs text-gray-500">
+              Sin img
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Grid: Foto + QR -->
+      <div class="grid grid-cols-2 gap-2">
+        <!-- Foto del paquete si existe -->
+        <div *ngIf="pedido.foto_paquete; else sinFoto" class="relative">
+          <img [src]="pedido.foto_paquete" alt="Foto paquete" class="w-full h-24 object-cover rounded border-2 border-blue-300 cursor-pointer" 
+               (click)="abrirZoom(pedido.foto_paquete)">
+          <p class="text-xs text-center mt-1 text-blue-700 font-medium">📷 Foto</p>
+        </div>
+        <ng-template #sinFoto>
+          <div class="bg-gray-100 h-24 rounded border-2 border-gray-300 flex items-center justify-center">
+            <p class="text-xs text-gray-500">Sin foto</p>
+          </div>
+        </ng-template>
+        
+        <!-- QR con Código -->
+        <div class="relative flex flex-col items-center justify-center">
+          <img [src]="generarQR(pedido.codigo_pedido || pedido.id)" alt="QR" class="w-16 h-16 object-contain rounded border-2 border-purple-300">
+          <p class="text-xs font-bold text-gray-800 mt-1 break-all text-center">{{ pedido.codigo_pedido || pedido.id }}</p>
+        </div>
+      </div>
+      
+      <!-- Botones de acción -->
+      <div class="flex gap-2 pt-2 px-3 pb-3 flex-wrap">
+        <button (click)="abrirModalEstado(pedido)" class="flex-1 bg-purple-500 text-white px-2 py-2 rounded text-xs font-bold hover:bg-purple-600 transition">
+          📝 Estado
         </button>
-        <button (click)="abrirModalEstado(pedido)" class="flex-1 bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-purple-600">
-          Estado
+        <button (click)="copiarRecordatorio(pedido)" class="flex-1 bg-green-500 text-white px-2 py-2 rounded text-xs font-bold hover:bg-green-600 transition"
+                title="Copia el recordatorio">
+          📋 Recordatorio
         </button>
+        <button (click)="eliminarPedido(pedido)" class="flex-1 bg-red-500 text-white px-2 py-2 rounded text-xs font-bold hover:bg-red-600 transition">
+          🗑️ Borrar
+        </button>
+      </div>
       </div>
     </div>
   </div>
 
   <div *ngIf="pedidos.length === 0" class="text-center py-8">
     <p class="text-gray-900 font-bold">📦 Sin pedidos</p>
+  </div>
+
+  <!-- Modal de Zoom (Foto del paquete) -->
+  <div *ngIf="mostrarZoom && imagenZoom" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2"
+       (click)="cerrarZoom()">
+    <div class="relative max-w-full" (click)="$event.stopPropagation()">
+      <button (click)="cerrarZoom()" class="absolute -top-8 right-0 bg-white text-black rounded-full w-8 h-8 font-bold">✕</button>
+      <img [src]="imagenZoom" alt="Zoom" class="max-w-full max-h-96 rounded">
+    </div>
+  </div>
+
+  <!-- Modal de Cambio de Estado (Mobile - Mejorado) -->
+  <div *ngIf="mostrarModalEstado && pedidoSeleccionado" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-sm max-h-screen overflow-y-auto">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-3 sticky top-0">
+        <h3 class="text-lg font-bold">Cambiar Estado</h3>
+        <p class="text-xs text-purple-100 mt-1">{{ pedidoSeleccionado.cliente_nombre || 'Cliente' }}</p>
+      </div>
+
+      <!-- Body -->
+      <div class="p-4 space-y-3">
+        <!-- Estado Actual -->
+        <div class="bg-gray-100 p-2 rounded border-l-4 border-blue-500">
+          <p class="text-xs text-gray-600">Estado Actual:</p>
+          <p class="text-lg font-bold text-gray-900" [ngClass]="getEstadoBadgeColorMobile(pedidoSeleccionado.estado)">
+            {{ pedidoSeleccionado.estado }}
+          </p>
+        </div>
+
+        <!-- Opciones de Estado (Radio Buttons) -->
+        <div class="space-y-2">
+          <p class="text-sm font-bold text-gray-700">Selecciona nuevo estado:</p>
+          
+          <div *ngFor="let estado of estadosParaModal" 
+               class="flex items-center p-2 border-2 rounded cursor-pointer transition"
+               [ngClass]="nuevoEstado === estado ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-300'"
+               (click)="nuevoEstado = estado">
+            <!-- SVG Radio Button Custom -->
+            <svg class="w-5 h-5 mr-2 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="11" [attr.stroke]="nuevoEstado === estado ? '#a855f7' : '#d1d5db'"></circle>
+              <circle *ngIf="nuevoEstado === estado" cx="12" cy="12" r="5" fill="#a855f7"></circle>
+            </svg>
+            
+            <!-- Emoji del estado -->
+            <span class="text-lg mr-2 flex-shrink-0">{{ obtenerEmojiEstado(estado) }}</span>
+            
+            <label class="text-sm font-medium text-gray-700 cursor-pointer flex-1">
+              {{ formatearEstado(estado) }}
+            </label>
+          </div>
+        </div>
+
+        <!-- Foto del paquete (si estado es empacada) -->
+        <div *ngIf="nuevoEstado === 'empacada' && pedidoSeleccionado">
+          <p class="text-sm font-bold text-gray-700 mb-2">📸 Foto del Paquete</p>
+          
+          <!-- Input de foto (oculto) -->
+          <input #fotoPaqueteInput type="file" (change)="onFotoSeleccionada($event)" 
+                 accept="image/*" 
+                 style="display: none;">
+          
+          <!-- Botón para abrir selector -->
+          <button type="button" (click)="fotoPaqueteInput.click()" 
+                  class="w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded text-xs text-gray-700 hover:border-green-500 hover:bg-green-50 cursor-pointer font-medium transition">
+            📁 Seleccionar Imagen
+          </button>
+
+          <!-- Preview nueva foto si está seleccionada -->
+          <div *ngIf="fotoSeleccionada && fotoPreview" class="mt-2">
+            <p class="text-xs text-green-700 font-medium mb-1">✓ Nueva foto seleccionada:</p>
+            <img [src]="fotoPreview" alt="Preview" class="w-full h-24 object-cover rounded border-2 border-green-300">
+          </div>
+
+          <!-- Foto actual si existe y no hay nueva seleccionada -->
+          <div *ngIf="pedidoSeleccionado.foto_paquete && !fotoSeleccionada" class="mt-2">
+            <p class="text-xs text-blue-700 font-medium mb-1">📷 Foto actual:</p>
+            <img [src]="pedidoSeleccionado.foto_paquete" alt="Foto actual" class="w-full h-24 object-cover rounded border-2 border-blue-300">
+          </div>
+        </div>
+
+        <!-- Mensaje de validación -->
+        <div *ngIf="nuevoEstado === 'empacada' && !fotoSeleccionada && !pedidoSeleccionado.foto_paquete" 
+             class="bg-yellow-50 border-l-4 border-yellow-500 p-2">
+          <p class="text-xs text-yellow-700"><strong>⚠️ Nota:</strong> Se requiere foto del paquete para este estado</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-gray-50 px-4 py-3 flex gap-2 border-t sticky bottom-0">
+        <button (click)="cerrarModalEstado()" 
+                class="flex-1 px-3 py-2 bg-gray-400 text-white rounded text-sm font-bold hover:bg-gray-500">
+          ✕ Cancelar
+        </button>
+        <button (click)="guardarCambioEstado()" 
+                [disabled]="!nuevoEstado || (nuevoEstado === 'empacada' && !fotoSeleccionada && !pedidoSeleccionado.foto_paquete)"
+                [class.opacity-50]="!nuevoEstado || (nuevoEstado === 'empacada' && !fotoSeleccionada && !pedidoSeleccionado.foto_paquete)"
+                [class.cursor-not-allowed]="!nuevoEstado || (nuevoEstado === 'empacada' && !fotoSeleccionada && !pedidoSeleccionado.foto_paquete)"
+                class="flex-1 px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded text-sm font-bold hover:from-purple-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400">
+          ✓ Guardar
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal de Importación de Excel -->

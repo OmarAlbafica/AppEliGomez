@@ -113,6 +113,14 @@
                   <span class="text-gray-800 font-black">{{ '$' + ((pedido?.costo_prendas || 0) + (pedido?.monto_envio || 0)).toFixed(2) }}</span>
                 </div>
                 
+                <!-- Estado con Emoji -->
+                <div style="display: flex; justify-content: space-between;">
+                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Estado:</span>
+                  <span class="text-gray-800 text-right flex-1 ml-0.5 text-sm font-semibold">
+                    <span class="text-lg mr-1">{{ obtenerEmojiEstado(pedido?.estado) }}</span>{{ formatearEstado(pedido?.estado) }}
+                  </span>
+                </div>
+                
                 <!-- Encomienda -->
                 <div style="display: flex; justify-content: space-between;">
                   <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Encomienda:</span>

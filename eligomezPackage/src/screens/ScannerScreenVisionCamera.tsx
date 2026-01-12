@@ -19,7 +19,7 @@ import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-cam
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
 import { BackButton } from '../components/BackButton';
 import { useTheme } from '../context/ThemeContext';
-import { formatDate12Hours, formatDateOnly, formatTimeOnly } from '../utils/dateUtils';
+import { formatDate12Hours } from '../utils/dateUtils';
 
 interface ScannerScreenVisionCameraProps {
   onNavigate?: (screen: string) => void;

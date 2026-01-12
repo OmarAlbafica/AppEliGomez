@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   FlatList,
@@ -55,6 +56,8 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
   const detailStyles = createDetailStyles(scale, theme);
   
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [pedidosFiltrados, setPedidosFiltrados] = useState<Pedido[]>([]);
+  const [busqueda, setBusqueda] = useState('');
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -146,18 +149,39 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
     cargarProductos();
   }, []);
 
-  // Ordenar: 1) Por empacar primero, 2) Enviados por fecha próxima
-  const pedidosFiltrados = (() => {
-    let lista = filtroEstado ? pedidos.filter((p) => p.estado === filtroEstado) : pedidos;
-    
-    // Si NO hay filtro, ordenar especialmente
-    if (!filtroEstado) {
+  const filtrarPedidos = (texto: string) => {
+    setBusqueda(texto);
+    aplicarFiltros(texto, filtroEstado, pedidos);
+  };
+
+  const aplicarFiltros = (textoBusqueda: string, estado: string, listaPedidos: Pedido[]) => {
+    let resultado = listaPedidos;
+
+    // Filtrar por estado
+    if (estado) {
+      resultado = resultado.filter((p) => p.estado === estado);
+    }
+
+    // Filtrar por búsqueda
+    if (textoBusqueda.trim()) {
+      const textoLower = textoBusqueda.toLowerCase();
+      resultado = resultado.filter(
+        (p) =>
+          p.codigo_pedido?.toLowerCase().includes(textoLower) ||
+          p.cliente_nombre?.toLowerCase().includes(textoLower) ||
+          p.encomendista_nombre?.toLowerCase().includes(textoLower) ||
+          p.destino_nombre?.toLowerCase().includes(textoLower)
+      );
+    }
+
+    // Ordenar: 1) Por empacar primero, 2) Enviados por fecha próxima
+    if (!estado && !textoBusqueda.trim()) {
       // Separar en grupos
       const porEmpacar: Pedido[] = [];
       const enviados: Pedido[] = [];
       const otros: Pedido[] = [];
 
-      lista.forEach(pedido => {
+      resultado.forEach(pedido => {
         if (pedidosService.debeSerEmpacado(pedido)) {
           porEmpacar.push(pedido);
         } else if (pedido.estado === 'enviado') {
@@ -182,11 +206,15 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
       });
 
       // Combinar: por empacar primero, luego enviados, luego otros
-      lista = [...porEmpacar, ...enviados, ...otros];
+      resultado = [...porEmpacar, ...enviados, ...otros];
     }
 
-    return lista;
-  })();
+    setPedidosFiltrados(resultado);
+  };
+
+  useEffect(() => {
+    aplicarFiltros(busqueda, filtroEstado, pedidos);
+  }, [filtroEstado, pedidos]);
 
   const handleAbrirDetalle = (pedido: Pedido) => {
     console.log('🔍 Abriendo detalle del pedido:');
@@ -248,6 +276,25 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
         <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(20) }]}>📋 Historial de Pedidos</Text>
       </View>
 
+      {/* Buscador */}
+      <View style={{ paddingHorizontal: scale(16), marginBottom: scale(12) }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: scale(8),
+            padding: scale(12),
+            fontSize: scale(14),
+            color: theme.colors.text,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}
+          placeholder="🔍 Buscar por código, cliente, encomendista o destino..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={busqueda}
+          onChangeText={filtrarPedidos}
+        />
+      </View>
+
       {/* Info sobre Empaques */}
       <View style={{ 
         backgroundColor: theme.colors.warning + '20',
@@ -289,7 +336,9 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ onNavigate }) 
       {pedidosFiltrados.length === 0 ? (
         <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No hay pedidos con este estado</Text>
+          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+            {busqueda || filtroEstado ? 'No se encontraron resultados' : 'No hay pedidos'}
+          </Text>
         </View>
       ) : (
         <FlatList

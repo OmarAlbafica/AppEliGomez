@@ -278,17 +278,21 @@ export class PedidosService {
         throw new Error('Pedido no encontrado');
       }
 
-      // Cambiar estado a "liberado"
+      // Cambiar estado a "liberado" y agregar fecha_liberado
       const docRef = doc(db, 'pedidos', id);
       await updateDoc(docRef, {
         estado: 'liberado',
-        fecha_liberacion: new Date().toISOString()
+        fecha_liberado: new Date().toISOString()
       });
       console.log('✅ Pedido marcado como liberado');
 
-      // Desmarcar productos como reservados
+      // Marcar productos como liberados (con fecha_liberado)
       if (pedido.productos_id && pedido.productos_id.length > 0) {
         try {
+          // Primero marcar como liberados (agrega fecha_liberado al producto)
+          await this.productosService.marcarComoLiberados(pedido.productos_id);
+          
+          // Luego desmarcar como reservados
           await this.productosService.desmarcarReservados(pedido.productos_id);
           console.log('✅ Productos liberados/desmarcados:', pedido.productos_id);
         } catch (error) {

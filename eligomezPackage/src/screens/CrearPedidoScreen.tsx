@@ -30,6 +30,37 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
   const { theme } = useTheme();
   const scale = (size: number) => theme.scale(size);
   const styles = createStyles(scale, theme);
+
+  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
+  const convertirHora12 = (hora24: string): string => {
+    if (!hora24) return '';
+    // Si ya tiene AM/PM, devolverlo tal cual
+    if (hora24.includes('AM') || hora24.includes('PM')) return hora24;
+    
+    const [horas, minutos] = hora24.split(':').map(Number);
+    const ampm = horas >= 12 ? 'PM' : 'AM';
+    let horas12 = horas % 12;
+    horas12 = horas12 ? horas12 : 12;
+    return `${String(horas12).padStart(2, '0')}:${String(minutos).padStart(2, '0')} ${ampm}`;
+  };
+
+  // Convertir de 12h (hh:mm AM/PM) a 24h (HH:MM)
+  const convertirHora24 = (hora12: string): string => {
+    if (!hora12) return '09:00';
+    const match = hora12.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return hora12; // Si no coincide con el formato, devolver como está
+    
+    let [, horas, minutos, periodo] = match;
+    let horasNum = parseInt(horas);
+    
+    if (periodo.toUpperCase() === 'PM' && horasNum !== 12) {
+      horasNum += 12;
+    } else if (periodo.toUpperCase() === 'AM' && horasNum === 12) {
+      horasNum = 0;
+    }
+    
+    return `${String(horasNum).padStart(2, '0')}:${minutos}`;
+  };
   
   // Estado general
   const [loading, setLoading] = useState(false);
@@ -56,7 +87,13 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
   const [encomendistasFiltr, setEncomendistasFiltr] = useState<Encomendista[]>([]);
   const [encomendistaSel, setEncomendistaSel] = useState<Encomendista | null>(null);
   const [modalNuevoEncomendista, setModalNuevoEncomendista] = useState(false);
+  const [modalNuevoDestino, setModalNuevoDestino] = useState(false);
+  const [modalNuevoHorario, setModalNuevoHorario] = useState(false);
   const [nuevoEncomendForm, setNuevoEncomendForm] = useState({ nombre: '', telefono: '', local: '' });
+  const [nuevoDestinoForm, setNuevoDestinoForm] = useState({ nombre: '', local: '' });
+  const [diasSeleccionados, setDiasSeleccionados] = useState<string[]>([]);
+  const [horaInicioNuevo, setHoraInicioNuevo] = useState('09:00 AM');
+  const [horaFinNuevo, setHoraFinNuevo] = useState('05:00 PM');
 
   // Productos
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -228,7 +265,8 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
           const destino = enc.destinos.find(d => d.nombre === favorito.destino_nombre);
           if (destino) {
             console.log('✅ [usarFavorito] Destino seleccionado:', destino.nombre);
-            setDestinoSelec(destino);
+            // Usar seleccionarDestino en lugar de setDestinoSelec para calcular días disponibles
+            seleccionarDestino(destino);
           } else {
             console.warn('⚠️ [usarFavorito] Destino no encontrado:', favorito.destino_nombre);
           }
@@ -236,15 +274,15 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
       } else if (favorito.modo === 'personalizado' && favorito.direccion_personalizada) {
         console.log('🏠 [usarFavorito] Modo personalizado, dirección:', favorito.direccion_personalizada);
         setDireccionPersonalizada(favorito.direccion_personalizada);
+        // Cargar días de la semana para modo personalizado
+        cargarDiasSemana();
       }
 
-      setDiaSelec(favorito.dia_maximo);
-      
-      // Cargar fechas disponibles para el día seleccionado
+      // Seleccionar el día después de un pequeño delay para asegurar que diasProximos esté cargado
       if (favorito.dia_maximo) {
         setTimeout(() => {
           seleccionarDia(favorito.dia_maximo);
-        }, 100);
+        }, 150);
       }
       
     } catch (error) {
@@ -339,6 +377,153 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
     }
   };
 
+  const abrirModalNuevoDestino = () => {
+    if (!encomendistaSel) {
+      Alert.alert('Error', 'Selecciona una encomendista primero');
+      return;
+    }
+    setNuevoDestinoForm({ nombre: '', local: '' });
+    setDiasSeleccionados([]);
+    setHoraInicioNuevo('09:00 AM');
+    setHoraFinNuevo('05:00 PM');
+    setModalNuevoDestino(true);
+  };
+
+  const toggleDiaSeleccionado = (dia: string) => {
+    if (diasSeleccionados.includes(dia)) {
+      setDiasSeleccionados(diasSeleccionados.filter(d => d !== dia));
+    } else {
+      setDiasSeleccionados([...diasSeleccionados, dia]);
+    }
+  };
+
+  const crearDestino = async () => {
+    if (!encomendistaSel || !nuevoDestinoForm.nombre.trim()) {
+      Alert.alert('Error', 'El nombre del destino es obligatorio');
+      return;
+    }
+
+    if (diasSeleccionados.length === 0) {
+      Alert.alert('Error', 'Selecciona al menos un día');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Convertir de 12h a 24h para guardar en la base de datos
+      const nuevoDestino: DestinoEncomendista = {
+        nombre: nuevoDestinoForm.nombre,
+        local: nuevoDestinoForm.local,
+        horarios: [{
+          dias: diasSeleccionados,
+          hora_inicio: convertirHora24(horaInicioNuevo),
+          hora_fin: convertirHora24(horaFinNuevo),
+        }],
+      };
+
+      // Agregar al array de destinos existentes
+      const destinosActualizados = [...(encomendistaSel.destinos || []), nuevoDestino];
+      await encomendistasService.actualizarEncomendista(encomendistaSel.id!, {
+        destinos: destinosActualizados,
+      });
+      
+      // Recargar encomendista actualizada
+      const encomActualizada = await encomendistasService.obtenerEncomendista(encomendistaSel.id!);
+      if (encomActualizada) {
+        setEncomendistaSel(encomActualizada);
+        setDestinos(encomActualizada.destinos || []);
+        // Actualizar en la lista
+        setEncomendistas(encomendistas.map(e => e.id === encomActualizada.id ? encomActualizada : e));
+      }
+
+      setModalNuevoDestino(false);
+      mostrarMensaje('éxito', 'Destino agregado correctamente');
+    } catch (error) {
+      console.error('❌ Error creando destino:', error);
+      mostrarMensaje('error', 'Error creando destino');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const abrirModalNuevoHorario = () => {
+    if (!destinoSelec) {
+      Alert.alert('Error', 'Selecciona un destino primero');
+      return;
+    }
+    setDiasSeleccionados([]);
+    setHoraInicioNuevo('09:00 AM');
+    setHoraFinNuevo('05:00 PM');
+    setModalNuevoHorario(true);
+  };
+
+  const agregarHorarioADestino = async () => {
+    if (!encomendistaSel || !destinoSelec) {
+      Alert.alert('Error', 'Selecciona encomendista y destino primero');
+      return;
+    }
+
+    if (diasSeleccionados.length === 0) {
+      Alert.alert('Error', 'Selecciona al menos un día');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Encontrar índice del destino
+      const destinos = encomendistaSel.destinos || [];
+      const indexDestino = destinos.findIndex(d => d.nombre === destinoSelec.nombre);
+      
+      if (indexDestino === -1) {
+        Alert.alert('Error', 'Destino no encontrado');
+        return;
+      }
+
+      // Agregar nuevo horario con conversión de 12h a 24h
+      const destinoActualizado = { ...destinos[indexDestino] };
+      destinoActualizado.horarios = [
+        ...(destinoActualizado.horarios || []),
+        {
+          dias: diasSeleccionados,
+          hora_inicio: convertirHora24(horaInicioNuevo),
+          hora_fin: convertirHora24(horaFinNuevo),
+        },
+      ];
+
+      // Actualizar destinos
+      const destinosActualizados = [...destinos];
+      destinosActualizados[indexDestino] = destinoActualizado;
+
+      await encomendistasService.actualizarEncomendista(encomendistaSel.id!, {
+        destinos: destinosActualizados,
+      });
+
+      // Recargar encomendista
+      const encomActualizada = await encomendistasService.obtenerEncomendista(encomendistaSel.id!);
+      if (encomActualizada) {
+        setEncomendistaSel(encomActualizada);
+        setDestinos(encomActualizada.destinos || []);
+        // Actualizar destino seleccionado
+        const destinoActualizadoNuevo = encomActualizada.destinos?.find(d => d.nombre === destinoSelec.nombre);
+        if (destinoActualizadoNuevo) {
+          setDestinoSelec(destinoActualizadoNuevo);
+          calcularDiasProximos(destinoActualizadoNuevo);
+        }
+        // Actualizar en la lista
+        setEncomendistas(encomendistas.map(e => e.id === encomActualizada.id ? encomActualizada : e));
+      }
+
+      setModalNuevoHorario(false);
+      mostrarMensaje('éxito', 'Horario agregado correctamente');
+    } catch (error) {
+      console.error('❌ Error agregando horario:', error);
+      mostrarMensaje('error', 'Error agregando horario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ===== DESTINOS Y HORARIOS =====
 
   const seleccionarDestino = (destino: DestinoEncomendista) => {
@@ -368,8 +553,8 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
       dias.push({
         dia: destino.dia,
         proximoHorario: {
-          hora_inicio: destino.hora_inicio || '09:00',
-          hora_fin: destino.hora_fin || '17:00',
+          hora_inicio: destino.hora_inicio || '09:00 AM',
+          hora_fin: destino.hora_fin || '05:00 PM',
         },
       });
     }
@@ -383,8 +568,8 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
     const dias = diasSemana.map(dia => ({
       dia,
       proximoHorario: {
-        hora_inicio: '09:00',
-        hora_fin: '17:00',
+        hora_inicio: '09:00 AM',
+        hora_fin: '05:00 PM',
       },
     }));
     setDiasProximos(dias);
@@ -567,8 +752,8 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
     setDescFavorito('');
     setFechaSeleccionada(null);
     setProductosSeleccionados([]);
-    setHoraInicio('09:00');
-    setHoraFin('17:00');
+    setHoraInicio('09:00 AM');
+    setHoraFin('05:00 PM');
   };
 
   const toggleProducto = (productoId: string, precio: number) => {
@@ -810,22 +995,48 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>🏘️ Destino</Text>
                     {destinosDisponibles.length > 0 ? (
-                      <FlatList
-                        scrollEnabled={false}
-                        data={destinosDisponibles}
-                        keyExtractor={(item) => item.nombre}
-                        renderItem={({ item }) => (
-                          <TouchableOpacity
-                            style={[styles.destino, destinoSelec?.nombre === item.nombre && styles.destinoSelected]}
-                            onPress={() => seleccionarDestino(item)}
+                      <>
+                        <FlatList
+                          scrollEnabled={false}
+                          data={destinosDisponibles}
+                          keyExtractor={(item) => item.nombre}
+                          renderItem={({ item }) => (
+                            <TouchableOpacity
+                              style={[styles.destino, destinoSelec?.nombre === item.nombre && styles.destinoSelected]}
+                              onPress={() => seleccionarDestino(item)}
+                            >
+                              <Text style={styles.destinoText}>{item.nombre}</Text>
+                              {item.local && <Text style={styles.destinoSubtext}>{item.local}</Text>}
+                            </TouchableOpacity>
+                          )}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                          <TouchableOpacity 
+                            style={[styles.buttonSecondary, { flex: 1, backgroundColor: theme.colors.border }]} 
+                            onPress={abrirModalNuevoDestino}
                           >
-                            <Text style={styles.destinoText}>{item.nombre}</Text>
-                            {item.local && <Text style={styles.destinoSubtext}>{item.local}</Text>}
+                            <Text style={[styles.buttonText, { color: theme.colors.text }]}>+ Nuevo Destino</Text>
                           </TouchableOpacity>
-                        )}
-                      />
+                          {destinoSelec && (
+                            <TouchableOpacity 
+                              style={[styles.buttonSecondary, { flex: 1, backgroundColor: theme.colors.primary }]} 
+                              onPress={abrirModalNuevoHorario}
+                            >
+                              <Text style={[styles.buttonText, { color: '#fff' }]}>⏰ Agregar Horario</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </>
                     ) : (
-                      <Text style={styles.emptyText}>No hay destinos registrados</Text>
+                      <>
+                        <Text style={styles.emptyText}>No hay destinos registrados</Text>
+                        <TouchableOpacity 
+                          style={[styles.buttonSecondary, { backgroundColor: theme.colors.border, marginTop: 8 }]} 
+                          onPress={abrirModalNuevoDestino}
+                        >
+                          <Text style={[styles.buttonText, { color: theme.colors.text }]}>+ Crear Primer Destino</Text>
+                        </TouchableOpacity>
+                      </>
                     )}
                   </View>
                 )}
@@ -860,7 +1071,7 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                           <Text style={styles.diaButtonText}>{item.dia}</Text>
                           {item.proximoHorario && (
                             <Text style={styles.diaButtonTime}>
-                              {item.proximoHorario.hora_inicio} - {item.proximoHorario.hora_fin}
+                              {convertirHora12(item.proximoHorario.hora_inicio)} - {convertirHora12(item.proximoHorario.hora_fin)}
                             </Text>
                           )}
                         </TouchableOpacity>
@@ -1123,6 +1334,173 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                 <Text style={styles.buttonPrimaryText}>Crear</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL NUEVO DESTINO */}
+      <Modal visible={modalNuevoDestino} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>Agregar Destino a {encomendistaSel?.nombre}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nombre del destino *"
+                value={nuevoDestinoForm.nombre}
+                onChangeText={(text) => setNuevoDestinoForm({ ...nuevoDestinoForm, nombre: text })}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Local (opcional)"
+                value={nuevoDestinoForm.local}
+                onChangeText={(text) => setNuevoDestinoForm({ ...nuevoDestinoForm, local: text })}
+              />
+              
+              <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Horario Inicial</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Hora Inicio</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="09:00 AM"
+                    value={horaInicioNuevo}
+                    onChangeText={setHoraInicioNuevo}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Hora Fin</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="05:00 PM"
+                    value={horaFinNuevo}
+                    onChangeText={setHoraFinNuevo}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Días Disponibles *</Text>
+              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
+                <TouchableOpacity
+                  key={dia}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#e0e0e0',
+                  }}
+                  onPress={() => toggleDiaSeleccionado(dia)}
+                >
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: theme.colors.primary,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : '#fff',
+                    }}
+                  >
+                    {diasSeleccionados.includes(dia) && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✓</Text>}
+                  </View>
+                  <Text>{dia}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoDestino(false)}>
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
+                  onPress={crearDestino}
+                  disabled={loading}
+                >
+                  <Text style={styles.buttonPrimaryText}>Agregar Destino</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL NUEVO HORARIO */}
+      <Modal visible={modalNuevoHorario} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '70%' }]}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>Agregar Horario a {destinoSelec?.nombre}</Text>
+              
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Hora Inicio</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="09:00 AM"
+                    value={horaInicioNuevo}
+                    onChangeText={setHoraInicioNuevo}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Hora Fin</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="05:00 PM"
+                    value={horaFinNuevo}
+                    onChangeText={setHoraFinNuevo}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Días para este Horario *</Text>
+              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
+                <TouchableOpacity
+                  key={dia}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#e0e0e0',
+                  }}
+                  onPress={() => toggleDiaSeleccionado(dia)}
+                >
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: theme.colors.primary,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 12,
+                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : '#fff',
+                    }}
+                  >
+                    {diasSeleccionados.includes(dia) && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✓</Text>}
+                  </View>
+                  <Text>{dia}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoHorario(false)}>
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.buttonPrimary, loading && styles.buttonDisabled]}
+                  onPress={agregarHorarioADestino}
+                  disabled={loading}
+                >
+                  <Text style={styles.buttonPrimaryText}>Agregar Horario</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

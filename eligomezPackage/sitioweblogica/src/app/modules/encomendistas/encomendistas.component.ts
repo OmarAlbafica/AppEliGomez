@@ -19,11 +19,16 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   encomendistas: Encomendista[] = [];
   encomendistasLista: Encomendista[] = [];
   busqueda: string = '';
+  nombreBusqueda: string = '';
   filtroNombreEncomendista: string = '';
   
   // Ordenamiento
   ordenarPor = 'nombre';
   ordenAscendente = true;
+  
+  // Controles de formulario
+  mostrarFormulario = false;
+  mostrarFormularioDestino = false;
   
   // Modal crear/editar encomendista
   mostrarModalEncomendista = false;
@@ -172,7 +177,9 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
    */
   cerrarDestinos() {
     this.mostrarDestinos = false;
+    this.mostrarModalDestino = false;
     this.encomendistaMostrandoDestinos = null;
+    this.encomendistaSelecionado = null;
   }
 
   /**
@@ -209,6 +216,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
       this.encomendistasService.actualizarEncomendista(updated).then(() => {
         this.mostrarMensaje('éxito', 'Encomendista actualizado');
         this.mostrarModalEncomendista = false;
+        this.editandoEncomendista = null;
         this.cargarEncomendistas();
       }).catch(error => {
         this.mostrarMensaje('error', 'Error actualizando encomendista');
@@ -267,6 +275,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
     this.mostrarModalCargaMasiva = false;
     this.encomendistaSelecionado = null;
     this.archivosDestino = [];
+    this.destinosExtraidos = [];
   }
 
   /**   * Abre el modal para agregar un destino a un encomendista
@@ -696,6 +705,8 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
     this.mostrarModalDestinosExtraidos = false;
     this.destinosExtraidos = [];
     this.archivosDestino = [];
+    this.procesandoOCR = false;
+    this.progresoOCR = 0;
   }
 
   /**
@@ -821,6 +832,10 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   cerrarCargaMasiva() {
     this.mostrarCargaMasiva = false;
     this.encomendistaSelecionado = null;
+    this.archivosDestino = [];
+    this.destinosExtraidos = [];
+    this.procesandoOCR = false;
+    this.progresoOCR = 0;
   }
 
   /**
@@ -906,29 +921,20 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   /**
    * Elimina un destino
    */
-  eliminarDestino(encomendista: Encomendista, destino: DestinoEncomendista) {
-    if (!confirm('¿Estás seguro de que deseas eliminar el destino ' + destino.nombre + '?')) {
+  eliminarDestino(encomendista: Encomendista, index: number) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este destino?')) {
       return;
     }
 
     if (encomendista.destinos) {
-      // Encontrar el índice REAL del destino en el array original
-      const indexReal = encomendista.destinos.findIndex(d => 
-        d.nombre === destino.nombre && d.local === destino.local
-      );
-      
-      if (indexReal !== -1) {
-        encomendista.destinos.splice(indexReal, 1);
-      }
+      encomendista.destinos.splice(index, 1);
+      this.encomendistasService.actualizarEncomendista(encomendista).then(() => {
+        this.mensaje = { tipo: 'éxito', texto: 'Destino eliminado correctamente' };
+        this.cargarEncomendistas();
+      }).catch(error => {
+        this.mensaje = { tipo: 'error', texto: 'Error al eliminar el destino: ' + error };
+      });
     }
-
-    // Guardar cambios en Firestore
-    this.encomendistasService.actualizarEncomendista(encomendista).then(() => {
-      this.mostrarMensaje('éxito', 'Destino eliminado');
-      this.cargarEncomendistas();
-    }).catch(() => {
-      this.mostrarMensaje('error', 'Error eliminando destino');
-    });
   }
 
   /**
@@ -939,6 +945,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
     this.destinoEditando = null;
     this.destinoEditandoIndex = -1;
     this.encomendistaPropietarioDestino = null;
+    this.destinoEditandoCopy = {};
     this.horarioEditandoArray = [];
     this.horarioEditandoNuevo = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00' };
   }
@@ -1052,4 +1059,58 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
       return hora24;
     }
   }
+
+  /**
+   * Abre el detalle de un encomiendista
+   */
+  abrirEncomendista(encomendista: any) {
+    this.encomendistaSelecionado = encomendista;
+    this.mostrarFormulario = false;
+    this.mostrarFormularioDestino = false;
+  }
+
+  /**
+   * Abre modal para agregar destino
+   */
+  abrirModalDestino(encomendista_id: string) {
+    this.mostrarModalDestino = true;
+    this.mostrarFormularioDestino = true;
+    this.nuevoDestino = {
+      nombre: '',
+      horarios: [],
+      local: ''
+    };
+    this.horarioActual = {
+      diasSeleccionados: [],
+      hora_inicio: '09:00',
+      hora_fin: '17:00'
+    };
+  }
+
+  /**
+   * Abre modal para agregar horario
+   */
+  abrirModalAgregarHorario(encomendista_id: string, destino_index: number) {
+    this.horarioEditandoNuevo = {
+      diasSeleccionados: [],
+      hora_inicio: '09:00',
+      hora_fin: '17:00'
+    };
+  }
+
+
+  /**
+   * Elimina un encomiendista
+   */
+  eliminarEncomendista(encomendista_id: string) {
+    if (confirm('¿Estás seguro de que deseas eliminar este encomiendista?')) {
+      this.encomendistasService.eliminarEncomendista(encomendista_id).then(() => {
+        this.mensaje = { tipo: 'éxito', texto: 'Encomiendista eliminado correctamente' };
+        this.cargarEncomendistas();
+      }).catch(error => {
+        this.mensaje = { tipo: 'error', texto: 'Error al eliminar el encomiendista: ' + error };
+      });
+    }
+  }
 }
+

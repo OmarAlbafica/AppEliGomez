@@ -41,7 +41,16 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
   const [modalMensaje, setModalMensaje] = useState(false);
   const [mensajeCopiar, setMensajeCopiar] = useState('');
 
-  // Obtener hora actual en formato HH:MM
+  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
+  const convertirHora12 = (hora24: string): string => {
+    const [horas, minutos] = hora24.split(':').map(Number);
+    const ampm = horas >= 12 ? 'PM' : 'AM';
+    let horas12 = horas % 12;
+    horas12 = horas12 ? horas12 : 12;
+    return `${String(horas12).padStart(2, '0')}:${String(minutos).padStart(2, '0')} ${ampm}`;
+  };
+
+  // Obtener hora actual en formato HH:MM (formato 24h para comparaciones internas)
   const obtenerHoraActual = (): string => {
     const ahora = new Date();
     return `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
@@ -74,7 +83,7 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
   // Generar mensaje personalizado
   const generarMensaje = (horaInicio: string, horaFin: string): string => {
     return `Hola buen día bella ⛅ hoy le entregan su paquete 📦 me confirma cuando retire nena de ante mano gracias, Cualquier duda o consulta estamos ala orden
-Recuerde que el horario para retirar su paquete es de ${horaInicio} a ${horaFin}`;
+Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInicio)} a ${convertirHora12(horaFin)}`;
   };
 
   // Copiar mensaje al portapapeles
@@ -277,7 +286,7 @@ Recuerde que el horario para retirar su paquete es de ${horaInicio} a ${horaFin}
       >
         <View style={{ flex: 1 }}>
           <Text style={[styles.horarioText, { color: theme.colors.text }]}>
-            🕐 {grupo.hora_inicio} - {grupo.hora_fin}
+            🕐 {convertirHora12(grupo.hora_inicio)} - {convertirHora12(grupo.hora_fin)}
           </Text>
           <Text style={[styles.cantidadPedidos, { color: theme.colors.textSecondary }]}>
             {grupo.pedidos.length} {grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
@@ -332,7 +341,7 @@ Recuerde que el horario para retirar su paquete es de ${horaInicio} a ${horaFin}
       <View style={[styles.horaActualContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <Text style={[styles.horaActualLabel, { color: theme.colors.textSecondary }]}>Hora actual:</Text>
         <Text style={[styles.horaActualValor, { color: theme.colors.primary, fontSize: scale(24) }]}>
-          {horaActual}
+          {convertirHora12(horaActual)}
         </Text>
       </View>
 

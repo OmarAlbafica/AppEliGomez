@@ -40,6 +40,17 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ onNavigate }) => {
   const [nuevoEstado, setNuevoEstado] = useState<'pendiente' | 'entregado' | 'cancelado' | 'enviado' | 'retirado' | 'no-retirado' | 'remunero'>('pendiente');
   const [guardando, setGuardando] = useState(false);
 
+  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
+  const convertirHora12 = (hora: string | undefined): string => {
+    if (!hora) return '';
+    const [h, m] = hora.split(':');
+    const hours = parseInt(h, 10);
+    const minutes = m || '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const horas12 = hours % 12 || 12;
+    return `${horas12}:${minutes} ${ampm}`;
+  };
+
   const estados = ['pendiente', 'entregado', 'cancelado', 'enviado', 'retirado', 'no-retirado', 'remunero'];
 
   const handleBuscarPedido = async () => {
@@ -161,7 +172,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ onNavigate }) => {
             <View style={detailStyles.row}>
               <Text style={detailStyles.label}>Horario:</Text>
               <Text style={detailStyles.value}>
-                {pedidoEncontrado.hora_inicio} - {pedidoEncontrado.hora_fin}
+                {convertirHora12(pedidoEncontrado.hora_inicio)} - {convertirHora12(pedidoEncontrado.hora_fin)}
               </Text>
             </View>
 

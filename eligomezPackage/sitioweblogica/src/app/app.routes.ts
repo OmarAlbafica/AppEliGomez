@@ -13,6 +13,8 @@ import { PedidosListaComponent } from './modules/pedidos-lista/pedidos-lista.com
 import { TiendasComponent } from './modules/tiendas/tiendas.component';
 import { FavoritosPedidosComponent } from './modules/favoritos/favoritos-pedidos.component';
 import { SettingsComponent } from './modules/settings/settings.component';
+import { EnviosPorEncomendaComponent } from './modules/envios-por-encomienda/envios-por-encomienda.component';
+import { ReporteImagenesComponent } from './modules/reporte-imagenes/reporte-imagenes.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -32,6 +34,8 @@ export const routes: Routes = [
       { path: 'encomendistas', component: EncomendistasComponent },
       { path: 'pedidos', component: PedidosComponent },
       { path: 'pedidos-lista', component: PedidosListaComponent },
+      { path: 'envios-por-encomienda', component: EnviosPorEncomendaComponent },
+      { path: 'reporte-imagenes', component: ReporteImagenesComponent },
       { path: 'favoritos', component: FavoritosPedidosComponent },
       { path: 'settings', component: SettingsComponent }
     ]

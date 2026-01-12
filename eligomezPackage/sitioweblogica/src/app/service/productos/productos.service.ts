@@ -14,6 +14,7 @@ export interface Producto {
   tamaño_original: number;  // bytes
   tamaño_comprimido: number; // bytes
   fecha_carga: Date;
+  fecha_liberado?: Date;    // Fecha cuando el producto fue liberado (de Canvas)
   reservado?: boolean;      // true si está en algún pedido
   pedido_id?: string;       // ID del pedido que la reserva
 }
@@ -109,6 +110,11 @@ export class ProductosService {
             fecha_carga: typeof docData['fecha_carga'] === 'string' 
               ? new Date(docData['fecha_carga']) 
               : docData['fecha_carga'].toDate?.() || new Date(),
+            fecha_liberado: docData['fecha_liberado']
+              ? (typeof docData['fecha_liberado'] === 'string'
+                ? new Date(docData['fecha_liberado'])
+                : docData['fecha_liberado'].toDate?.() || undefined)
+              : undefined,
             reservado: docData['reservado'] === true,
             pedido_id: docData['pedido_id']
           };
@@ -430,6 +436,37 @@ export class ProductosService {
       console.log('✅ [MARCAR RESERVADOS] Completado exitosamente');
     } catch (error) {
       console.error('❌ [MARCAR RESERVADOS] Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Marca productos como liberados (cuando se marca un pedido como LIBERADO)
+   * Agrega la fecha_liberado al producto
+   */
+  async marcarComoLiberados(productosIds: string[]): Promise<void> {
+    try {
+      const ahora = new Date().toISOString();
+      const productosActuales = this.productos.value;
+      
+      for (const productoId of productosIds) {
+        const docRef = doc(db, 'productos', productoId);
+        await updateDoc(docRef, {
+          fecha_liberado: ahora
+        });
+        
+        // Actualizar en memoria
+        const indice = productosActuales.findIndex(p => p.id === productoId);
+        if (indice > -1) {
+          productosActuales[indice].fecha_liberado = new Date(ahora);
+        }
+      }
+      
+      // Emitir cambios sin recargar todo
+      this.productos.next([...productosActuales]);
+      console.log('✅ Productos marcados como liberados con fecha:', ahora);
+    } catch (error) {
+      console.error('❌ Error marcando productos como liberados:', error);
       throw error;
     }
   }

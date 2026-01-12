@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   FlatList,
@@ -15,6 +16,7 @@ import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosSer
 import { BackButton } from '../components/BackButton';
 import { useAppTheme, useTheme } from '../context/ThemeContext';
 import { formatDate12Hours, formatDateOnly } from '../utils/dateUtils';
+import { formatearFecha } from '../utils/pedidoUtils';
 
 interface PorRemunerarScreenProps {
   onNavigate?: (screen: string) => void;
@@ -26,7 +28,19 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
   const styles = createStyles(scale, theme);
   const detailStyles = createDetailStyles(scale, theme);
 
+  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
+  const convertirHora12 = (hora: string | undefined): string => {
+    if (!hora) return '';
+    const [h, m] = hora.split(':');
+    const hours = parseInt(h, 10);
+    const minutes = m || '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const horas12 = hours % 12 || 12;
+    return `${horas12}:${minutes} ${ampm}`;
+  };
+
   const [pedidos, setPedidos] = useState<PedidoCompleto[]>([]);
+  const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [modalDetalle, setModalDetalle] = useState(false);
@@ -36,6 +50,9 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
 
   // Agrupar por encomendista
   const [agrupadosPorEncomendista, setAgrupadosPorEncomendista] = useState<
+    { encomendista: string; pedidos: PedidoCompleto[] }[]
+  >([]);
+  const [agrupadosFiltrados, setAgrupadosFiltrados] = useState<
     { encomendista: string; pedidos: PedidoCompleto[] }[]
   >([]);
 
@@ -72,12 +89,37 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         .sort((a, b) => a.encomendista.localeCompare(b.encomendista));
 
       setAgrupadosPorEncomendista(resultado);
+      setAgrupadosFiltrados(resultado);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'No se pudieron cargar los pedidos');
     } finally {
       setLoading(false);
     }
+  };
+
+  const filtrarPedidos = (texto: string) => {
+    setBusqueda(texto);
+    if (!texto.trim()) {
+      setAgrupadosFiltrados(agrupadosPorEncomendista);
+      return;
+    }
+
+    const textoLower = texto.toLowerCase();
+    const filtrados = agrupadosPorEncomendista
+      .map((grupo) => ({
+        encomendista: grupo.encomendista,
+        pedidos: grupo.pedidos.filter(
+          (p) =>
+            p.codigo_pedido?.toLowerCase().includes(textoLower) ||
+            p.cliente_datos?.nombre?.toLowerCase().includes(textoLower) ||
+            p.encomendista_datos?.nombre?.toLowerCase().includes(textoLower) ||
+            p.destino_datos?.nombre?.toLowerCase().includes(textoLower)
+        ),
+      }))
+      .filter((grupo) => grupo.pedidos.length > 0);
+
+    setAgrupadosFiltrados(filtrados);
   };
 
   const handleMarcarRemunerado = async () => {
@@ -150,6 +192,25 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         <Text style={[styles.title, { color: theme.colors.text }]}>💰 Pedidos por Remunerar</Text>
       </View>
 
+      {/* Buscador */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            padding: 12,
+            fontSize: scale(14),
+            color: theme.colors.text,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}
+          placeholder="🔍 Buscar por código, cliente, encomendista o destino..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={busqueda}
+          onChangeText={filtrarPedidos}
+        />
+      </View>
+
       {/* Resumen */}
       <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }] }>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Resumen</Text>
@@ -161,13 +222,15 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         </Text>
       </View>
 
-      {agrupadosPorEncomendista.length === 0 ? (
+      {agrupadosFiltrados.length === 0 ? (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.title}>✅</Text>
-          <Text style={styles.emptyStateText}>¡Todos los pedidos han sido remunerados!</Text>
+          <Text style={styles.emptyStateText}>
+            {busqueda ? 'No se encontraron resultados' : '¡Todos los pedidos han sido remunerados!'}
+          </Text>
         </View>
       ) : (
-        agrupadosPorEncomendista.map((grupo) => (
+        agrupadosFiltrados.map((grupo) => (
           <View key={grupo.encomendista} style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }] }>
             <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>🚚 {grupo.encomendista}</Text>
             <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 12 }}>
@@ -182,8 +245,9 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
                 activeOpacity={0.7}
               >
                 <View style={{ marginBottom: 10 }}>
-                  <Text style={[styles.cardTitle, { color: theme.colors.text }]}>📦 {pedido.codigo_pedido}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>👤 {pedido.cliente_datos?.nombre || 'Cliente'}</Text>
+                  <Text style={[styles.cardTitle, { color: theme.colors.text }]}>📦 Pedido: {pedido.codigo_pedido}</Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>👤 Cliente: {pedido.cliente_datos?.nombre || 'Cliente'}</Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📅 Retirado: {formatearFecha(new Date(pedido.updated_at || pedido.fecha_creacion || new Date()))}</Text>
                 </View>
 
                 {/* Botón ver foto del paquete */}
@@ -241,14 +305,14 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
                       {getEstadoLabel(pedido.estado)}
                     </Text>
                   </View>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>🚚 {pedido.encomendista_datos?.nombre || 'Sin asignar'}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📍 {pedido.destino_id || pedido.nombre_tienda}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📅 {formatDate12Hours(pedido.fecha_creacion)}</Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>🚚 Encomendista: {pedido.encomendista_datos?.nombre || 'Sin asignar'}</Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📍 Destino: {pedido.destino_id || pedido.nombre_tienda}</Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📅 Creado: {formatDate12Hours(pedido.fecha_creacion)}</Text>
                 </View>
 
                 {pedido.total && (
                   <Text style={{ fontSize: scale(14), fontWeight: 'bold', color: theme.colors.success }}>
-                    💰 ${pedido.total.toLocaleString()}
+                    💰 Total: ${pedido.total.toLocaleString()}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -310,7 +374,7 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
                   <View style={detailStyles.row}>
                     <Text style={detailStyles.label}>Horario:</Text>
                     <Text style={detailStyles.value}>
-                      {pedidoSeleccionado.hora_inicio} - {pedidoSeleccionado.hora_fin}
+                      {convertirHora12(pedidoSeleccionado.hora_inicio)} - {convertirHora12(pedidoSeleccionado.hora_fin)}
                     </Text>
                   </View>
                   <View style={detailStyles.row}>
@@ -411,17 +475,43 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
       {/* Modal de imagen */}
       <Modal
         visible={modalImagen}
-        animationType="fade"
-        transparent={true}
+        animationType="slide"
+        transparent={false}
         onRequestClose={() => setModalImagen(false)}
       >
-        <View style={styles.imageModal}>
-          <TouchableOpacity onPress={() => setModalImagen(false)} style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+          {/* Encabezado */}
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            paddingTop: 16,
+            paddingHorizontal: 16,
+            paddingBottom: 8,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+          }}>
+            <Text style={{ color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }}>🖼️ Imagen</Text>
+            <TouchableOpacity
+              onPress={() => setModalImagen(false)}
+              style={{ padding: 8 }}
+            >
+              <Text style={{ color: theme.colors.text, fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Imagen fullscreen */}
+          {imagenSeleccionada ? (
             <Image
               source={{ uri: imagenSeleccionada }}
-              style={styles.fullImage}
+              style={{ flex: 1, resizeMode: 'contain', backgroundColor: theme.colors.background }}
             />
-          </TouchableOpacity>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: theme.colors.textSecondary }}>Sin imagen</Text>
+            </View>
+          )}
         </View>
       </Modal>
 

@@ -24,6 +24,8 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
   const styles = createStyles(scale, theme);
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
+  const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [modalNuevo, setModalNuevo] = useState(false);
@@ -40,11 +42,29 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
     cargarClientes();
   }, []);
 
+  const filtrarClientes = (texto: string) => {
+    setBusqueda(texto);
+    if (!texto.trim()) {
+      setClientesFiltrados(clientes);
+      return;
+    }
+    const textoLower = texto.toLowerCase();
+    const filtrados = clientes.filter(
+      (cliente) =>
+        cliente.nombre.toLowerCase().includes(textoLower) ||
+        cliente.telefono.includes(texto) ||
+        (cliente.correo && cliente.correo.toLowerCase().includes(textoLower)) ||
+        (cliente.direccion && cliente.direccion.toLowerCase().includes(textoLower))
+    );
+    setClientesFiltrados(filtrados);
+  };
+
   const cargarClientes = async () => {
     try {
       setLoading(true);
       const data = await clientesService.obtenerClientes();
       setClientes(data);
+      setClientesFiltrados(data);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'No se pudieron cargar los clientes');
@@ -156,15 +176,36 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
         </TouchableOpacity>
       </View>
 
-      {clientes.length === 0 ? (
+      {/* Buscador */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            padding: 12,
+            fontSize: 16,
+            color: theme.colors.text,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}
+          placeholder="🔍 Buscar por nombre, teléfono, correo o dirección..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={busqueda}
+          onChangeText={filtrarClientes}
+        />
+      </View>
+
+      {clientesFiltrados.length === 0 ? (
         <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No hay clientes creados</Text>
+          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+            {busqueda ? 'No se encontraron resultados' : 'No hay clientes creados'}
+          </Text>
         </View>
       ) : (
         <FlatList
           scrollEnabled={false}
-          data={clientes}
+          data={clientesFiltrados}
           keyExtractor={(item) => item.id!}
           renderItem={({ item }) => (
             <View style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]}>
