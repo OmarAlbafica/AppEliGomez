@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,15 @@ import {
   FlatList,
   Modal,
   ActivityIndicator,
-  Alert,
+  StyleSheet,
+  Animated,
 } from 'react-native';
 import { clientesService, Cliente } from '../services/clientesService';
 import { BackButton } from '../components/BackButton';
+import { ListItemCard } from '../components/ListItemCard';
+import { PhoneIcon, MailIcon, MapPinIcon, UsersIcon } from '../components/icons';
 import { useAppTheme } from '../context/ThemeContext';
+import { CustomAlert } from '../components/CustomAlert';
 
 interface ClientesScreenProps {
   onNavigate?: (screen: string) => void;
@@ -37,6 +41,45 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
   const [telefono, setTelefono] = useState('');
   const [correo, setCorreo] = useState('');
   const [direccion, setDireccion] = useState('');
+
+  // Estados para CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertButtons, setAlertButtons] = useState<any[]>([]);
+
+  // Animated header - efecto snap
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(200)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 60, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 200, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
+          ]).start();
+        }
+      },
+    }
+  );
+
+  const showAlert = (title: string, message: string, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertButtons(buttons || [{ text: 'OK', style: 'default' }]);
+    setAlertVisible(true);
+  };
 
   useEffect(() => {
     cargarClientes();
@@ -67,7 +110,7 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
       setClientesFiltrados(data);
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert('Error', 'No se pudieron cargar los clientes');
+      showAlert('Error', 'No se pudieron cargar los clientes');
     } finally {
       setLoading(false);
     }
@@ -83,7 +126,7 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
 
   const handleCrearCliente = async () => {
     if (!nombre.trim() || !telefono.trim()) {
-      Alert.alert('Error', 'Nombre y teléfono son obligatorios');
+      showAlert('Error', 'Nombre y teléfono son obligatorios');
       return;
     }
 
@@ -93,9 +136,9 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
       limpiarFormulario();
       setModalNuevo(false);
       await cargarClientes();
-      Alert.alert('Éxito', 'Cliente creado correctamente');
+      showAlert('Éxito', 'Cliente creado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el cliente');
+      showAlert('Error', 'No se pudo crear el cliente');
     } finally {
       setGuardando(false);
     }
@@ -112,7 +155,7 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
 
   const handleGuardarEdicion = async () => {
     if (!nombre.trim() || !telefono.trim()) {
-      Alert.alert('Error', 'Nombre y teléfono son obligatorios');
+      showAlert('Error', 'Nombre y teléfono son obligatorios');
       return;
     }
 
@@ -131,26 +174,27 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
       limpiarFormulario();
       setModalEditar(false);
       await cargarClientes();
-      Alert.alert('Éxito', 'Cliente actualizado correctamente');
+      showAlert('Éxito', 'Cliente actualizado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el cliente');
+      showAlert('Error', 'No se pudo actualizar el cliente');
     } finally {
       setGuardando(false);
     }
   };
 
   const handleEliminarCliente = (id: string) => {
-    Alert.alert('Confirmar', '¿Estás seguro de que deseas eliminar este cliente?', [
-      { text: 'Cancelar', onPress: () => {} },
+    showAlert('Confirmar', '¿Estás seguro de que deseas eliminar este cliente?', [
+      { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
+        style: 'destructive',
         onPress: async () => {
           try {
             await clientesService.eliminarCliente(id);
             await cargarClientes();
-            Alert.alert('Éxito', 'Cliente eliminado');
+            showAlert('Éxito', 'Cliente eliminado');
           } catch (error) {
-            Alert.alert('Error', 'No se pudo eliminar el cliente');
+            showAlert('Error', 'No se pudo eliminar el cliente');
           }
         },
       },
@@ -166,72 +210,112 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header con botón < */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingTop: 8, backgroundColor: theme.colors.background }}>
-        <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={[styles.title, { color: theme.colors.text }]}>👥 Clientes</Text>
-        <TouchableOpacity style={[styles.selectButton, { marginLeft: 'auto' }]} onPress={() => setModalNuevo(true)}>
-          <Text style={styles.selectButtonText}>+ Nuevo</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Buscador */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-        <TextInput
-          style={{
-            backgroundColor: theme.colors.surface,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: 16,
-            color: theme.colors.text,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-          }}
-          placeholder="🔍 Buscar por nombre, teléfono, correo o dirección..."
-          placeholderTextColor={theme.colors.textSecondary}
-          value={busqueda}
-          onChangeText={filtrarClientes}
-        />
-      </View>
-
-      {clientesFiltrados.length === 0 ? (
-        <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-            {busqueda ? 'No se encontraron resultados' : 'No hay clientes creados'}
-          </Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header Animado */}
+      <Animated.View 
+        style={[
+          styles.header, 
+          { 
+            backgroundColor: theme.colors.primary,
+            height: headerHeight,
+            overflow: 'hidden'
+          }
+        ]}
+      >
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
+            onPress={() => setModalNuevo(true)}
+          >
+            <Text style={styles.addButtonText}>+ Nuevo</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <FlatList
-          scrollEnabled={false}
-          data={clientesFiltrados}
-          keyExtractor={(item) => item.id!}
-          renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: theme.colors.surface, borderLeftColor: theme.colors.primary }]}>
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{item.nombre}</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📞 {item.telefono}</Text>
-              {item.correo && <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📧 {item.correo}</Text>}
-              {item.direccion && <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📍 {item.direccion}</Text>}
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <UsersIcon size={scale(48)} color="#fff" />
+          </View>
+          <Text style={[styles.headerTitle, { fontSize: scale(28) }]}>Clientes</Text>
+          <Text style={[styles.headerSubtitle, { fontSize: scale(14) }]}>
+            {clientesFiltrados.length} {clientesFiltrados.length === 1 ? 'cliente' : 'clientes'}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                <TouchableOpacity
-                  style={[styles.selectButton, { flex: 1 }]}
-                  onPress={() => handleEditarCliente(item)}
-                >
-                  <Text style={styles.selectButtonText}>✏️ Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.selectButton, { flex: 1, backgroundColor: theme.colors.error }]}
-                  onPress={() => handleEliminarCliente(item.id!)}
-                >
-                  <Text style={[styles.selectButtonText, { color: '#fff' }]}>🗑️ Eliminar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        />
-      )}
+      <Animated.ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {/* Buscador */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={[styles.searchInput, { 
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+              fontSize: scale(15)
+            }]}
+            placeholder="🔍 Buscar cliente..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={busqueda}
+            onChangeText={filtrarClientes}
+          />
+        </View>
+
+        {clientesFiltrados.length === 0 ? (
+          <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
+            <UsersIcon size={scale(64)} color={theme.colors.textSecondary} />
+            <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary, fontSize: scale(16) }]}>
+              {busqueda ? 'No se encontraron resultados' : 'No hay clientes creados'}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16 }}>
+            <FlatList
+              scrollEnabled={false}
+              data={clientesFiltrados}
+              keyExtractor={(item) => item.id!}
+              renderItem={({ item }) => {
+                const details = [
+                  { icon: <PhoneIcon size={16} color={theme.colors.textSecondary} />, text: item.telefono },
+                ];
+                if (item.correo) {
+                  details.push({ icon: <MailIcon size={16} color={theme.colors.textSecondary} />, text: item.correo });
+                }
+                if (item.direccion) {
+                  details.push({ icon: <MapPinIcon size={16} color={theme.colors.textSecondary} />, text: item.direccion });
+                }
+
+                return (
+                  <ListItemCard
+                    title={item.nombre}
+                    details={details}
+                    leftColor={theme.colors.primary}
+                    actions={
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={[styles.selectButton, { flex: 1 }]}
+                          onPress={() => handleEditarCliente(item)}
+                        >
+                          <Text style={styles.selectButtonText}>Editar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.selectButton, { flex: 1, backgroundColor: theme.colors.error }]}
+                          onPress={() => handleEliminarCliente(item.id!)}
+                        >
+                          <Text style={[styles.selectButtonText, { color: '#fff' }]}>Eliminar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    }
+                  />
+                );
+              }}
+            />
+          </View>
+        )}
+      </Animated.ScrollView>
 
       {/* Modal Nuevo Cliente */}
       <Modal visible={modalNuevo} animationType="slide" onRequestClose={() => { setModalNuevo(false); limpiarFormulario(); }}>
@@ -366,16 +450,93 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({ onNavigate }) =>
           <Text style={[styles.primaryButtonText, { color: '#fff' }]}>REGRESAR</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        buttons={alertButtons}
+        onDismiss={() => setAlertVisible(false)}
+      />
+    </View>
   );
 };
 
 const createStyles = (scale: (size: number) => number, theme: any) => {
-  const { StyleSheet } = require('react-native');
   return StyleSheet.create({
     container: {
       flex: 1,
-      padding: 16,
+    },
+    header: {
+      backgroundColor: theme.colors.primary,
+      paddingBottom: 24,
+      borderBottomLeftRadius: 30,
+      borderBottomRightRadius: 30,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 48,
+      marginBottom: 16,
+    },
+    addButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    addButtonText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 14,
+    },
+    headerContent: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    iconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    headerTitle: {
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      marginBottom: 4,
+    },
+    headerSubtitle: {
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: -0.3,
+    },
+    searchContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 20,
+    },
+    searchInput: {
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      backgroundColor: theme.colors.surface,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     title: {
       fontSize: scale(24),
@@ -411,47 +572,65 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
       color: theme.colors.text,
     },
     input: {
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: scale(14),
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: scale(15),
       backgroundColor: theme.colors.surface,
       color: theme.colors.text,
       borderColor: theme.colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     textArea: {
       paddingVertical: 12,
+      minHeight: 80,
+      textAlignVertical: 'top',
     },
     selectButton: {
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 6,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
       alignItems: 'center',
       backgroundColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
     },
     selectButtonText: {
-      fontWeight: '600',
-      fontSize: scale(13),
+      fontWeight: '700',
+      fontSize: scale(14),
       color: '#fff',
       textAlign: 'center',
     },
     primaryButton: {
-      paddingVertical: 12,
-      borderRadius: 8,
+      paddingVertical: 14,
+      borderRadius: 12,
       alignItems: 'center',
-      marginTop: 12,
+      marginTop: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
     },
     primaryButtonText: {
-      fontWeight: 'bold',
-      fontSize: scale(14),
+      fontWeight: '800',
+      fontSize: scale(16),
       textAlign: 'center',
       color: '#fff',
+      letterSpacing: 0.5,
     },
     emptyStateContainer: {
       justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: 60,
+      paddingVertical: 80,
       backgroundColor: theme.colors.background,
     },
     emptyStateText: {
@@ -467,24 +646,29 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       backgroundColor: theme.colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     closeButton: {
       fontSize: scale(16),
       color: theme.colors.primary,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     modalTitle: {
-      fontSize: scale(16),
-      fontWeight: 'bold',
+      fontSize: scale(18),
+      fontWeight: '800',
       color: theme.colors.text,
     },
     modalContent: {
-      padding: 16,
+      padding: 20,
       backgroundColor: theme.colors.background,
     },
     disabledButton: {

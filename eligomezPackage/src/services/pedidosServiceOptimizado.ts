@@ -15,6 +15,7 @@
  */
 
 import { auth } from './firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';  // 🔴 Para fallback de usuario
 
 const API_BASE_URL = 'https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2';
 
@@ -322,6 +323,56 @@ class PedidosServiceOptimizado {
   }
 
   /**
+   * Obtiene pedidos por MÚLTIPLES ESTADOS en UNA SOLA petición 🔥
+   * Mucho más eficiente que hacer 3 llamadas separadas
+   * 
+   * @param estados - Array de estados (ej: ['enviado', 'retirado', 'no-retirado'])
+   * @param limite - Máximo de pedidos a obtener (default: 200)
+   * @returns Array de PedidosCompletos
+   * 
+   * @example
+   * const pedidos = await obtenerPedidosPorEstados(['enviado', 'retirado', 'no-retirado'], 300);
+   */
+  async obtenerPedidosPorEstados(
+    estados: string[],
+    limite: number = 200
+  ): Promise<PedidoCompleto[]> {
+    try {
+      const estadosStr = estados.join(',');
+      console.log(`[📦 PedidosServiceOptimizado] Obteniendo ${limite} pedidos con estados: ${estadosStr}`);
+
+      const url = new URL(`${API_BASE_URL}/pedidos`);
+      url.searchParams.append('estado', estadosStr); // 🔥 Estados separados por comas
+      url.searchParams.append('limite', limite.toString());
+
+      const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        console.error(`⚠️ Error ${response.status}:`, await response.text());
+        return [];
+      }
+
+      const data = await response.json() as any;
+
+      if (!data.success) {
+        console.error(`❌ Error en respuesta:`, data.error);
+        return [];
+      }
+
+      console.log(`✅ ${data.pedidos.length} pedidos obtenidos (estados: ${estadosStr})`);
+      
+      // 🔧 Corregir URLs en todos los pedidos
+      const pedidosCorrecto = (data.pedidos as PedidoCompleto[]).map(p => this.corregirURLs(p));
+      
+      return pedidosCorrecto;
+
+    } catch (error) {
+      console.error(`❌ Error en obtenerPedidosPorEstados:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Obtiene todos los pedidos sin filtrar por estado
    * 
    * @param limite - Máximo de pedidos a obtener (default: 100)
@@ -397,40 +448,98 @@ class PedidosServiceOptimizado {
     notas?: string
   ): Promise<boolean> {
     try {
-      const usuarioId = auth.currentUser?.uid || 'unknown';
+      // 🔴 VALIDACIÓN: Obtener usuario logueado
+      let usuarioId = 'unknown';
+      let usuarioEmail = 'unknown@app.com';
 
-      console.log(`[🔄 PedidosServiceOptimizado] Cambiando estado de ${pedidoId} a ${nuevoEstado}`);
+      console.log(`\n🔴🔴🔴 INICIANDO CAMBIAR ESTADO 🔴🔴🔴`);
+      console.log(`[PASO 1] Verificando auth.currentUser...`);
+      const currentUser = auth.currentUser;
+      console.log(`[PASO 1] currentUser: ${currentUser ? '✅ EXISTE' : '❌ NULL'}`);
+      
+      if (currentUser) {
+        usuarioId = currentUser.uid;
+        usuarioEmail = currentUser.email || 'unknown@app.com';
+        console.log(`[PASO 2] ✅ Usuario de Firebase encontrado`);
+        console.log(`[PASO 2] - UID: ${usuarioId}`);
+        console.log(`[PASO 2] - EMAIL: ${usuarioEmail}`);
+      } else {
+        console.log(`[PASO 2] ❌ Firebase currentUser es NULL`);
+        console.log(`[PASO 3] Intentando obtener de AsyncStorage...`);
+        const storedEmail = await AsyncStorage.getItem('@eli_gomez_current_user');
+        console.log(`[PASO 3] AsyncStorage '@eli_gomez_current_user': ${storedEmail ? '✅ ENCONTRADO' : '❌ NO ENCONTRADO'}`);
+        if (storedEmail) {
+          usuarioEmail = storedEmail;
+          console.log(`[PASO 3] Email recuperado: ${usuarioEmail}`);
+        } else {
+          console.error(`[PASO 3] ❌ NO HAY EMAIL EN ASYNCSTORAGE`);
+        }
+      }
 
-      const response = await fetch(`${API_BASE_URL}/pedido/${pedidoId}/cambiar-estado`, {
+      console.log(`\n[📋 RESUMEN USUARIO]`);
+      console.log(`  Usuario ID: ${usuarioId}`);
+      console.log(`  Usuario Email: ${usuarioEmail}`);
+      
+      console.log(`\n[🔄 CAMBIO DE ESTADO]`);
+      console.log(`[📦 Pedido ID] ${pedidoId}`);
+      console.log(`[🔄 Nuevo Estado] ${nuevoEstado}`);
+      console.log(`[📸 Foto incluida] ${fotoBase64 ? '✅ SÍ' : '❌ NO'}`);
+      if (fotoBase64) {
+        console.log(`[📸 Tamaño foto] ${(fotoBase64.length / 1024).toFixed(2)} KB`);
+      }
+
+      const bodyEnvio = {
+        nuevoEstado,
+        foto_base64: fotoBase64 || null,
+        notas: notas || '',
+        usuario_id: usuarioId,
+        usuario_email: usuarioEmail,
+        pedidoId: pedidoId  // 🔴 IMPORTANTE: Agregamos ID al body como respaldo
+      };
+
+      const urlEndpoint = `${API_BASE_URL}/pedido/${pedidoId}/cambiar-estado`;
+      console.log(`\n[📤 ENVIANDO REQUEST]`);
+      console.log(`[URL] ${urlEndpoint}`);
+      console.log(`[BODY] ${JSON.stringify({
+        nuevoEstado,
+        foto_base64: fotoBase64 ? `[BASE64-${fotoBase64.length} chars]` : null,
+        notas,
+        usuario_email: usuarioEmail,
+        usuario_id: usuarioId,
+        pedidoId
+      }, null, 2)}`);
+
+      console.log(`\n[⏳ Ejecutando fetch...]`);
+      const response = await fetch(urlEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          nuevoEstado,
-          foto_base64: fotoBase64 || null,
-          notas: notas || '',
-          usuario_id: usuarioId
-        })
+        body: JSON.stringify(bodyEnvio)
       });
 
+      console.log(`[✅ Response Status] ${response.status}`);
+      
       if (!response.ok) {
-        console.error(`⚠️ Error ${response.status}:`, await response.text());
+        const errorText = await response.text();
+        console.error(`[❌ Error ${response.status}]`, errorText);
         return false;
       }
 
       const data = await response.json() as any;
 
       if (!data.success) {
-        console.error(`❌ Error en respuesta:`, data.error);
+        console.error(`[❌ Error en respuesta API]`, data.error);
         return false;
       }
 
-      console.log(`✅ Estado actualizado a ${nuevoEstado}`, data);
+      console.log(`[✅✅✅ ÉXITO! Estado actualizado a ${nuevoEstado}`);
+      console.log(data);
       return true;
 
     } catch (error) {
-      console.error(`❌ Error en cambiarEstadoPedido:`, error);
+      console.error(`\n[❌❌❌ ERROR CRÍTICO EN CAMBIAR ESTADO]`);
+      console.error(error);
       return false;
     }
   }

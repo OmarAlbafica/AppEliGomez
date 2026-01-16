@@ -11,7 +11,7 @@
  * - Tiempo de carga: 60-120s → 8-12s (85% más rápido) ⚡
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,8 @@ import {
   Alert,
   Modal,
   ScrollView,
-  Image
+  Image,
+  Animated,
 } from 'react-native';
 import { Picker as RNPicker } from '@react-native-picker/picker';
 
@@ -30,6 +31,8 @@ import { Picker as RNPicker } from '@react-native-picker/picker';
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
 import { BackButton } from '../components/BackButton';
 import { useAppTheme, useTheme } from '../context/ThemeContext';
+import { HistoryIcon, PackageIcon } from '../components/icons';
+import { ImageViewer } from '../components/ImageViewer';
 // import { productosService } from '../services/productosService'; // YA NO NECESARIO
 
 interface HistorialScreenOptimizadoProps {
@@ -102,16 +105,37 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // Modal
   const [modalDetalle, setModalDetalle] = useState(false);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoCompleto | null>(null);
-  const [modalImagen, setModalImagen] = useState(false);
-  const [imagenSeleccionada, setImagenSeleccionada] = useState<string>('');
   
-  // Modal Galería de Productos
-  const [modalGaleria, setModalGaleria] = useState(false);
-  const [productoSeleccionado, setProductoSeleccionado] = useState(0);
+  // Visor de imágenes con zoom
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [imageTitle, setImageTitle] = useState('');
+
+  // Animated header - efecto snap
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(280)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
   
-  // Modal Zoom de Producto
-  const [modalZoom, setModalZoom] = useState(false);
-  const [imagenZoom, setImagenZoom] = useState<string>('');
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 100, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 280, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
+          ]).start();
+        }
+      },
+    }
+  );
 
   // ============================================================
   // 🚀 CARGAR HISTORIAL - VERSIÓN OPTIMIZADA
@@ -167,14 +191,39 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   };
 
   // ============================================================
-  // 🖼️ VER FOTO DE PAQUETE
+  // 🖼️ VER FOTO DE PAQUETE CON ZOOM
   // ============================================================
   const handleVerFoto = (pedido: PedidoCompleto) => {
     if (pedido.foto_paquete) {
-      setImagenSeleccionada(pedido.foto_paquete);
-      setModalImagen(true);
+      setCurrentImages([pedido.foto_paquete]);
+      setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
+      setImageViewerVisible(true);
     } else {
       Alert.alert('Info', 'Este pedido no tiene foto de paquete');
+    }
+  };
+
+  // Ver fotos de productos
+  const verFotosProductos = (pedido: PedidoCompleto) => {
+    const fotos: string[] = [];
+    pedido.productos_datos?.forEach((producto: any) => {
+      // Preferir url_imagen primero, si no existe usar imagen_url
+      const foto = producto.url_imagen || producto.imagen_url;
+      if (foto) {
+        // Si es una URL relativa, convertir a absoluta
+        const fotoUrl = foto.startsWith('http') ? foto : `https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2/api/obtenerProducto${foto}`;
+        if (!fotos.includes(fotoUrl)) {
+          fotos.push(fotoUrl);
+        }
+      }
+    });
+    
+    if (fotos.length > 0) {
+      setCurrentImages(fotos);
+      setImageTitle(`Productos - ${pedido.codigo_pedido}`);
+      setImageViewerVisible(true);
+    } else {
+      Alert.alert('Sin fotos', 'Este pedido no tiene fotos de productos');
     }
   };
 
@@ -278,8 +327,7 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
               onPress={() => {
                 console.log('🖼️ Abriendo galería de productos:', item.productos_datos?.length);
                 setPedidoSeleccionado(item);
-                setProductoSeleccionado(0);
-                setModalGaleria(true);
+                verFotosProductos(item);
               }}
             >
               <Text style={styles.verProductosButtonText}>
@@ -322,15 +370,25 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // ============================================================
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Encabezado */}
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <BackButton onPress={() => onNavigate?.('home')} color="#fff" />
-        <Text style={[styles.headerTitle, { color: '#fff', fontSize: scale(18) }]}>📋 Historial</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      {/* Header moderno con gradiente */}
+      <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+        </View>
+        
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <HistoryIcon size={scale(48)} color="#fff" />
+          </View>
+          <Text style={styles.modernHeaderTitle}>Historial</Text>
+          <Text style={styles.headerSubtitle}>
+            {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
       {/* Filtro de estado */}
-      <View style={[styles.filterContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.colors.background }]}>
         <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(14) }]}>Filtrar por estado:</Text>
         <Picker
           selectedValue={filtroEstado}
@@ -352,8 +410,9 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
       {/* Lista de pedidos */}
       {pedidos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay pedidos</Text>
-          <Text style={styles.emptySubtext}>
+          <HistoryIcon size={64} color={theme.colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>No hay pedidos</Text>
+          <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary }]}>
             {filtroEstado 
               ? `No hay pedidos con estado "${filtroEstado}"` 
               : 'Crea tu primer pedido'}
@@ -367,6 +426,8 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
           contentContainerStyle={styles.listContent}
           refreshing={loading}
           onRefresh={() => loadHistorial(filtroEstado)}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
       )}
 
@@ -443,17 +504,32 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
                   {pedidoSeleccionado.productos_datos && pedidoSeleccionado.productos_datos.length > 0 && (
                     <View style={styles.detailSection}>
                       <Text style={styles.sectionTitle}>📦 Productos ({pedidoSeleccionado.cantidad_prendas})</Text>
+                      
+                      {/* Botón para ver todas las fotos */}
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#3B82F6',
+                          padding: 12,
+                          borderRadius: 8,
+                          marginBottom: 12,
+                          alignItems: 'center',
+                        }}
+                        onPress={() => verFotosProductos(pedidoSeleccionado)}
+                      >
+                        <Text style={{ color: '#fff', fontSize: scale(14), fontWeight: '700' }}>
+                          📸 Ver Fotos de Productos
+                        </Text>
+                      </TouchableOpacity>
+
                       {pedidoSeleccionado.productos_datos.map((producto, idx) => (
                         <View key={idx} style={styles.productoDetailCard}>
                           {producto.url_imagen && (
                             <TouchableOpacity
                               onPress={() => {
-                                console.log('🖼️ Abriendo modal de producto:', {
-                                  codigo: producto.codigo,
-                                  url_imagen: producto.url_imagen,
-                                });
-                                setImagenSeleccionada(producto.url_imagen);
-                                setModalImagen(true);
+                                const fotos = [producto.url_imagen!];
+                                setCurrentImages(fotos);
+                                setImageTitle(`${producto.codigo} - ${producto.album}`);
+                                setImageViewerVisible(true);
                               }}
                             >
                               <Image
@@ -493,268 +569,13 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
         </View>
       </Modal>
 
-      {/* Modal de imagen - FULLSCREEN */}
-      <Modal
-        visible={modalImagen}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => {
-          console.log('🔙 Cerrando modal imagen');
-          setModalImagen(false);
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
-          {/* Encabezado con botón cerrar */}
-          <View style={{ 
-            backgroundColor: '#000', 
-            paddingTop: 16, 
-            paddingHorizontal: 16,
-            paddingBottom: 8,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Text style={{ color: '#fff', fontSize: scale(16), fontWeight: 'bold' }}>📸 Imagen</Text>
-            <TouchableOpacity
-              onPress={() => {
-                console.log('❌ Cerrando modal por botón');
-                setModalImagen(false);
-              }}
-              style={{ padding: 8 }}
-            >
-              <Text style={{ color: '#fff', fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Imagen fullscreen */}
-          {imagenSeleccionada ? (
-            <Image
-              source={{ uri: imagenSeleccionada }}
-              style={{ flex: 1, resizeMode: 'contain', backgroundColor: '#000' }}
-              onLoad={() => console.log('✅ Imagen cargada en fullImage:', imagenSeleccionada)}
-              onError={(error) => console.error('❌ Error cargando imagen:', error)}
-            />
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: scale(16) }}>Sin imagen disponible</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
-
-      {/* Modal Galería de Productos */}
-      <Modal
-        visible={modalGaleria}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => {
-          console.log('🔙 Cerrando modal galería productos');
-          setModalGaleria(false);
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-          {/* Encabezado */}
-          <View style={{
-            backgroundColor: theme.colors.surface,
-            paddingTop: 16,
-            paddingHorizontal: 16,
-            paddingBottom: 12,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}>
-            <Text style={{ color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }}>📸 Productos</Text>
-            <TouchableOpacity
-              onPress={() => {
-                console.log('❌ Cerrando galería');
-                setModalGaleria(false);
-              }}
-              style={{ padding: 8 }}
-            >
-              <Text style={{ color: theme.colors.text, fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Contenido */}
-          {pedidoSeleccionado?.productos_datos && pedidoSeleccionado.productos_datos.length > 0 ? (
-            <ScrollView style={{ flex: 1, padding: 16 }} showsVerticalScrollIndicator={false}>
-              {/* Imagen grande del producto seleccionado */}
-              <View style={{
-                backgroundColor: theme.colors.surface,
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 8,
-                height: 300,
-                justifyContent: 'center',
-                alignItems: 'center',
-                elevation: 2,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}>
-                {pedidoSeleccionado.productos_datos[productoSeleccionado]?.url_imagen ? (
-                  <Image
-                    source={{ uri: pedidoSeleccionado.productos_datos[productoSeleccionado].url_imagen }}
-                    style={{ width: '100%', height: '100%', resizeMode: 'contain', borderRadius: 8 }}
-                    onLoad={() => console.log('✅ Imagen galería cargada')}
-                    onError={(error) => console.error('❌ Error imagen galería:', error)}
-                  />
-                ) : (
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: scale(14) }}>Sin imagen</Text>
-                )}
-              </View>
-
-              {/* Botón Ampliar */}
-              {pedidoSeleccionado?.productos_datos?.[productoSeleccionado]?.url_imagen && (
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    marginBottom: 16,
-                    elevation: 2
-                  }}
-                  onPress={() => {
-                    console.log('👁️ Ampliando imagen del producto');
-                    const urlImagen = pedidoSeleccionado?.productos_datos?.[productoSeleccionado]?.url_imagen;
-                    if (urlImagen) {
-                      setImagenZoom(urlImagen);
-                      setModalZoom(true);
-                    }
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontSize: scale(14), fontWeight: 'bold' }}>👁️ Ampliar</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Info del producto */}
-              <View style={{
-                backgroundColor: theme.colors.surface,
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 16,
-                elevation: 1,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}>
-                <Text style={{ fontSize: scale(14), fontWeight: 'bold', color: theme.colors.text, marginBottom: 4 }}>
-                  {pedidoSeleccionado.productos_datos[productoSeleccionado]?.nombre || 'Producto'}
-                </Text>
-                <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 2 }}>
-                  Código: {pedidoSeleccionado.productos_datos[productoSeleccionado]?.codigo}
-                </Text>
-                {pedidoSeleccionado.productos_datos[productoSeleccionado]?.album && (
-                  <Text style={{ fontSize: scale(12), color: theme.colors.primary, fontWeight: '500' }}>
-                    Álbum: {pedidoSeleccionado.productos_datos[productoSeleccionado].album}
-                  </Text>
-                )}
-              </View>
-
-              {/* Selector de productos - Miniaturas */}
-              {pedidoSeleccionado.productos_datos.length > 1 && (
-                <View>
-                  <Text style={{ fontSize: scale(12), fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 8 }}>
-                    Selecciona un producto:
-                  </Text>
-                  <View style={{
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                  }}>
-                    {pedidoSeleccionado.productos_datos.map((producto, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        onPress={() => {
-                          console.log(`📌 Seleccionado producto ${idx + 1}`);
-                          setProductoSeleccionado(idx);
-                        }}
-                        style={{
-                          width: '48%',
-                          aspectRatio: 1,
-                          borderRadius: 8,
-                          overflow: 'hidden',
-                          borderWidth: 3,
-                          borderColor: productoSeleccionado === idx ? theme.colors.primary : theme.colors.border,
-                          backgroundColor: theme.colors.surface,
-                          elevation: productoSeleccionado === idx ? 4 : 1,
-                        }}
-                      >
-                        {producto.url_imagen ? (
-                          <Image
-                            source={{ uri: producto.url_imagen }}
-                            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-                          />
-                        ) : (
-                          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-                            <Text style={{ color: theme.colors.textSecondary, fontSize: scale(12) }}>No imagen</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: scale(16) }}>Sin productos</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
-
-      {/* Modal Zoom de Producto */}
-      <Modal
-        visible={modalZoom}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => {
-          console.log('🔙 Cerrando modal zoom');
-          setModalZoom(false);
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-          {/* Encabezado */}
-          <View style={{
-            backgroundColor: theme.colors.surface,
-            paddingTop: 16,
-            paddingHorizontal: 16,
-            paddingBottom: 8,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}>
-            <Text style={{ color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }}>🔍 Zoom Producto</Text>
-            <TouchableOpacity
-              onPress={() => {
-                console.log('❌ Cerrando zoom');
-                setModalZoom(false);
-              }}
-              style={{ padding: 8 }}
-            >
-              <Text style={{ color: theme.colors.text, fontSize: scale(28), fontWeight: 'bold' }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Imagen fullscreen con zoom */}
-          {imagenZoom ? (
-            <Image
-              source={{ uri: imagenZoom }}
-              style={{ flex: 1, resizeMode: 'contain', backgroundColor: theme.colors.background }}
-              onLoad={() => console.log('✅ Imagen zoom cargada')}
-              onError={(error) => console.error('❌ Error imagen zoom:', error)}
-            />
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ color: theme.colors.text, fontSize: scale(16) }}>Sin imagen disponible</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
+      {/* Visor de Imágenes con Zoom */}
+      <ImageViewer
+        visible={imageViewerVisible}
+        images={currentImages}
+        title={imageTitle}
+        onClose={() => setImageViewerVisible(false)}
+      />
     </View>
   );
 };
@@ -765,7 +586,51 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
 const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+  },
+  modernHeader: {
+    backgroundColor: theme.colors.primary,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    marginBottom: 16,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modernHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: -0.3,
   },
   centerContainer: {
     flex: 1,
@@ -795,11 +660,8 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     textAlign: 'center',
   },
   filterContainer: {
-    backgroundColor: theme.colors.surface,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    paddingVertical: 16,
   },
   filterLabel: {
     fontSize: scale(12),
@@ -809,26 +671,35 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   },
   picker: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 6,
+    borderRadius: 12,
     borderColor: theme.colors.border,
-    borderWidth: 1,
+    borderWidth: 2,
+    paddingHorizontal: 12,
   },
   listContent: {
-    padding: 12,
+    padding: 16,
+    paddingTop: 8,
+    paddingBottom: 40,
   },
   pedidoCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    marginBottom: 12,
-    elevation: 2,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border + '40',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: theme.colors.background,
   },
   cardTitle: {
@@ -837,79 +708,102 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     gap: 8,
   },
   codigoPedido: {
-    fontSize: scale(14),
-    fontWeight: 'bold',
+    fontSize: scale(15),
+    fontWeight: '800',
     color: theme.colors.text,
+    letterSpacing: -0.3,
   },
   estadoTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   estadoTagText: {
-    fontSize: scale(11),
-    fontWeight: '600',
+    fontSize: scale(10),
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.3,
   },
   monto: {
-    fontSize: scale(16),
-    fontWeight: 'bold',
+    fontSize: scale(18),
+    fontWeight: '800',
     color: theme.colors.success,
+    letterSpacing: -0.5,
   },
   divider: {
     height: 1,
     backgroundColor: theme.colors.border,
   },
   cardContent: {
-    padding: 12,
+    padding: 16,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.border + '60',
+    marginBottom: 2,
   },
   label: {
     fontSize: scale(12),
     color: theme.colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   value: {
     fontSize: scale(12),
     color: theme.colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8,
   },
   fotoButton: {
     marginTop: 8,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: theme.colors.surface,
-    borderRadius: 4,
+    borderRadius: 8,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.border,
   },
   fotoButtonActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   fotoButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: scale(12),
+    letterSpacing: 0.2,
   },
   verProductosButton: {
     marginTop: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     backgroundColor: theme.colors.primary,
-    borderRadius: 6,
+    borderRadius: 10,
     alignItems: 'center',
-    elevation: 2,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   verProductosButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: scale(13),
+    letterSpacing: 0.3,
   },
   productosGallery: {
     marginTop: 12,
@@ -953,11 +847,13 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 60,
   },
   emptyText: {
     fontSize: scale(18),
     fontWeight: 'bold',
     color: theme.colors.text,
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
@@ -972,9 +868,14 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   },
   modalContent: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
   },
   modalScroll: {
     padding: 16,
@@ -998,13 +899,17 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     color: theme.colors.text,
   },
   detailSection: {
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border + '40',
   },
   sectionTitle: {
-    fontSize: scale(14),
-    fontWeight: 'bold',
+    fontSize: scale(15),
+    fontWeight: '800',
     color: theme.colors.primary,
-    marginBottom: 10,
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
   productoItem: {
     backgroundColor: theme.colors.background,
@@ -1044,11 +949,16 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   },
   productoDetailCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   productoDetailImage: {
     width: '100%',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   Image,
   Modal,
   Clipboard,
+  Animated,
 } from 'react-native';
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
 import { BackButton } from '../components/BackButton';
 import { useTheme } from '../context/ThemeContext';
+import { PackageIcon, TruckIcon, HistoryIcon } from '../components/icons';
 
 interface Props {
   onNavigate?: (screen: string) => void;
@@ -41,6 +43,49 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
   const [modalMensaje, setModalMensaje] = useState(false);
   const [mensajeCopiar, setMensajeCopiar] = useState('');
 
+  // Animated header - efecto snap sin interpolación gradual
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(280)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, {
+              toValue: 100,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+            Animated.timing(headerOpacity, {
+              toValue: 0,
+              duration: 150,
+              useNativeDriver: false,
+            }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, {
+              toValue: 280,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+            Animated.timing(headerOpacity, {
+              toValue: 1,
+              duration: 150,
+              useNativeDriver: false,
+            }),
+          ]).start();
+        }
+      },
+    }
+  );
+
   // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
   const convertirHora12 = (hora24: string): string => {
     const [horas, minutos] = hora24.split(':').map(Number);
@@ -48,6 +93,21 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
     let horas12 = horas % 12;
     horas12 = horas12 ? horas12 : 12;
     return `${String(horas12).padStart(2, '0')}:${String(minutos).padStart(2, '0')} ${ampm}`;
+  };
+
+  // Formatear fecha completa en español (ej: Jueves 20 de enero 2026)
+  const formatearFechaCompleta = (fecha: string | Date | undefined): string => {
+    if (!fecha) return 'No programada';
+    const date = new Date(fecha);
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    const diaSemana = diasSemana[date.getDay()];
+    const dia = date.getDate();
+    const mes = meses[date.getMonth()];
+    const año = date.getFullYear();
+    
+    return `${diaSemana} ${dia} de ${mes} ${año}`;
   };
 
   // Obtener hora actual en formato HH:MM (formato 24h para comparaciones internas)
@@ -179,20 +239,20 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
     if (grupo.isCurrentTime) {
       return (
         <View style={[styles.indicador, styles.indicadorActivo]}>
-          <Text style={styles.indicadorTexto}>🟢 AHORA</Text>
+          <Text style={[styles.indicadorTexto, { color: theme.colors.success }]}>🟢 AHORA</Text>
         </View>
       );
     }
     if (grupo.isPastTime) {
       return (
         <View style={[styles.indicador, styles.indicadorPasado]}>
-          <Text style={styles.indicadorTexto}>⏰ PASÓ</Text>
+          <Text style={[styles.indicadorTexto, { color: theme.colors.error }]}>⏰ PASÓ</Text>
         </View>
       );
     }
     return (
       <View style={[styles.indicador, styles.indicadorProximo]}>
-        <Text style={styles.indicadorTexto}>⏳ PRÓXIMO</Text>
+        <Text style={[styles.indicadorTexto, { color: theme.colors.warning || '#F59E0B' }]}>⏳ PRÓXIMO</Text>
       </View>
     );
   };
@@ -210,10 +270,10 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.codigoPedido, { color: theme.colors.text }]}>
-            📦 {pedido.codigo_pedido}
+            📦 Código: {pedido.codigo_pedido}
           </Text>
           <Text style={[styles.clienteName, { color: theme.colors.textSecondary }]}>
-            👤 {pedido.cliente_datos?.nombre || 'Cliente'}
+            👤 Cliente: {pedido.cliente_datos?.nombre || 'N/A'}
           </Text>
         </View>
         <Text style={[styles.monto, { color: theme.colors.success }]}>
@@ -226,23 +286,47 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
 
       {/* Información */}
       <View style={styles.cardContent}>
+        {/* Fecha de Entrega */}
+        {pedido.fecha_entrega_programada && (
+          <View style={[styles.infoRow, { backgroundColor: theme.colors.primaryLight + '30', paddingVertical: 8, paddingHorizontal: 8, borderRadius: 6, marginBottom: 8 }]}>
+            <Text style={[styles.infoLabel, { color: theme.colors.primary, fontWeight: '700' }]}>📅 Fecha:</Text>
+            <Text style={[styles.infoValue, { color: theme.colors.primary, fontWeight: '700', fontSize: scale(11) }]}>
+              {formatearFechaCompleta(pedido.fecha_entrega_programada)}
+            </Text>
+          </View>
+        )}
+
         {/* Tienda */}
         <View style={styles.infoRow}>
           <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>🏪 Tienda:</Text>
           <Text style={[styles.infoValue, { color: theme.colors.text }]}>{pedido.nombre_tienda}</Text>
         </View>
 
+        {/* Perfil de Reserva */}
+        {pedido.nombre_perfil && (
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>📋 Perfil:</Text>
+            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+              {pedido.nombre_perfil}
+            </Text>
+          </View>
+        )}
+
+        {/* Encomendista */}
+        <View style={styles.infoRow}>
+          <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>🚚 Encomendista:</Text>
+          <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+            {pedido.encomendista_datos?.nombre || 'N/A'}
+          </Text>
+        </View>
+
         {/* Destino */}
         <View style={styles.infoRow}>
           <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>📍 Destino:</Text>
-          <Text style={[styles.infoValue, { color: theme.colors.text }]}>{pedido.destino_id}</Text>
-        </View>
-
-        {/* Perfil de Reserva */}
-        <View style={styles.infoRow}>
-          <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>👥 Perfil:</Text>
-          <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-            {pedido.encomendista_datos?.nombre || 'N/A'}
+          <Text style={[styles.infoValue, { color: theme.colors.text }]} numberOfLines={2}>
+            {pedido.modo === 'personalizado' && pedido.direccion_personalizada
+              ? pedido.direccion_personalizada
+              : (pedido.destino_id || pedido.destino_datos?.nombre || 'N/A')}
           </Text>
         </View>
 
@@ -328,35 +412,42 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-        <BackButton onPress={() => onNavigate?.('home')} color={theme.colors.text} />
-        <Text style={[styles.headerTitle, { color: theme.colors.text, fontSize: scale(18) }]}>
-          📅 Retirados Hoy
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      {/* Hora actual */}
-      <View style={[styles.horaActualContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-        <Text style={[styles.horaActualLabel, { color: theme.colors.textSecondary }]}>Hora actual:</Text>
-        <Text style={[styles.horaActualValor, { color: theme.colors.primary, fontSize: scale(24) }]}>
-          {convertirHora12(horaActual)}
-        </Text>
-      </View>
+      {/* Header moderno con gradiente */}
+      <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+        </View>
+        
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <PackageIcon size={scale(48)} color="#fff" />
+          </View>
+          <Text style={styles.modernHeaderTitle}>Retirados Hoy</Text>
+          <Text style={styles.headerSubtitle}>
+            {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'} • {convertirHora12(horaActual)}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
       {/* Contenido */}
       {pedidosAgrupados.length === 0 ? (
         <View style={styles.emptyContainer}>
+          <PackageIcon size={64} color={theme.colors.textSecondary} />
           <Text style={[styles.emptyText, { color: theme.colors.text, fontSize: scale(18) }]}>
-            ✅ No hay pedidos retirados hoy
+            No hay pedidos retirados hoy
           </Text>
           <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary, fontSize: scale(14) }]}>
             Vuelve luego para ver los retiros del día
           </Text>
         </View>
       ) : (
-        <ScrollView style={styles.contenido} showsVerticalScrollIndicator={false}>
+        <Animated.ScrollView
+          style={styles.contenido}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
           {/* Resumen */}
           <View style={[styles.resumenBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <Text style={[styles.resumenLabel, { color: theme.colors.textSecondary }]}>📊 Resumen</Text>
@@ -391,7 +482,7 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
 
           {/* Espacio al final */}
           <View style={{ height: 20 }} />
-        </ScrollView>
+        </Animated.ScrollView>
       )}
 
       {/* Modal de mensaje copiado */}
@@ -430,7 +521,51 @@ const createStyles = (scale: (size: number) => number, theme: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+    },
+    modernHeader: {
+      backgroundColor: theme.colors.primary,
+      paddingBottom: 24,
+      borderBottomLeftRadius: 30,
+      borderBottomRightRadius: 30,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 48,
+      marginBottom: 16,
+    },
+    headerContent: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    iconCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    modernHeaderTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      marginBottom: 4,
+    },
+    headerSubtitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: -0.3,
     },
     centerContainer: {
       flex: 1,
@@ -624,11 +759,13 @@ const createStyles = (scale: (size: number) => number, theme: any) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: 16,
+      paddingTop: 60,
     },
     emptyText: {
       fontSize: scale(18),
       fontWeight: 'bold',
       color: theme.colors.text,
+      marginTop: 16,
       marginBottom: 8,
       textAlign: 'center',
     },

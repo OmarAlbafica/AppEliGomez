@@ -1,0 +1,24 @@
+[debug] [2026-01-16T16:27:43.714Z] ----------------------------------------------------------------------
+[debug] [2026-01-16T16:27:43.717Z] Command:       /opt/homebrew/Cellar/node/25.2.1/bin/node /opt/homebrew/bin/firebase apps:create ios --project=eli-gomez-web
+[debug] [2026-01-16T16:27:43.717Z] CLI Version:   15.2.1
+[debug] [2026-01-16T16:27:43.717Z] Platform:      darwin
+[debug] [2026-01-16T16:27:43.717Z] Node Version:  v25.2.1
+[debug] [2026-01-16T16:27:43.717Z] Time:          Fri Jan 16 2026 10:27:43 GMT-0600 (hora estándar central)
+[debug] [2026-01-16T16:27:43.717Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-16T16:27:43.733Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-16T16:27:43.734Z] > authorizing via signed-in user (sr.vmago@gmail.com)
+[info] Create your IOS app in project eli-gomez-web:
+[debug] [2026-01-16T16:28:18.908Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (/opt/homebrew/lib/node_modules/firebase-tools/node_modules/@inquirer/core/dist/commonjs/lib/create-prompt.js:101:37)
+    at Interface.emit (node:events:508:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+    at ReadStream.emit (node:events:520:35)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+[error] 
+[error] Error: An unexpected error has occurred.

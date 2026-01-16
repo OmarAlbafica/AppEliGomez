@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { Picker as RNPicker } from '@react-native-picker/picker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -20,6 +21,8 @@ import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosSer
 import { BackButton } from '../components/BackButton';
 import { useTheme } from '../context/ThemeContext';
 import { formatDate12Hours } from '../utils/dateUtils';
+import { ScanIcon, PackageIcon } from '../components/icons';
+import { ImageViewer } from '../components/ImageViewer';
 
 interface ScannerScreenVisionCameraProps {
   onNavigate?: (screen: string) => void;
@@ -32,10 +35,11 @@ const estadoLabels: { [key: string]: string } = {
   empacada: '📦 Empacada',
   enviado: '📮 Enviado',
   retirado: '✓ Retirado',
-  'no retirado': '✗ No Retirado',
-  'retirado del local': '🏪 Retirado del Local',
-  cancelado: '💵 Cancelado (Pagado)',
+  'no-retirado': '✗ No Retirado',
+  'retirado-local': '🏪 Retirado del Local',
+  cancelado: '❌ Cancelado',
   liberado: '🔓 Liberado',
+  remunero: '💰 Remunerado',
 };
 
 export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps> = ({
@@ -55,16 +59,10 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
   // Para foto
   const [foto_base64, setFoto_base64] = useState<string | null>(null);
   
-  // Galería de productos
-  const [mostrarGaleria, setMostrarGaleria] = useState(false);
-  const [productoSeleccionado, setProductoSeleccionado] = useState(0);
-  
-  // Modal Zoom de Producto
-  const [modalZoom, setModalZoom] = useState(false);
-  const [imagenZoom, setImagenZoom] = useState<string>('');
-  
-  // Modal Foto Paquete
-  const [modalFotoPaquete, setModalFotoPaquete] = useState(false);
+  // Visor de imágenes con zoom
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [imageTitle, setImageTitle] = useState('');
   
   // Notas
   const [notas, setNotas] = useState('');
@@ -73,6 +71,33 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
   const [modalQRVisible, setModalQRVisible] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+
+  // Animated header - efecto snap
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(280)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 100, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 280, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
+          ]).start();
+        }
+      },
+    }
+  );
 
   const device = useCameraDevice('back');
 
@@ -202,7 +227,13 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
 
     try {
       setGuardando(true);
-      console.log(`[VisionCamera] 🔄 Cambiando estado a: ${nuevoEstado}`);
+      console.log(`[🔄 ScannerScreen] Cambiando estado a: ${nuevoEstado}`);
+      console.log(`[📸 ScannerScreen] Foto adjunta: ${foto_base64 ? '✅ SÍ' : '❌ NO'}`);
+      if (foto_base64) {
+        console.log(`[📸 ScannerScreen] Tamaño foto base64: ${(foto_base64.length / 1024).toFixed(2)} KB`);
+        console.log(`[📸 ScannerScreen] Primeros 50 caracteres: ${foto_base64.substring(0, 50)}...`);
+      }
+      console.log(`[📝 ScannerScreen] Notas: ${notas || 'ninguna'}`);
 
       const exito = await pedidosServiceOptimizado.cambiarEstadoPedido(
         pedidoEncontrado.id!,
@@ -267,8 +298,11 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
       });
 
       if (result.assets && result.assets[0].base64) {
-        setFoto_base64(result.assets[0].base64);
-        console.log('✅ Foto capturada con la cámara');
+        const base64Data = result.assets[0].base64;
+        console.log(`[📸 Scanner] ✅ Foto capturada de cámara`);
+        console.log(`[📸 Scanner] Tamaño: ${(base64Data.length / 1024).toFixed(2)} KB`);
+        console.log(`[📸 Scanner] Primeros 50 chars: ${base64Data.substring(0, 50)}...`);
+        setFoto_base64(base64Data);
       }
     } catch (error) {
       console.error('Error al capturar foto:', error);
@@ -287,7 +321,11 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
       });
 
       if (result.assets && result.assets[0].base64) {
-        setFoto_base64(result.assets[0].base64);
+        const base64Data = result.assets[0].base64;
+        console.log(`[📸 Scanner] ✅ Foto seleccionada de galería`);
+        console.log(`[📸 Scanner] Tamaño: ${(base64Data.length / 1024).toFixed(2)} KB`);
+        console.log(`[📸 Scanner] Primeros 50 chars: ${base64Data.substring(0, 50)}...`);
+        setFoto_base64(base64Data);
         console.log('✅ Foto seleccionada de la galería');
       }
     } catch (error) {
@@ -302,35 +340,55 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
     setNuevoEstado('pendiente');
     setFoto_base64(null);
     setNotas('');
-    setMostrarGaleria(false);
   };
 
   // ============================================================
   // 🎨 RENDER
   // ============================================================
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={styles.headerTitle}>🔍 Escanear Pedido</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header moderno con gradiente */}
+      <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+        </View>
+        
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <ScanIcon size={scale(48)} color="#fff" />
+          </View>
+          <Text style={styles.modernHeaderTitle}>Escanear</Text>
+          <Text style={styles.headerSubtitle}>
+            {pedidoEncontrado ? `Pedido ${pedidoEncontrado.codigo}` : 'Busca o escanea un código'}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
-      <ScrollView contentContainerStyle={{ padding: scale(16) }}>
+      <Animated.ScrollView
+        contentContainerStyle={{ padding: scale(16), paddingBottom: 40 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {/* Input de código */}
-        <Text style={styles.label}>Ingresa el código del pedido</Text>
-        <View style={{ flexDirection: 'row', marginBottom: scale(16) }}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>Ingresa el código del pedido</Text>
+        <View style={styles.searchRow}>
           <TextInput
-            style={[styles.input, { flex: 1, marginRight: scale(8) }]}
+            style={[styles.searchInput, { 
+              flex: 1, 
+              marginRight: scale(8),
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+            }]}
             placeholder="Ej: EG20260109001"
             placeholderTextColor={theme.colors.textSecondary}
             value={codigo}
             onChangeText={setCodigo}
           />
-          <TouchableOpacity style={styles.iconButton} onPress={handleBuscarPedido}>
+          <TouchableOpacity style={[styles.iconButton, { backgroundColor: theme.colors.primary }]} onPress={handleBuscarPedido}>
             <Text style={{ fontSize: scale(20) }}>🔍</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handleAbrirEscanerQR}>
+          <TouchableOpacity style={[styles.iconButton, { backgroundColor: theme.colors.primary, marginLeft: scale(8) }]} onPress={handleAbrirEscanerQR}>
             <Text style={{ fontSize: scale(20) }}>📷</Text>
           </TouchableOpacity>
         </View>
@@ -347,17 +405,50 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
         {pedidoEncontrado && (
           <View style={styles.pedidoCard}>
             <Text style={styles.pedidoTitle}>📦 Pedido: {pedidoEncontrado.codigo}</Text>
-            <Text style={styles.pedidoInfo}>Cliente: {pedidoEncontrado.cliente?.nombre || 'N/A'}</Text>
-            <Text style={styles.pedidoInfo}>Estado actual: {estadoLabels[pedidoEncontrado.estado || 'pendiente']}</Text>
-            <Text style={styles.pedidoInfo}>Fecha: {formatDate12Hours(pedidoEncontrado.fecha_creacion)}</Text>
+            
+            {/* FECHA DE ENTREGA PROGRAMADA - MÁS IMPORTANTE */}
+            <View style={[styles.highlightBox, { backgroundColor: theme.colors.primaryLight, borderLeftColor: theme.colors.primary }]}>
+              <Text style={[styles.highlightLabel, { color: theme.colors.primary }]}>📅 ENTREGA PROGRAMADA</Text>
+              <Text style={[styles.highlightValue, { color: theme.colors.text }]}>
+                {pedidoEncontrado.fecha_entrega_programada 
+                  ? formatDate12Hours(pedidoEncontrado.fecha_entrega_programada)
+                  : 'No programada'}
+              </Text>
+              {pedidoEncontrado.hora_inicio && pedidoEncontrado.hora_fin && (
+                <Text style={[styles.highlightTime, { color: theme.colors.text }]}>
+                  🕐 {pedidoEncontrado.hora_inicio} - {pedidoEncontrado.hora_fin}
+                </Text>
+              )}
+              {pedidoEncontrado.dia_entrega && (
+                <Text style={[styles.highlightDay, { color: theme.colors.textSecondary }]}>
+                  {pedidoEncontrado.dia_entrega}
+                </Text>
+              )}
+            </View>
+
+            {/* CLIENTE */}
+            <Text style={styles.pedidoInfo}>👤 Cliente: {pedidoEncontrado.cliente_nombre || pedidoEncontrado.cliente?.nombre || 'N/A'}</Text>
+            
+            {/* ENCOMENDISTA */}
+            <Text style={styles.pedidoInfo}>🚚 Encomienda: {pedidoEncontrado.encomendista_nombre || pedidoEncontrado.encomendista?.nombre || 'N/A'}</Text>
+            
+            {/* TIENDA Y PERFIL DE RESERVA */}
+            <Text style={styles.pedidoInfo}>🏪 Tienda: {pedidoEncontrado.nombre_tienda || 'N/A'}</Text>
+            {pedidoEncontrado.nombre_perfil && (
+              <Text style={styles.pedidoInfo}>📋 Perfil: {pedidoEncontrado.nombre_perfil}</Text>
+            )}
+            
+            {/* ESTADO ACTUAL */}
+            <Text style={styles.pedidoInfo}>📊 Estado actual: {estadoLabels[pedidoEncontrado.estado || 'pendiente']}</Text>
             
             {/* Foto del paquete si existe */}
             {pedidoEncontrado.foto_paquete_url && (
               <View style={{ marginTop: scale(12) }}>
                 <Text style={styles.label}>📸 Foto del paquete:</Text>
                 <TouchableOpacity onPress={() => {
-                  setImagenZoom(pedidoEncontrado.foto_paquete_url!);
-                  setModalFotoPaquete(true);
+                  setCurrentImages([pedidoEncontrado.foto_paquete_url!]);
+                  setImageTitle(`Paquete - ${pedidoEncontrado.codigo_pedido}`);
+                  setImageViewerVisible(true);
                 }}>
                   <Image
                     source={{ uri: pedidoEncontrado.foto_paquete_url }}
@@ -434,7 +525,7 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
         {!loading && !pedidoEncontrado && (
           <Text style={styles.emptyText}>👆 Busca un pedido para comenzar</Text>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Modal para escaneo QR - Vision Camera */}
       {modalQRVisible && device && hasPermission && (
@@ -520,41 +611,13 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
         </Modal>
       )}
 
-      {/* Modal para ver foto del paquete */}
-      <Modal
-        visible={modalFotoPaquete}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setModalFotoPaquete(false)}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.9)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          <TouchableOpacity
-            style={{
-              position: 'absolute',
-              top: 40,
-              right: 20,
-              backgroundColor: theme.colors.primary,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 8,
-              zIndex: 10,
-            }}
-            onPress={() => setModalFotoPaquete(false)}
-          >
-            <Text style={{ color: '#fff', fontSize: scale(16), fontWeight: 'bold' }}>✕ Cerrar</Text>
-          </TouchableOpacity>
-          <Image
-            source={{ uri: imagenZoom }}
-            style={{ width: '90%', height: '80%' }}
-            resizeMode="contain"
-          />
-        </View>
-      </Modal>
+      {/* Visor de Imágenes con Zoom */}
+      <ImageViewer
+        visible={imageViewerVisible}
+        images={currentImages}
+        title={imageTitle}
+        onClose={() => setImageViewerVisible(false)}
+      />
     </View>
   );
 };
@@ -578,7 +641,67 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+    },
+    modernHeader: {
+      backgroundColor: theme.colors.primary,
+      paddingBottom: 24,
+      borderBottomLeftRadius: 30,
+      borderBottomRightRadius: 30,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 48,
+      marginBottom: 16,
+    },
+    headerContent: {
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    iconCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    modernHeaderTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      marginBottom: 4,
+    },
+    headerSubtitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: -0.3,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      marginBottom: scale(16),
+    },
+    searchInput: {
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: scale(14),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     header: {
       flexDirection: 'row',
@@ -609,11 +732,15 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
     },
     iconButton: {
       backgroundColor: theme.colors.primary,
-      padding: scale(12),
-      borderRadius: 8,
-      marginLeft: scale(4),
+      padding: scale(14),
+      borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     loadingContainer: {
       alignItems: 'center',
@@ -634,7 +761,40 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
       fontSize: scale(18),
       fontWeight: 'bold',
       color: theme.colors.text,
-      marginBottom: scale(8),
+      marginBottom: scale(12),
+    },
+    highlightBox: {
+      backgroundColor: theme.colors.primaryLight,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.colors.primary,
+      borderRadius: 8,
+      padding: scale(12),
+      marginBottom: scale(12),
+    },
+    highlightLabel: {
+      fontSize: scale(12),
+      fontWeight: '700',
+      color: theme.colors.primary,
+      marginBottom: scale(4),
+      letterSpacing: 0.5,
+    },
+    highlightValue: {
+      fontSize: scale(18),
+      fontWeight: 'bold',
+      color: theme.colors.text,
+      marginBottom: scale(2),
+    },
+    highlightTime: {
+      fontSize: scale(16),
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginTop: scale(4),
+    },
+    highlightDay: {
+      fontSize: scale(13),
+      fontWeight: '500',
+      color: theme.colors.textSecondary,
+      marginTop: scale(2),
     },
     pedidoInfo: {
       fontSize: scale(14),

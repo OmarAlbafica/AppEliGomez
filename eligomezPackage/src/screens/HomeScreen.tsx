@@ -5,10 +5,21 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  Image,
 } from 'react-native';
 import { Usuario, authService } from '../services/authService';
 import { useTheme } from '../context/ThemeContext';
+import { AnimatedCard } from '../components/AnimatedCard';
+import { 
+  TruckIcon, 
+  UsersIcon, 
+  HistoryIcon, 
+  MoneyIcon, 
+  ScanIcon,
+  SettingsIcon,
+  LogoutIcon
+} from '../components/icons';
+import { CustomAlert } from '../components/CustomAlert';
 
 interface HomeScreenProps {
   usuario: Usuario | null;
@@ -19,6 +30,12 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ usuario, onLogout, onNavigate }) => {
   const { theme } = useTheme();
   const scale = (size: number) => theme.scale(size);
+
+  // Estados para CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertButtons, setAlertButtons] = useState<any[]>([]);
 
   // Bloquear acceso sin login
   if (!usuario) {
@@ -37,122 +54,161 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ usuario, onLogout, onNav
   }
 
   const handleLogout = async () => {
-    Alert.alert('Confirmación', '¿Deseas cerrar sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
+    setAlertTitle('Confirmación');
+    setAlertMessage('¿Deseas cerrar sesión?');
+    setAlertButtons([
+      { 
+        text: 'Cancelar', 
+        style: 'cancel',
+        onPress: () => setAlertVisible(false)
+      },
       {
         text: 'Cerrar sesión',
+        style: 'destructive',
         onPress: async () => {
           await authService.logout();
           onLogout();
         },
-        style: 'destructive',
       },
     ]);
+    setAlertVisible(true);
   };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(24) }]}>
-            📱 Eli Gómez
+      {/* Modern Header */}
+      <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
+        <View>
+          <Text style={[styles.greeting, { color: theme.colors.textSecondary, fontSize: scale(14) }]}>
+            Bienvenido de vuelta
+          </Text>
+          <Text style={[styles.userName, { color: theme.colors.text, fontSize: scale(24) }]}>
+            {usuario.nombre} {usuario.apellido}
           </Text>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity 
             onPress={() => onNavigate('Settings')}
-            style={[styles.headerButton, { backgroundColor: theme.colors.primary }]}
+            style={[styles.iconButton, { backgroundColor: theme.colors.surface }]}
           >
-            <Text style={[styles.headerButtonText, { fontSize: scale(18) }]}>⚙️</Text>
+            <SettingsIcon size={22} color={theme.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={handleLogout}
-            style={[styles.headerButton, { backgroundColor: theme.colors.error, marginLeft: scale(8) }]}
+            style={[styles.iconButton, { backgroundColor: theme.colors.surface, marginLeft: scale(8) }]}
           >
-            <Text style={[styles.headerButtonText, { fontSize: scale(18) }]}>🚪</Text>
+            <LogoutIcon size={22} color={theme.colors.error} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {usuario && (
-        <View style={[styles.userInfo, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-          <Text style={[styles.userName, { color: theme.colors.text, fontSize: scale(16) }]}>
-            👋 {usuario.nombre} {usuario.apellido}
-          </Text>
-          <Text style={[styles.userEmail, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>
-            @{usuario.usuario}
-          </Text>
+      {/* Main Grid */}
+      <View style={styles.gridContainer}>
+        <View style={styles.row}>
+          <AnimatedCard
+            title="Crear Pedido"
+            subtitle="Nuevo"
+            icon={
+              <Image 
+                source={require('../assets/logo.png')} 
+                style={{ width: 32, height: 32, tintColor: '#fff' }}
+                resizeMode="contain"
+              />
+            }
+            onPress={() => onNavigate('CrearPedido')}
+            gradient={['#667eea', '#764ba2']}
+          />
+          <AnimatedCard
+            title="Encomendistas"
+            subtitle="Gestionar"
+            icon={<TruckIcon size={28} color="#fff" />}
+            onPress={() => onNavigate('Encomendistas')}
+            gradient={['#f093fb', '#f5576c']}
+          />
         </View>
-      )}
 
-      <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(18) }]}>Menú Principal</Text>
+        <View style={styles.row}>
+          <AnimatedCard
+            title="Clientes"
+            subtitle="Listado"
+            icon={<UsersIcon size={28} color="#fff" />}
+            onPress={() => onNavigate('Clientes')}
+            gradient={['#4facfe', '#00f2fe']}
+          />
+          <AnimatedCard
+            title="Historial"
+            subtitle="Ver todo"
+            icon={<HistoryIcon size={28} color="#fff" />}
+            onPress={() => onNavigate('HistorialOptimizado')}
+            gradient={['#43e97b', '#38f9d7']}
+          />
+        </View>
 
-      <View style={styles.grid}>
+        <View style={styles.row}>
+          <AnimatedCard
+            title="Remunerar"
+            subtitle="Pendientes"
+            icon={<MoneyIcon size={28} color="#fff" />}
+            onPress={() => onNavigate('PorRemunerar')}
+            gradient={['#fa709a', '#fee140']}
+          />
+          <AnimatedCard
+            title="Escanear"
+            subtitle="QR"
+            icon={<ScanIcon size={28} color="#fff" />}
+            onPress={() => onNavigate('ScannerOptimizado')}
+            gradient={['#30cfd0', '#330867']}
+          />
+        </View>
+
+        <View style={styles.row}>
+          <AnimatedCard
+            title="Urgentes"
+            subtitle="Empacar"
+            icon={<Text style={{ fontSize: 28 }}>🚨</Text>}
+            onPress={() => onNavigate('UrgentesEmpacar')}
+            gradient={['#DC2626', '#991B1B']}
+          />
+          <AnimatedCard
+            title="Envíos"
+            subtitle="Encomienda"
+            icon={<Text style={{ fontSize: 28 }}>📦</Text>}
+            onPress={() => onNavigate('EnviosPorEncomienda')}
+            gradient={['#7C3AED', '#5B21B6']}
+          />
+        </View>
+
         <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => onNavigate('CrearPedido')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>📦</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16) }]}>Crear Pedido</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Crear nuevo pedido para clientes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => onNavigate('Encomendistas')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>🚚</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16) }]}>Encomendistas</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Gestionar encomendistas y destinos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => onNavigate('Clientes')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>👥</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16) }]}>Clientes</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Gestionar clientes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
-          onPress={() => onNavigate('HistorialOptimizado')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32), color: '#fff' }]}>📋</Text>
-          <Text style={[styles.cardTitle, { color: '#fff', fontSize: scale(16), fontWeight: 'bold' }]}>Historial</Text>
-          <Text style={[styles.cardDescription, { color: 'rgba(255,255,255,0.9)', fontSize: scale(12) }]}>Ver todos los pedidos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => onNavigate('PorRemunerar')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>💰</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16) }]}>Por Remunerar</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Pedidos pendientes de cobrar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: '#10B98120', borderColor: theme.colors.success }]}
+          style={[styles.fullWidthCard, { backgroundColor: theme.colors.primary }]}
           onPress={() => onNavigate('RetiredToday')}
+          activeOpacity={0.8}
         >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>📅</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16), fontWeight: 'bold' }]}>Retirados Hoy</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Retiros de hoy por horario</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          onPress={() => onNavigate('ScannerOptimizado')}
-        >
-          <Text style={[styles.cardIcon, { fontSize: scale(32) }]}>🔍</Text>
-          <Text style={[styles.cardTitle, { color: theme.colors.text, fontSize: scale(16) }]}>Escanear Pedido</Text>
-          <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: scale(12) }]}>Ver y cambiar estado de pedidos</Text>
+          <View style={styles.fullWidthContent}>
+            <View style={styles.fullWidthIcon}>
+              <HistoryIcon size={24} color="#fff" />
+            </View>
+            <View style={styles.fullWidthText}>
+              <Text style={[styles.fullWidthTitle, { fontSize: scale(18) }]}>
+                Retirados Hoy
+              </Text>
+              <Text style={[styles.fullWidthSubtitle, { fontSize: scale(13) }]}>
+                Ver retiros del día por horario
+              </Text>
+            </View>
+          </View>
         </TouchableOpacity>
       </View>
 
       <View style={{ height: scale(40) }} />
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        buttons={alertButtons}
+        onDismiss={() => setAlertVisible(false)}
+      />
     </ScrollView>
   );
 };
@@ -164,32 +220,80 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    alignItems: 'flex-start',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    paddingTop: 48,
   },
-  headerContent: {
-    flex: 1,
+  greeting: {
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  userName: {
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 44,
-    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  headerButtonText: {
-    fontWeight: 'bold',
+  gridContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  title: {
-    fontWeight: 'bold',
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  fullWidthCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  fullWidthContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fullWidthIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  fullWidthText: {
+    flex: 1,
+  },
+  fullWidthTitle: {
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  fullWidthSubtitle: {
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: -0.2,
   },
   logoutButton: {
     paddingHorizontal: 16,
@@ -200,72 +304,6 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontWeight: '600',
     color: '#fff',
-  },
-  logoutText: {
-    fontSize: 20,
-  },
-  userInfo: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-  },
-  userName: {
-    fontWeight: '600',
-  },
-  userEmail: {
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontWeight: 'bold',
-    paddingHorizontal: 16,
-    marginVertical: 12,
-  },
-  grid: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    borderWidth: 1,
-  },
-  cardHighlight: {
-    backgroundColor: '#667eea',
-  },
-  cardOptimizado: {
-    backgroundColor: '#FF6F00',
-  },
-  cardOptimizadoSecondary: {
-    backgroundColor: '#FF9100',
-  },
-  cardQR: {
-    backgroundColor: '#1976D2',
-  },
-  cardIcon: {
-    marginBottom: 6,
-  },
-  cardIconLight: {
-    color: '#fff',
-  },
-  cardTitle: {
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  cardTitleLight: {
-    color: '#fff',
-  },
-  cardDescription: {
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  cardDescriptionLight: {
-    color: 'rgba(255,255,255,0.9)',
   },
   errorText: {
     fontWeight: 'bold',

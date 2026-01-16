@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, StatusBar, SafeAreaView, Text, BackHandler } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/context/ThemeProvider';
 import { useAppTheme } from './src/context/ThemeContext';
+import { SplashScreen } from './src/components/SplashScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { CrearPedidoScreen } from './src/screens/CrearPedidoScreen';
 import { ClientesScreen } from './src/screens/ClientesScreen';
 import { EncomendistasScreen } from './src/screens/EncomendistasScreen';
 import { PorRemunerarScreen } from './src/screens/PorRemunerarScreen';
-import { ScannerScreen } from './src/screens/ScannerScreen';
-import { ScannerScreenOptimizado } from './src/screens/ScannerScreenOptimizado';
 import { ScannerScreenVisionCamera } from './src/screens/ScannerScreenVisionCamera';
 import { HistorialScreenOptimizado } from './src/screens/HistorialScreenOptimizado';
 import { RetiredTodayScreen } from './src/screens/RetiredTodayScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { UrgentesEmpacarScreen } from './src/screens/UrgentesEmpacarScreen';
+import { EnviosPorEncomendaScreen } from './src/screens/EnviosPorEncomendaScreen';
 import { Usuario } from './src/services/authService';
 
 function AppContent() {
@@ -25,6 +27,36 @@ function AppContent() {
   const theme = useAppTheme();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [currentScreen, setCurrentScreen] = useState<string>('login');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Verificar si es la primera vez
+  useEffect(() => {
+    checkFirstTime();
+  }, []);
+
+  const checkFirstTime = async () => {
+    try {
+      const hasSeenWelcome = await AsyncStorage.getItem('hasSeenWelcome');
+      if (hasSeenWelcome === null) {
+        // Primera vez - mostrar bienvenida
+        setShowWelcome(true);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error checking first time:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleWelcomeComplete = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenWelcome', 'true');
+      setShowWelcome(false);
+    } catch (error) {
+      console.error('Error saving welcome state:', error);
+    }
+  };
 
   // Deshabilitar botón atrás del dispositivo
   useEffect(() => {
@@ -52,6 +84,25 @@ function AppContent() {
     console.log('📱 Navegando a:', screen);
     setCurrentScreen(screen);
   };
+
+  // Mostrar pantalla de carga inicial
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} translucent />
+      </View>
+    );
+  }
+
+  // Mostrar pantalla de bienvenida (primera vez)
+  if (showWelcome) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} translucent />
+        <SplashScreen onComplete={handleWelcomeComplete} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}>
@@ -99,6 +150,12 @@ function AppContent() {
           onClose={() => setCurrentScreen('home')}
         />
       )}
+      {currentScreen === 'UrgentesEmpacar' && (
+        <UrgentesEmpacarScreen onNavigate={handleNavigate} />
+      )}
+      {currentScreen === 'EnviosPorEncomienda' && (
+        <EnviosPorEncomendaScreen onNavigate={handleNavigate} />
+      )}
       {currentScreen === 'QRGenerator' && (
         <View style={styles.container}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', marginTop: 20, marginLeft: 20, color: theme.colors.primary }}>
@@ -112,6 +169,10 @@ function AppContent() {
     </View>
   );
 }
+
+// 🔧 Para resetear la pantalla de bienvenida durante desarrollo:
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// AsyncStorage.removeItem('hasSeenWelcome');
 
 function App() {
   return (

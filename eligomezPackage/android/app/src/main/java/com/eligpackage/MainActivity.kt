@@ -17,8 +17,10 @@ class MainActivity : ReactActivity() {
 
   /**
    * Deshabilita el modo oscuro y fuerza el modo claro en toda la aplicación
+   * Cambia el tema del splash screen al tema normal
    */
   override fun onCreate(savedInstanceState: Bundle?) {
+    setTheme(R.style.AppTheme)
     super.onCreate(savedInstanceState)
     AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
   }

@@ -4,6 +4,7 @@ import { collection, addDoc, getDocs, query, where, updateDoc, deleteDoc, doc } 
 import { db, auth, storage } from '../../environments/firebase.config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ProductosService } from '../productos/productos.service';
+import { PedidosAuditHelper } from './pedidos-audit.helper';
 
 export interface Pedido {
   id: string;
@@ -36,6 +37,26 @@ export interface Pedido {
   foto_paquete?: string;                  // URL de la foto del paquete empacado
   fecha_creacion: Date;
   fecha_entrega_programada?: Date;
+
+  // AUDITORÍA: Guardar el usuario (email) y la fecha/hora que hizo cada cambio de estado
+  estado_pendiente_user?: string;         // Email del usuario que cambió a "pendiente"
+  estado_pendiente_user_timestamp?: string; // ISO timestamp de cuándo cambió a "pendiente"
+  estado_empacada_user?: string;          // Email del usuario que cambió a "empacada"
+  estado_empacada_user_timestamp?: string; // ISO timestamp de cuándo cambió a "empacada"
+  estado_enviado_user?: string;           // Email del usuario que cambió a "enviado"
+  estado_enviado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "enviado"
+  estado_retirado_user?: string;          // Email del usuario que cambió a "retirado"
+  estado_retirado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "retirado"
+  estado_no_retirado_user?: string;       // Email del usuario que cambió a "no-retirado"
+  estado_no_retirado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "no-retirado"
+  estado_cancelado_user?: string;         // Email del usuario que cambió a "cancelado"
+  estado_cancelado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "cancelado"
+  estado_retirado_local_user?: string;    // Email del usuario que cambió a "retirado-local"
+  estado_retirado_local_user_timestamp?: string; // ISO timestamp de cuándo cambió a "retirado-local"
+  estado_liberado_user?: string;          // Email del usuario que cambió a "liberado"
+  estado_liberado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "liberado"
+  estado_reservado_user?: string;         // Email del usuario que cambió a "reservado"
+  estado_reservado_user_timestamp?: string; // ISO timestamp de cuándo cambió a "reservado"
 }
 
 @Injectable({
@@ -158,6 +179,7 @@ export class PedidosService {
   async crearPedido(pedido: Omit<Pedido, 'id' | 'usuario_id' | 'fecha_creacion'>): Promise<string> {
     try {
       const usuario_id = auth.currentUser?.uid;
+      const usuarioEmail = auth.currentUser?.email;
       if (!usuario_id) throw new Error('Usuario no autenticado');
 
       console.log('📦 [CREAR PEDIDO] Iniciando creación...');
@@ -195,17 +217,22 @@ export class PedidosService {
       console.log('%c👤 ENCOMENDISTA en pedidoLimpio:', 'color: purple; font-weight: bold', pedidoLimpio.encomendista_id);
       console.log('%c🏪 TIENDA en pedidoLimpio:', 'color: brown; font-weight: bold', pedidoLimpio.nombre_tienda);
 
+      const ahora = new Date().toISOString();
       const objetoAGuardar = {
         ...pedidoLimpio,
         productos_codigos, // Agregar códigos
         usuario_id,
-        fecha_creacion: new Date().toISOString(),
-        estado: 'pendiente'
+        fecha_creacion: ahora,
+        estado: 'pendiente',
+        // AUDITORÍA: Registrar quien crea el pedido y cuándo
+        estado_pendiente_user: usuarioEmail || 'desconocido',
+        estado_pendiente_user_timestamp: ahora
       };
       
       console.log('%c💾 OBJETO FINAL A GUARDAR EN FIRESTORE:', 'color: red; font-weight: bold; font-size: 12px');
       console.log('%c📋 MODO en objeto final:', 'color: teal; font-weight: bold', objetoAGuardar.modo);
       console.log('%c🏠 DIRECCIÓN en objeto final:', 'color: orange; font-weight: bold', objetoAGuardar.direccion_personalizada);
+      console.log('%c📋 AUDITORÍA - Usuario que crea:', 'color: green; font-weight: bold', objetoAGuardar.estado_pendiente_user);
       console.log('%c Objeto completo:', 'color: gray', objetoAGuardar);
 
       const docRef = await addDoc(collection(db, 'pedidos'), objetoAGuardar);
@@ -243,9 +270,35 @@ export class PedidosService {
 
   /**
    * Actualiza un pedido
+   * Si el estado cambió, automáticamente registra quién lo hizo (auditoría)
    */
-  async actualizarPedido(pedido: Pedido): Promise<void> {
+  async actualizarPedido(pedidoOrig: Pedido): Promise<void> {
     try {
+      // Obtener el usuario actual
+      const usuarioEmail = auth.currentUser?.email || null;
+
+      // Obtener el pedido actual de Firebase para comparar estado
+      const pedidoActual = this.pedidos.value.find(p => p.id === pedidoOrig.id);
+      const estadoAnterior = pedidoActual?.estado;
+
+      // Si el estado cambió, registrar la auditoría
+      let pedido = pedidoOrig;
+      if (estadoAnterior && estadoAnterior !== pedidoOrig.estado) {
+        console.log(
+          `%c🔄 CAMBIO DE ESTADO DETECTADO`,
+          'color: blue; font-weight: bold;',
+          `\nPedido: ${pedido.codigo_pedido}`,
+          `\nAnterior: ${estadoAnterior}`,
+          `\nNuevo: ${pedido.estado}`,
+          `\nUsuario: ${usuarioEmail}`
+        );
+        pedido = PedidosAuditHelper.registrarCambioEstado(
+          pedidoOrig,
+          pedidoOrig.estado,
+          usuarioEmail
+        );
+      }
+
       const docRef = doc(db, 'pedidos', pedido.id);
       const { id, usuario_id, fecha_creacion, ...datos } = pedido;
 

@@ -25,6 +25,8 @@ interface RetiroItem {
   destino: string;
   encomendista: string;
   hora: string;
+  horainicio: string;
+  horafin: string;
   cantidad: number;
   pedidos: any[];
   expanded?: boolean;
@@ -34,7 +36,9 @@ interface PedidoPendiente {
   id: string;
   cliente: string;
   destino: string;
-  diasSinRetirar: number;
+  horaInicio: string;
+  horaFin: string;
+  estado: 'pasado' | 'en-progreso' | 'pendiente';
   monto: number;
 }
 
@@ -193,21 +197,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private construirRetiros() {
-    // Agrupar pedidos por encomendista y destino
-    const retirosMap = new Map<string, RetiroItem>();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+
+    const retirosHoyMap = new Map<string, RetiroItem>();
+    const retirosMañanaMap = new Map<string, RetiroItem>();
 
     this.pedidos
       .filter(p => !['cancelado', 'liberado', 'retirado-local'].includes(p.estado))
       .forEach(pedido => {
+        const fechaEntrega = this.obtenerFechaEntrega(pedido.fecha_entrega_programada);
+        fechaEntrega.setHours(0, 0, 0, 0);
+
+        // Solo incluir si es hoy o mañana
+        if (fechaEntrega.getTime() !== hoy.getTime() && fechaEntrega.getTime() !== manana.getTime()) {
+          return;
+        }
+
         const key = `${pedido.encomendista_id || 'otros'}-${pedido.destino_id || 'personalizado'}`;
-        
+        const isHoy = fechaEntrega.getTime() === hoy.getTime();
+        const retirosMap = isHoy ? retirosHoyMap : retirosMañanaMap;
+
         if (!retirosMap.has(key)) {
           const encomendista = this.encomendistas.find(e => e.id === pedido.encomendista_id);
+          const horaInicio = pedido.hora_inicio || '09:00';
+          const horaFin = pedido.hora_fin || '18:00';
+          
           retirosMap.set(key, {
             id: key,
             destino: pedido.destino_id || 'Personalizado',
             encomendista: encomendista?.nombre || 'Sin asignar',
-            hora: `${pedido.hora_inicio || '09:00'} - ${pedido.hora_fin || '18:00'}`,
+            hora: `${this.convertirA12Horas(horaInicio)} - ${this.convertirA12Horas(horaFin)}`,
+            horainicio: horaInicio,
+            horafin: horaFin,
             cantidad: 0,
             pedidos: [],
             expanded: false
@@ -225,21 +250,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
         });
       });
 
-    this.retiroHoy = Array.from(retirosMap.values()).slice(0, 3);
-    this.retiroTomorrow = Array.from(retirosMap.values()).slice(3, 6);
+    this.retiroHoy = Array.from(retirosHoyMap.values());
+    this.retiroTomorrow = Array.from(retirosMañanaMap.values());
   }
 
   private construirPendientes() {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Mostrar los MISMOS pedidos que en Retiros de Hoy, pero agrupados por pedido individual
     this.pedidosNoRetirados = this.pedidos
-      .filter(p => p.estado === 'no-retirado')
-      .map(p => ({
-        id: p.codigo_pedido || p.id,
-        cliente: this.obtenerNombreCliente(p.cliente_id),
-        destino: p.destino_id || 'Personalizado',
-        diasSinRetirar: this.calcularDiasSinRetirar(p.fecha_entrega_programada),
-        monto: p.total || 0
-      }))
-      .sort((a, b) => b.diasSinRetirar - a.diasSinRetirar)
+      .filter(p => {
+        const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+        fechaEntrega.setHours(0, 0, 0, 0);
+        // Solo pedidos que se entregan hoy y NO están cancelados, liberados o retirados localmente
+        return !['cancelado', 'liberado', 'retirado-local'].includes(p.estado) && fechaEntrega.getTime() === hoy.getTime();
+      })
+      .map(p => {
+        const horaInicio = p.hora_inicio || '09:00';
+        const horaFin = p.hora_fin || '18:00';
+        const estado = this.calcularEstadoPendiente(horaInicio, horaFin);
+
+        return {
+          id: p.codigo_pedido || p.id,
+          cliente: this.obtenerNombreCliente(p.cliente_id),
+          destino: p.destino_id || 'Personalizado',
+          horaInicio: this.convertirA12Horas(horaInicio),
+          horaFin: this.convertirA12Horas(horaFin),
+          estado: estado,
+          monto: p.total || 0
+        };
+      })
+      .sort((a, b) => {
+        // Ordenar: En Progreso primero, luego Pendiente, luego Pasado
+        const orden = { 'en-progreso': 0, 'pendiente': 1, 'pasado': 2 };
+        return (orden[a.estado] || 3) - (orden[b.estado] || 3);
+      })
       .slice(0, 5);
   }
 
@@ -285,6 +331,52 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private obtenerNombreCliente(clienteId: string): string {
     return this.clientes.find(c => c.id === clienteId)?.nombre || 'Desconocido';
+  }
+
+  /**
+   * Convierte hora formato 24h a formato 12h
+   * Ejemplo: "09:00" -> "9:00 AM", "14:30" -> "2:30 PM"
+   */
+  private convertirA12Horas(hora24: string): string {
+    try {
+      const [horas, minutos] = hora24.split(':');
+      const h = parseInt(horas, 10);
+      const m = parseInt(minutos || '0', 10);
+      
+      const periodo = h >= 12 ? 'PM' : 'AM';
+      const horaFormato = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      
+      return `${horaFormato}:${String(m).padStart(2, '0')} ${periodo}`;
+    } catch {
+      return hora24;
+    }
+  }
+
+  /**
+   * Calcula el estado del pedido basado en la hora actual y el horario de entrega
+   * Retorna: 'pasado' | 'en-progreso' | 'pendiente'
+   */
+  private calcularEstadoPendiente(horaInicio: string, horaFin: string): 'pasado' | 'en-progreso' | 'pendiente' {
+    try {
+      const ahora = new Date();
+      const horaActual = ahora.getHours() * 60 + ahora.getMinutes(); // En minutos
+
+      const [horasI, minutosI] = horaInicio.split(':');
+      const horaInicioMin = parseInt(horasI, 10) * 60 + parseInt(minutosI || '0', 10);
+
+      const [horasF, minutosF] = horaFin.split(':');
+      const horaFinMin = parseInt(horasF, 10) * 60 + parseInt(minutosF || '0', 10);
+
+      if (horaActual < horaInicioMin) {
+        return 'pendiente';
+      } else if (horaActual >= horaInicioMin && horaActual <= horaFinMin) {
+        return 'en-progreso';
+      } else {
+        return 'pasado';
+      }
+    } catch {
+      return 'pendiente';
+    }
   }
 
   toggleRetiroHoy(index: number) {

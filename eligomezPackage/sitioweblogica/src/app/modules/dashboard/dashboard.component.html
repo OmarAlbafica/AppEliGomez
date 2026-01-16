@@ -197,7 +197,7 @@
   <div class="bg-white rounded-lg shadow">
     <div class="p-6 border-b border-gray-200">
       <h2 class="text-xl font-bold text-gray-900">Pedidos Pendientes de Retirar</h2>
-      <p class="text-sm text-gray-500 mt-1">Ordenes que no han sido retiradas</p>
+      <p class="text-sm text-gray-500 mt-1">Órdenes enviadas que se entregan hoy</p>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full">
@@ -206,7 +206,8 @@
             <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">ID Pedido</th>
             <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Cliente</th>
             <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Destino</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Dias sin Retirar</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Horario</th>
+            <th class="px-6 py-3 text-center text-sm font-semibold text-gray-900">Estado</th>
             <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">Monto</th>
           </tr>
         </thead>
@@ -215,12 +216,24 @@
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ pedido.id }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.cliente }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.destino }}</td>
-            <td class="px-6 py-4 text-sm">
-              <span [ngClass]="getDiasSinRetirarColor(pedido.diasSinRetirar)" class="font-semibold">
-                {{ pedido.diasSinRetirar }} dias
+            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.horaInicio }} - {{ pedido.horaFin }}</td>
+            <td class="px-6 py-4 text-sm text-center">
+              <span *ngIf="pedido.estado === 'pasado'" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold">
+                ❌ Pasado
+              </span>
+              <span *ngIf="pedido.estado === 'en-progreso'" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
+                ✅ En Progreso
+              </span>
+              <span *ngIf="pedido.estado === 'pendiente'" class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold">
+                ⏳ Pendiente
               </span>
             </td>
             <td class="px-6 py-4 text-sm text-right font-medium text-gray-900">{{ formatCurrency(pedido.monto) }}</td>
+          </tr>
+          <tr *ngIf="pedidosNoRetirados.length === 0" class="hover:bg-gray-50">
+            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
+              No hay pedidos enviados para entregar hoy
+            </td>
           </tr>
         </tbody>
       </table>
@@ -330,7 +343,7 @@
   <div class="bg-white rounded-lg shadow">
     <div class="p-3 border-b border-gray-200">
       <h3 class="font-bold text-gray-900 text-sm">Pendientes Retirar</h3>
-      <p class="text-xs text-gray-500 mt-0.5">{{ pedidosNoRetirados.length }} pedidos</p>
+      <p class="text-xs text-gray-500 mt-0.5">{{ pedidosNoRetirados.length }} pedidos hoy</p>
     </div>
     <div class="divide-y text-sm max-h-48 overflow-y-auto">
       <div *ngFor="let pedido of pedidosNoRetirados.slice(0, 5)" class="p-3">
@@ -339,10 +352,18 @@
             <p class="font-semibold text-gray-900 text-xs">{{ pedido.id }}</p>
             <p class="text-xs text-gray-600">👤 {{ pedido.cliente }}</p>
             <p class="text-xs text-gray-500">📍 {{ pedido.destino }}</p>
+            <p class="text-xs text-gray-500">🕐 {{ pedido.horaInicio }} - {{ pedido.horaFin }}</p>
           </div>
-          <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded">{{ pedido.diasSinRetirar }}d</span>
+          <div class="text-right">
+            <span *ngIf="pedido.estado === 'pasado'" class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded block mb-1">❌ Pasado</span>
+            <span *ngIf="pedido.estado === 'en-progreso'" class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded block mb-1">✅ Progreso</span>
+            <span *ngIf="pedido.estado === 'pendiente'" class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded block mb-1">⏳ Pendiente</span>
+          </div>
         </div>
         <p class="text-xs text-gray-700 font-medium mt-1">{{ formatCurrency(pedido.monto) }}</p>
+      </div>
+      <div *ngIf="pedidosNoRetirados.length === 0" class="p-3 text-center text-xs text-gray-500">
+        No hay pedidos hoy
       </div>
       <div *ngIf="pedidosNoRetirados.length > 5" class="p-3 text-center text-xs text-gray-500">
         +{{ pedidosNoRetirados.length - 5 }} más...

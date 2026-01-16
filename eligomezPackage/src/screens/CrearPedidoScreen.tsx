@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Animated,
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { clientesService, Cliente } from '../services/clientesService';
@@ -21,6 +22,7 @@ import tiendasService, { Tienda } from '../services/tiendasService';
 import productosService, { Producto } from '../services/productosService';
 import { normalizarTexto, generarCodigoPedido, formatearFecha, calcularProximasFechas } from '../utils/pedidoUtils';
 import { useAppTheme, useTheme } from '../context/ThemeContext';
+import { PackageIcon } from '../components/icons';
 
 interface Props {
   onNavigate?: (screen: string) => void;
@@ -66,6 +68,32 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'éxito' | 'error'; texto: string } | null>(null);
+
+  // Animated header - efecto snap
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(280)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 100, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 280, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
+          ]).start();
+        }
+      },
+    }
+  );
 
   // Datos principales
   const [tiendas, setTiendas] = useState<Tienda[]>([]);
@@ -663,7 +691,13 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
         monto_envio: envio,
         total,
         dia_entrega: diaSelec,
-        fecha_entrega_programada: fechaSeleccionada || new Date(),
+        // 🔴 SOLUCIÓN ZONA HORARIA: Siempre fijar a las 12:00 UTC (mediodía)
+        // Así nunca hay confusión de zonas horarias
+        fecha_entrega_programada: (() => {
+          const fecha = fechaSeleccionada || new Date();
+          const fechaAlMediodiaUTC = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 12, 0, 0, 0);
+          return fechaAlMediodiaUTC;
+        })(),
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         notas: notas || null,
@@ -804,18 +838,37 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
-        <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(18) }]}>Crear Pedido</Text>
-      </View>
+      {/* Header moderno con gradiente */}
+      <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+        </View>
+        
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <Image 
+              source={require('../assets/logo.png')} 
+              style={{ width: scale(48), height: scale(48), tintColor: '#fff' }}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.modernHeaderTitle}>Crear Pedido</Text>
+          <Text style={styles.headerSubtitle}>Nuevo pedido para cliente</Text>
+        </Animated.View>
+      </Animated.View>
 
       {mensaje && (
         <View style={[styles.mensaje, { backgroundColor: mensaje.tipo === 'éxito' ? theme.colors.success : theme.colors.error }]}>
-          <Text style={[styles.mensajeTexto, { color: theme.colors.background }]}>{mensaje.texto}</Text>
+          <Text style={[styles.mensajeTexto, { color: '#fff', fontSize: scale(14), fontWeight: '600' }]}>{mensaje.texto}</Text>
         </View>
       )}
 
-      <ScrollView style={[styles.content, { backgroundColor: theme.colors.background }]}>
+      <Animated.ScrollView
+        style={[styles.content, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         {/* TIENDA - SIEMPRE VISIBLE, ES OBLIGATORIA */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text, fontSize: scale(14) }]}>📦 Tienda <Text style={{ color: theme.colors.error }}>*</Text></Text>
@@ -1257,7 +1310,7 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
         )}
 
         <View style={styles.spacer} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* MODAL NUEVO CLIENTE */}
       <Modal visible={modalNuevoCliente} transparent animationType="slide">
@@ -1748,7 +1801,51 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
 const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+  },
+  modernHeader: {
+    backgroundColor: theme.colors.primary,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    marginBottom: 16,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modernHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: -0.3,
   },
   header: {
     flexDirection: 'row',
@@ -1768,10 +1865,16 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     color: theme.colors.text,
   },
   mensaje: {
-    padding: 12,
+    padding: 14,
     marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
+    marginTop: 12,
+    marginBottom: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   mensajeTexto: {
     color: '#FFF',
@@ -1786,12 +1889,17 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: theme.colors.surface,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: scale(18),
-    fontWeight: 'bold',
+    fontSize: scale(16),
+    fontWeight: '700',
     marginBottom: 12,
     color: theme.colors.text,
   },
@@ -1809,14 +1917,19 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   },
   input: {
     backgroundColor: theme.colors.background,
-    borderRadius: 6,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 10,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.border,
     color: theme.colors.text,
-    fontSize: scale(16),
+    fontSize: scale(15),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textarea: {
     minHeight: 80,
@@ -1827,11 +1940,12 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: theme.colors.primary + '20',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.primary,
+    marginBottom: 4,
   },
   selectedText: {
     color: theme.colors.text,

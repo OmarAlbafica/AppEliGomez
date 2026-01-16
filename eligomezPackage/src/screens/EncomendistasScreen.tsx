@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   FlatList,
   Modal,
   ActivityIndicator,
-  Alert,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { Picker as ReactNativePicker } from '@react-native-picker/picker';
 import { encomendistasService, Encomendista, DestinoEncomendista } from '../services/encomendistasService';
 import { BackButton } from '../components/BackButton';
 import { useAppTheme } from '../context/ThemeContext';
+import { CustomAlert } from '../components/CustomAlert';
+import { TruckIcon, PhoneIcon, MapPinIcon } from '../components/icons';
 
 interface EncomendistasScreenProps {
   onNavigate?: (screen: string) => void;
@@ -49,6 +51,45 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   const [horaFin, setHoraFin] = useState('05:00 PM');
 
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+  // Estados para CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertButtons, setAlertButtons] = useState<any[]>([]);
+
+  // Animated header - efecto snap
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = useRef(new Animated.Value(280)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { 
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        if (offsetY > 50) {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 100, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        } else {
+          Animated.parallel([
+            Animated.timing(headerHeight, { toValue: 280, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
+          ]).start();
+        }
+      },
+    }
+  );
+
+  const showAlert = (title: string, message: string, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertButtons(buttons || [{ text: 'OK', style: 'default' }]);
+    setAlertVisible(true);
+  };
 
   // Convertir de 24h (HH:MM) a 12h (hh:mm AM/PM)
   const convertirHora12 = (hora24: string): string => {
@@ -96,7 +137,7 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       setEncomedistasFiltrados(data);
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert('Error', 'No se pudieron cargar los encomendistas');
+      showAlert('Error', 'No se pudieron cargar los encomendistas');
     } finally {
       setLoading(false);
     }
@@ -118,7 +159,7 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
 
   const handleCrearEncomendista = async () => {
     if (!nuevoNombre.trim() || !nuevoTelefono.trim()) {
-      Alert.alert('Error', 'Nombre y teléfono son obligatorios');
+      showAlert('Error', 'Nombre y teléfono son obligatorios');
       return;
     }
 
@@ -129,9 +170,9 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       setNuevoTelefono('');
       setModalNuevo(false);
       await cargarEncomendistas();
-      Alert.alert('Éxito', 'Encomendista creado correctamente');
+      showAlert('Éxito', 'Encomendista creado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el encomendista');
+      showAlert('Error', 'No se pudo crear el encomendista');
     } finally {
       setGuardando(false);
     }
@@ -146,7 +187,7 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
 
   const handleEditarEncomendista = async () => {
     if (!encomendistaSelecionado || !nuevoNombre.trim() || !nuevoTelefono.trim()) {
-      Alert.alert('Error', 'Nombre y teléfono son obligatorios');
+      showAlert('Error', 'Nombre y teléfono son obligatorios');
       return;
     }
 
@@ -161,9 +202,9 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       setModalEditarEncomendista(false);
       setEncomendistaSelecionado(null);
       await cargarEncomendistas();
-      Alert.alert('Éxito', 'Encomendista actualizado correctamente');
+      showAlert('Éxito', 'Encomendista actualizado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el encomendista');
+      showAlert('Error', 'No se pudo actualizar el encomendista');
     } finally {
       setGuardando(false);
     }
@@ -190,11 +231,11 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   const handleAgregarDestino = async () => {
     if (!encomendistaSelecionado) return;
     if (!nuevoDestinoNombre.trim()) {
-      Alert.alert('Error', 'El nombre del destino es obligatorio');
+      showAlert('Error', 'El nombre del destino es obligatorio');
       return;
     }
     if (diasSeleccionados.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un día');
+      showAlert('Error', 'Selecciona al menos un día');
       return;
     }
 
@@ -214,9 +255,9 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       
       setModalDestino(false);
       await cargarEncomendistas();
-      Alert.alert('Éxito', 'Destino agregado correctamente');
+      showAlert('Éxito', 'Destino agregado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo agregar el destino');
+      showAlert('Error', 'No se pudo agregar el destino');
     } finally {
       setGuardando(false);
     }
@@ -246,11 +287,11 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   const handleEditarDestino = async () => {
     if (!encomendistaSelecionado || !destinoEditando) return;
     if (!nuevoDestinoNombre.trim()) {
-      Alert.alert('Error', 'El nombre del destino es obligatorio');
+      showAlert('Error', 'El nombre del destino es obligatorio');
       return;
     }
     if (diasSeleccionados.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un día');
+      showAlert('Error', 'Selecciona al menos un día');
       return;
     }
 
@@ -279,19 +320,20 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
       setDestinoEditando(null);
       setDestinoEditandoIndex(-1);
       await cargarEncomendistas();
-      Alert.alert('Éxito', 'Destino actualizado correctamente');
+      showAlert('Éxito', 'Destino actualizado correctamente');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el destino');
+      showAlert('Error', 'No se pudo actualizar el destino');
     } finally {
       setGuardando(false);
     }
   };
 
   const handleEliminarDestino = async (encomendista: Encomendista, index: number) => {
-    Alert.alert('Confirmar', '¿Estás seguro de que deseas eliminar este destino?', [
-      { text: 'Cancelar', onPress: () => {} },
+    showAlert('Confirmar', '¿Estás seguro de que deseas eliminar este destino?', [
+      { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
+        style: 'destructive',
         onPress: async () => {
           try {
             setGuardando(true);
@@ -303,9 +345,9 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
             });
             
             await cargarEncomendistas();
-            Alert.alert('Éxito', 'Destino eliminado');
+            showAlert('Éxito', 'Destino eliminado');
           } catch (error) {
-            Alert.alert('Error', 'No se pudo eliminar el destino');
+            showAlert('Error', 'No se pudo eliminar el destino');
           } finally {
             setGuardando(false);
           }
@@ -315,17 +357,18 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   };
 
   const handleEliminarEncomendista = async (id: string) => {
-    Alert.alert('Confirmar', '¿Estás seguro de que deseas eliminar este encomendista?', [
-      { text: 'Cancelar', onPress: () => {} },
+    showAlert('Confirmar', '¿Estás seguro de que deseas eliminar este encomendista?', [
+      { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
+        style: 'destructive',
         onPress: async () => {
           try {
             await encomendistasService.eliminarEncomendista(id);
             await cargarEncomendistas();
-            Alert.alert('Éxito', 'Encomendista eliminado');
+            showAlert('Éxito', 'Encomendista eliminado');
           } catch (error) {
-            Alert.alert('Error', 'No se pudo eliminar el encomendista');
+            showAlert('Error', 'No se pudo eliminar el encomendista');
           }
         },
       },
@@ -341,28 +384,35 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header con botón < */}
-      <View style={[{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingTop: 8, backgroundColor: theme.colors.surface, paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }]}>
-        <BackButton onPress={() => onNavigate?.('home')} />
-        <Text style={[styles.title, { color: theme.colors.text, fontSize: scale(20) }]}>🚚 Encomendistas</Text>
-        <TouchableOpacity style={[styles.selectButton, { marginLeft: 'auto', backgroundColor: theme.colors.primary }]} onPress={() => setModalNuevo(true)}>
-          <Text style={[styles.selectButtonText, { color: '#fff' }]}>+ Nuevo</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header moderno con gradiente */}
+      <Animated.View style={[styles.header, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+        <View style={styles.headerTop}>
+          <BackButton onPress={() => onNavigate?.('home')} />
+          <TouchableOpacity style={styles.addButton} onPress={() => setModalNuevo(true)}>
+            <Text style={styles.addButtonText}>+ Nuevo</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+          <View style={styles.iconCircle}>
+            <TruckIcon size={scale(48)} color="#fff" />
+          </View>
+          <Text style={styles.headerTitle}>Encomendistas</Text>
+          <Text style={styles.headerSubtitle}>
+            {encomendistas.length} {encomendistas.length === 1 ? 'encomendista' : 'encomendistas'}
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
       {/* Buscador */}
-      <View style={{ padding: 16, backgroundColor: theme.colors.surface, marginBottom: 8 }}>
+      <View style={styles.searchContainer}>
         <TextInput
-          style={{
+          style={[styles.searchInput, { 
             backgroundColor: theme.colors.background,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: scale(14),
             color: theme.colors.text,
-          }}
+            borderColor: theme.colors.border,
+          }]}
           placeholder="🔍 Buscar por nombre o teléfono..."
           placeholderTextColor={theme.colors.textSecondary}
           value={busqueda}
@@ -370,14 +420,20 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
         />
       </View>
 
-      {encomedistasFiltrados.length === 0 ? (
-        <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>📭</Text>
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-            {busqueda ? 'No se encontraron resultados' : 'No hay encomendistas creados'}
-          </Text>
-        </View>
-      ) : (
+      <Animated.ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {encomedistasFiltrados.length === 0 ? (
+          <View style={[styles.emptyStateContainer, { backgroundColor: theme.colors.background }]}>
+            <TruckIcon size={64} color={theme.colors.textSecondary} />
+            <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+              {busqueda ? 'No se encontraron resultados' : 'No hay encomendistas creados'}
+            </Text>
+          </View>
+        ) : (
         <FlatList
           scrollEnabled={false}
           data={encomedistasFiltrados}
@@ -423,24 +479,24 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
                 </View>
               )}
 
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 <TouchableOpacity
-                  style={[styles.selectButton, { flex: 1, backgroundColor: theme.colors.primary }]}
+                  style={[styles.addDestButton, { flex: 1 }]}
                   onPress={() => handleAbrirModalDestino(item)}
                 >
-                  <Text style={[styles.selectButtonText, { color: '#fff' }]}>+ Destino</Text>
+                  <Text style={[styles.buttonText, { color: '#fff', fontSize: scale(13) }]}>+ Destino</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.selectButton, { flex: 1, backgroundColor: theme.colors.warning || '#f59e0b' }]}
+                  style={[styles.editButton]}
                   onPress={() => handleAbrirEdicionEncomendista(item)}
                 >
-                  <Text style={[styles.selectButtonText, { color: '#fff' }]}>✏️ Editar</Text>
+                  <Text style={[styles.buttonText, { color: '#fff', fontSize: scale(13) }]}>✏️</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.selectButton, { flex: 1, backgroundColor: theme.colors.error }]}
+                  style={[styles.deleteButton]}
                   onPress={() => handleEliminarEncomendista(item.id!)}
                 >
-                  <Text style={[styles.selectButtonText, { color: '#fff' }]}>🗑️</Text>
+                  <Text style={[styles.buttonText, { color: '#fff', fontSize: scale(13) }]}>🗑️</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -713,14 +769,95 @@ export const EncomendistasScreen: React.FC<EncomendistasScreenProps> = ({ onNavi
           <Text style={[styles.primaryButtonText, { color: '#fff' }]}>REGRESAR</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        buttons={alertButtons}
+        onDismiss={() => setAlertVisible(false)}
+      />
+      </Animated.ScrollView>
+    </View>
   );
 };
 
 const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+  },
+  header: {
+    backgroundColor: theme.colors.primary,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    marginBottom: 16,
+  },
+  addButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: -0.3,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  searchInput: {
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: theme.colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   centerContent: {
     justifyContent: 'center',
@@ -769,10 +906,61 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     marginTop: 16,
   },
   primaryButton: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 12,
+    backgroundColor: theme.colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addDestButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  editButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f59e0b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    minWidth: 50,
+  },
+  deleteButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.error,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    minWidth: 50,
+  },
+  buttonText: {
+    fontWeight: '700',
+    textAlign: 'center',
   },
   primaryButtonText: {
     fontWeight: 'bold',
@@ -789,11 +977,17 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     marginTop: 12,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: scale(14),
+    backgroundColor: theme.colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   modalContainer: {
     flex: 1,
