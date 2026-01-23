@@ -18,6 +18,8 @@ export interface Pedido {
   color_sticker?: string;                 // NUEVO: Color del sticker (ej: #FF6B6B)
   whatsapp_tienda?: string;               // NUEVO: WhatsApp de la tienda
   pagina_web_tienda?: string;             // NUEVO: Página web de la tienda
+  encomendista_nombre?: string;           // NUEVO: Nombre del encomendista (para referencia rápida)
+  destino_nombre?: string;                // NUEVO: Nombre del destino (para referencia rápida)
   destino_id?: string;                    // Referencia al destino del encomendista (modo normal)
   encomendista_id?: string;               // ID del encomendista responsable (modo normal)
   direccion_personalizada?: string;       // Dirección personalizada (modo personalizado)
@@ -32,11 +34,11 @@ export interface Pedido {
   notas?: string;                         // Notas adicionales
   productos_id?: string[];                // IDs de productos seleccionados para este pedido
   productos_codigos?: string[];           // Códigos de los productos para referencia rápida
-  estado: 'pendiente' | 'empacada' | 'enviado' | 'retirado' | 'no-retirado' | 'cancelado' | 'retirado-local' | 'liberado' | 'reservado';
+  estado: 'pendiente' | 'empacada' | 'enviado' | 'retirado' | 'no-retirado' | 'cancelado' | 'retirado-local' | 'liberado' | 'reservado' | 'remunero';
   codigo_pedido?: string;                 // Código único del pedido (ej: E202501051)
   foto_paquete?: string;                  // URL de la foto del paquete empacado
   fecha_creacion: Date;
-  fecha_entrega_programada?: Date;
+  fecha_entrega_programada?: string;      // ✅ STRING YYYY-MM-DD, NO Date object
 
   // AUDITORÍA: Guardar el usuario (email) y la fecha/hora que hizo cada cambio de estado
   estado_pendiente_user?: string;         // Email del usuario que cambió a "pendiente"
@@ -152,8 +154,8 @@ export class PedidosService {
               ? new Date(docData['fecha_creacion']) 
               : docData['fecha_creacion'].toDate?.() || new Date(),
             fecha_entrega_programada: typeof docData['fecha_entrega_programada'] === 'string'
-              ? new Date(docData['fecha_entrega_programada'])
-              : docData['fecha_entrega_programada']?.toDate?.() || undefined
+              ? docData['fecha_entrega_programada']  // ✅ MANTENER COMO STRING, no convertir a Date
+              : docData['fecha_entrega_programada']?.toDate?.()?.toISOString?.()?.split('T')[0] || undefined
           };
           console.log('%c✅ PEDIDO CARGADO COMPLETO:', 'color: green; font-weight: bold');
           console.log('%c  📋 Modo:', 'color: teal; font-weight: bold', pedido.modo);
@@ -332,12 +334,16 @@ export class PedidosService {
       }
 
       // Cambiar estado a "liberado" y agregar fecha_liberado
+      // Usar fecha de HOY al mediodía para evitar problemas de zona horaria
+      const hoy = new Date();
+      const fechaLiberadoISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}T12:00:00.000Z`;
+      
       const docRef = doc(db, 'pedidos', id);
       await updateDoc(docRef, {
         estado: 'liberado',
-        fecha_liberado: new Date().toISOString()
+        fecha_liberado: fechaLiberadoISO
       });
-      console.log('✅ Pedido marcado como liberado');
+      console.log('✅ Pedido marcado como liberado con fecha:', fechaLiberadoISO);
 
       // Marcar productos como liberados (con fecha_liberado)
       if (pedido.productos_id && pedido.productos_id.length > 0) {
@@ -373,7 +379,7 @@ export class PedidosService {
       const docRef = doc(db, 'pedidos', id);
       await deleteDoc(docRef);
 
-      // Desmarcar productos como reservados
+      // Desmarcar productos como reservados (esto también agrega fecha_liberado)
       if (pedido && pedido.productos_id && pedido.productos_id.length > 0) {
         try {
           await this.productosService.desmarcarReservados(pedido.productos_id);

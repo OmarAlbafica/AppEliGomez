@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../service/auth/auth.service';
+import { ThemeService } from '../service/theme.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -11,13 +13,15 @@ import { AuthService } from '../service/auth/auth.service';
   standalone: true,
   imports: [ReactiveFormsModule, CommonModule]
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   loginForm: FormGroup;
   registroForm: FormGroup;
   submitted: boolean = false;
   loading: boolean = false;
   showPassword: boolean = false;
   showConfirmPassword: boolean = false;
+  isDarkMode: boolean = false;
+  private subscriptions: Subscription[] = [];
   
   modo: 'login' | 'registro' = 'login'; // Controla si mostrar login o registro
   mensaje: { tipo: 'error' | 'success' | null; texto: string } = { tipo: null, texto: '' };
@@ -25,7 +29,8 @@ export class LoginComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private themeService: ThemeService
   ) {
     this.loginForm = this.fb.group({
       identificador: new FormControl('', [Validators.required]),
@@ -49,6 +54,21 @@ export class LoginComponent implements OnInit {
         this.router.navigate(['/main/dashboard']);
       }
     });
+
+    // Suscribirse al estado del dark mode
+    const darkModeSub = this.themeService.darkMode$.subscribe(isDark => {
+      this.isDarkMode = isDark;
+    });
+    this.subscriptions.push(darkModeSub);
+  }
+
+  ngOnDestroy() {
+    // Limpiar suscripciones
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  toggleDarkMode() {
+    this.themeService.toggleDarkMode();
   }
 
   togglePasswordVisibility() {

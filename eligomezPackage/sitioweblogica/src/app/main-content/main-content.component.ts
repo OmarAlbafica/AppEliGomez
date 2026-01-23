@@ -3,6 +3,7 @@ import { UserListComponent } from '../user-list/user-list.component';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { ModalNotificacionService } from '../service/modal-notificacion/modal-notificacion.service';
 
 @Component({
   selector: 'app-main-content',
@@ -27,7 +28,7 @@ export class MainContentComponent implements OnInit {
     showVencimiento: true
   };
 
-  constructor(private router: Router, private route: ActivatedRoute, private http: HttpClient) { }
+  constructor(private router: Router, private route: ActivatedRoute, private http: HttpClient, private notificacionService: ModalNotificacionService) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -61,7 +62,7 @@ export class MainContentComponent implements OnInit {
     // Por ahora, solo emitimos el evento para notificar al sidebar
     this.menuConfigChanged.emit(this.menuConfig);
     localStorage.setItem('menu-config', JSON.stringify(this.menuConfig));
-    alert('Configuración guardada correctamente!');
+    this.notificacionService.mostrarExito('Guardado con éxito');
   }
 
   navigateToCreateUser() {

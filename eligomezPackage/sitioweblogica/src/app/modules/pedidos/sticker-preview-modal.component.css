@@ -5,41 +5,74 @@
   }
 }
 
-/* Estilos para impresión */
+/* Estilos para impresión con window.print() */
 @media print {
   @page {
     size: A4;
     margin: 0;
+    padding: 0;
   }
 
-  /* Ocultar scrollbar */
-  ::-webkit-scrollbar {
-    display: none;
-  }
-
+  /* Fondo blanco puro */
   body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
     overflow: hidden;
   }
 
-  /* Ocultar solo el header */
-  .modal-header {
-    display: none;
+  /* Ocultar TODO excepto el área de impresión */
+  body * {
+    visibility: hidden;
   }
 
-  /* Ocultar solo los controles de navegación y botones */
+  /* Mostrar SOLO el elemento de stickers y sus hijos */
+  #stickers-print,
+  #stickers-print * {
+    visibility: visible !important;
+  }
+
+  /* Posicionar el área de impresión */
+  #stickers-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 8px;
+  }
+
+  /* Ocultar header, navegación y botones */
+  .modal-header,
+  .modal-header * {
+    display: none !important;
+  }
+
   div.flex.gap-4.justify-between,
   div.bg-white.px-8.py-4.flex.gap-4.justify-end {
-    display: none;
+    display: none !important;
   }
 
-  /* Asegurar que el contenido no se corte */
+  /* Asegurar que el contenido se vea correctamente */
   .modal-content {
-    overflow: visible;
-    max-height: none;
+    all: unset;
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
   }
 
-  .bg-gradient-to-b {
-    overflow: visible;
+  /* Stickers visibles */
+  .sticker {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* No mostrar scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
   }
 }
 

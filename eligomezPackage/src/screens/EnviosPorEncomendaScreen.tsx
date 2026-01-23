@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Animated,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
@@ -108,42 +109,55 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
   const procesarEnvios = async () => {
     try {
       setLoading(true);
-      const hoy = new Date();
-      const diaHoy = hoy.getDay();
-
-      let fechaInicio: Date = new Date(hoy);
-      let fechaFin: Date = new Date(hoy);
-
-      // 🔴 IMPORTANTE: Trabajar solo con fechas, sin horas
-      if (diaHoy === 3) {
-        // Hoy es MIÉRCOLES - buscar para MIÉ/JUE/VIE
-        setDiaEnvioHoy('📦 Envíos MIÉRCOLES');
-        fechaFin = new Date(hoy);
-        fechaFin.setDate(hoy.getDate() + 2);
-      } else if (diaHoy === 6) {
-        // Hoy es SÁBADO - buscar para SAB/LUN/MAR
-        setDiaEnvioHoy('📦 Envíos SÁBADO');
-        fechaFin = new Date(hoy);
-        fechaFin.setDate(hoy.getDate() + 2);
-      } else {
-        // Otro día - calcular próximo MIÉ o SAB
-        const proximoDiaEnvio = calcularProximoDiaEnvio();
-        const nombreDia = proximoDiaEnvio.getDay() === 3 ? 'MIÉRCOLES' : 'SÁBADO';
-        setDiaEnvioHoy(`📦 Próximo Envío ${nombreDia}`);
-        
-        fechaInicio = new Date(proximoDiaEnvio);
-        fechaFin = new Date(proximoDiaEnvio);
-        fechaFin.setDate(proximoDiaEnvio.getDate() + 2);
-      }
-
+      
+      // ✅ Usar servicio centralizado (sin hardcodear URL)
+      const { pedidos, dia_envio, fecha_inicio, fecha_fin } = await pedidosServiceOptimizado.obtenerPedidosParaEnvios();
+      
+      // Armar label del día
+      setDiaEnvioHoy(`📦 Envíos ${dia_envio}`);
+      
+      // Establecer rango desde el servicio
       setRangoFechas({
-        inicio: fechaInicio.toLocaleDateString('es-ES'),
-        fin: fechaFin.toLocaleDateString('es-ES')
+        inicio: fecha_inicio,
+        fin: fecha_fin
       });
-
-      await filtrarYAgrupar(fechaInicio, fechaFin);
+      
+      // Agrupar por encomendista
+      if (pedidos && pedidos.length > 0) {
+        // Ordenar por fecha_entrega_programada ascendente
+        pedidos.sort((a, b) => {
+          const fechaA = new Date(a.fecha_entrega_programada || '').getTime();
+          const fechaB = new Date(b.fecha_entrega_programada || '').getTime();
+          return fechaA - fechaB;
+        });
+        const grupos = new Map<string, any[]>();
+        pedidos.forEach(p => {
+          const encomienda = p.encomendista_nombre || 'Sin Encomienda';
+          if (!grupos.has(encomienda)) {
+            grupos.set(encomienda, []);
+          }
+          grupos.get(encomienda)!.push(p);
+        });
+        const resultado = Array.from(grupos.entries()).map(([nombre, pedidosGrupo]) => ({
+          encomendista_nombre: nombre,
+          pedidos: pedidosGrupo,
+          conteo: pedidosGrupo.length,
+          total: pedidosGrupo.reduce((sum: any, p: any) => sum + (p.total || 0), 0)
+        }));
+        resultado.sort((a, b) => a.encomendista_nombre.localeCompare(b.encomendista_nombre));
+        setEncomiendas(resultado);
+        setTotalPedidos(pedidos.length);
+      } else {
+        setEncomiendas([]);
+        setTotalPedidos(0);
+      }
+      
+      console.log(`📱 [Envios] Cargados ${pedidos?.length || 0} pedidos para envíos`);
+      
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando envíos:', error);
+      setEncomiendas([]);
+      setTotalPedidos(0);
     } finally {
       setLoading(false);
     }
@@ -160,59 +174,6 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
     }
   };
 
-  const filtrarYAgrupar = async (fechaInicio: Date, fechaFin: Date) => {
-    // Obtener pedidos pendientes y empacados
-    const todosPedidos = await pedidosServiceOptimizado.obtenerPedidosPorEstados(
-      ['pendiente', 'empacada'],
-      500
-    );
-
-    // Convertir a formato YYYY-MM-DD para comparar solo fechas
-    const inicioFecha = fechaInicio.toISOString().split('T')[0];
-    const finFecha = fechaFin.toISOString().split('T')[0];
-
-    // Filtrar por rango de fechas (sin horas)
-    const pedidosFiltrados = todosPedidos.filter(p => {
-      if (!p.fecha_entrega_programada) return false;
-      const fechaEntrega = new Date(p.fecha_entrega_programada).toISOString().split('T')[0];
-      return fechaEntrega >= inicioFecha && fechaEntrega <= finFecha;
-    });
-
-    if (pedidosFiltrados.length === 0) {
-      setEncomiendas([]);
-      setTotalPedidos(0);
-      return;
-    }
-
-    // Agrupar por encomendista
-    const grupos = new Map<string, PedidoCompleto[]>();
-    pedidosFiltrados.forEach(p => {
-      const encomienda = p.encomendista_datos?.nombre || 'Personalizado';
-      if (!grupos.has(encomienda)) {
-        grupos.set(encomienda, []);
-      }
-      grupos.get(encomienda)!.push(p);
-    });
-
-    // Convertir a array
-    const resultado: EncomendaAgrupada[] = Array.from(grupos.entries()).map(([nombre, pedidos]) => ({
-      encomendista_nombre: nombre,
-      pedidos: pedidos.sort((a, b) => {
-        const fechaA = new Date(a.fecha_entrega_programada || '').getTime();
-        const fechaB = new Date(b.fecha_entrega_programada || '').getTime();
-        return fechaA - fechaB;
-      }),
-      conteo: pedidos.length,
-      total: pedidos.reduce((sum, p) => sum + (p.total || 0), 0)
-    }));
-
-    // Ordenar por nombre de encomendista
-    resultado.sort((a, b) => a.encomendista_nombre.localeCompare(b.encomendista_nombre));
-
-    setEncomiendas(resultado);
-    setTotalPedidos(pedidosFiltrados.length);
-  };
-
   const toggleExpand = (nombre: string) => {
     if (expandedIds.includes(nombre)) {
       setExpandedIds(expandedIds.filter(id => id !== nombre));
@@ -221,17 +182,17 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
     }
   };
 
-  const verFotoPaquete = (pedido: PedidoCompleto) => {
+  const verFotoPaqueteDelPedido = (pedido: PedidoCompleto) => {
     if (pedido.foto_paquete) {
       setCurrentImages([pedido.foto_paquete]);
-      setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
+      setImageTitle('📦 Paquete');
       setImageViewerVisible(true);
     } else {
-      showAlert('Sin foto', 'Este paquete aún no tiene foto');
+      showAlert('Sin foto', 'Este pedido no tiene foto de paquete');
     }
   };
 
-  const verFotosProductos = (pedido: PedidoCompleto) => {
+  const verFotosProductosDelpedido = (pedido: PedidoCompleto) => {
     const fotos: string[] = [];
     pedido.productos_datos?.forEach((producto: any) => {
       // Preferir url_imagen primero, si no existe usar imagen_url
@@ -247,7 +208,7 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
     
     if (fotos.length > 0) {
       setCurrentImages(fotos);
-      setImageTitle(`Productos - ${pedido.codigo_pedido}`);
+      setImageTitle('📸 Productos');
       setImageViewerVisible(true);
     } else {
       showAlert('Sin fotos', 'Este pedido no tiene fotos de productos');
@@ -286,6 +247,19 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
 
   const formatearFecha = (fecha: string | Date | undefined): string => {
     if (!fecha) return 'Sin fecha';
+    
+    // Si es un STRING tipo YYYY-MM-DD, no convertir a Date (evita problemas de zona horaria)
+    if (typeof fecha === 'string') {
+      const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        return `${diasSemana[dateObj.getDay()]} ${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+      }
+    }
+    
+    // Si es Date o ISO string, convertir normalmente
     const date = new Date(fecha);
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     return `${diasSemana[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`;
@@ -407,7 +381,11 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
                           </Text>
                           
                           <Text style={[styles.pedidoDetail, { color: theme.colors.textSecondary }]}>
-                            👤 {pedido.cliente_datos?.nombre || 'N/A'}
+                            👤 {pedido.cliente_nombre || 'Cliente'}
+                          </Text>
+
+                          <Text style={[styles.pedidoDetail, { color: theme.colors.textSecondary }]}>
+                            📍 {pedido.destino_id || 'Destino'}
                           </Text>
                           
                           <Text style={[styles.pedidoDetail, { color: theme.colors.textSecondary }]}>
@@ -420,13 +398,27 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
                             </Text>
                           )}
 
+                          {/* Foto del paquete - Miniatura */}
+                          {pedido.foto_paquete && (
+                            <TouchableOpacity
+                              style={styles.fotoPaqueteContainer}
+                              onPress={() => verFotoPaqueteDelPedido(pedido)}
+                              activeOpacity={0.7}
+                            >
+                              <Image
+                                source={{ uri: pedido.foto_paquete }}
+                                style={styles.fotoPaquete}
+                              />
+                            </TouchableOpacity>
+                          )}
+
                           {/* Botones de fotos */}
                           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                             {/* Botón Ver Productos */}
                             {pedido.productos_datos && pedido.productos_datos.length > 0 && (
                               <TouchableOpacity
                                 style={[styles.photosButton, { backgroundColor: '#3B82F6', flex: 1 }]}
-                                onPress={() => verFotosProductos(pedido)}
+                                onPress={() => verFotosProductosDelpedido(pedido)}
                               >
                                 <Text style={styles.photosButtonText}>
                                   📸 Productos ({pedido.productos_datos.length})
@@ -438,7 +430,7 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
                             {pedido.foto_paquete && (
                               <TouchableOpacity
                                 style={[styles.photosButton, { backgroundColor: '#10B981', flex: 1 }]}
-                                onPress={() => verFotoPaquete(pedido)}
+                                onPress={() => verFotoPaqueteDelPedido(pedido)}
                               >
                                 <Text style={styles.photosButtonText}>📦 Paquete</Text>
                               </TouchableOpacity>
@@ -663,5 +655,23 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  fotoPaqueteContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+    height: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  fotoPaquete: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
 });

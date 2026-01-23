@@ -1,0 +1,17 @@
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Settings file '/Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/android/settings.gradle' line: 2
+
+* What went wrong:
+Error resolving plugin [id: 'com.facebook.react.settings']
+> Could not read workspace metadata from /Users/grupoejje/.gradle/caches/9.0.0/kotlin-dsl/accessors/0fb3be0a5a3d1cb46df313fe8c330a32/metadata.bin
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 7s

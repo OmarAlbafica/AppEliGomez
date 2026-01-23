@@ -1,14 +1,13 @@
-<div class="flex h-screen bg-gray-100">
+﻿<div class="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
   <!-- DESKTOP: Sidebar normal -->
-  <aside *ngIf="!isMobile" class="w-64 bg-indigo-900 text-white flex flex-col shadow-lg">
+  <aside *ngIf="!isMobile" [ngClass]="isSidebarCompact ? 'w-20' : 'w-64'" class="bg-indigo-900 dark:bg-gray-950 text-white flex flex-col shadow-lg transition-all duration-300">
     <!-- Logo -->
-    <div class="h-16 bg-indigo-800 flex items-center justify-center border-b border-indigo-700">
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-        </svg>
-        <span class="font-bold text-lg">Encomiendas</span>
-      </div>
+    <div class="h-16 bg-indigo-800 dark:bg-gray-800 flex items-center justify-between border-b-2 border-indigo-700 dark:border-gray-700 transition-colors duration-300 px-2">
+      <svg class="w-8 h-8 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+      </svg>
+      <button *ngIf="!isSidebarCompact" (click)="toggleCompactSidebar()" class="text-indigo-200 hover:text-white text-lg">‹</button>
+      <button *ngIf="isSidebarCompact" (click)="toggleCompactSidebar()" class="text-indigo-200 hover:text-white text-lg">›</button>
     </div>
 
     <!-- Menu Items -->
@@ -16,19 +15,20 @@
       <a *ngFor="let item of menuItems" 
         [routerLink]="item.route"
         (click)="cerrarSidebarAlNavegar()"
-        [ngClass]="{'bg-indigo-700': currentRoute.includes(item.route.split('/').pop()!)}"
+        [ngClass]="{'bg-indigo-700': currentRoute === item.route}"
+        [title]="item.label"
         class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-700 transition cursor-pointer"
       >
-        <span class="text-xl">{{ item.icon }}</span>
-        <span class="text-sm font-medium">{{ item.label }}</span>
+        <span class="text-xl flex-shrink-0">{{ item.icon }}</span>
+        <span *ngIf="!isSidebarCompact" class="text-sm font-medium whitespace-nowrap">{{ item.label }}</span>
       </a>
     </nav>
 
     <!-- Logout Button -->
-    <div class="p-4 border-t border-indigo-700">
-      <button (click)="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-600 transition text-left">
-        <span class="text-xl">🚪</span>
-        <span class="text-sm font-medium">Salir</span>
+    <div class="p-2 border-t-2 border-indigo-700 dark:border-gray-700">
+      <button (click)="logout()" [title]="'Salir'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-600 transition text-left text-white">
+        <span class="text-xl flex-shrink-0">🚪</span>
+        <span *ngIf="!isSidebarCompact" class="text-sm font-medium whitespace-nowrap">Salir</span>
       </button>
     </div>
   </aside>
@@ -36,17 +36,14 @@
   <!-- MOBILE: Sidebar como modal overlay -->
   <div *ngIf="isMobile && isSidebarOpen" class="fixed inset-0 bg-black bg-opacity-50 z-40" (click)="toggleSidebar()"></div>
   
-  <aside *ngIf="isMobile && isSidebarOpen" class="fixed left-0 top-0 bottom-0 w-64 bg-indigo-900 text-white flex flex-col shadow-2xl z-50 overflow-y-auto">
+  <aside *ngIf="isMobile && isSidebarOpen" class="fixed left-0 top-0 bottom-0 w-64 bg-indigo-900 dark:bg-gray-950 text-white flex flex-col shadow-2xl z-50 overflow-y-auto transition-colors duration-300">
     <!-- Logo -->
-    <div class="h-16 bg-indigo-800 flex items-center justify-between px-4 border-b border-indigo-700 sticky top-0">
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-        </svg>
-        <span class="font-bold text-lg">Encomiendas</span>
-      </div>
-      <button (click)="toggleSidebar()" class="text-white hover:bg-indigo-700 p-2 rounded">
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+    <div class="h-16 bg-indigo-800 dark:bg-gray-800 flex items-center justify-between border-b-2 border-indigo-700 dark:border-gray-700 sticky top-0 transition-colors duration-300 px-3">
+      <svg class="w-8 h-8 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+      </svg>
+      <button (click)="toggleSidebar()" class="text-indigo-200 hover:text-white text-2xl flex-shrink-0">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"></path>
         </svg>
       </button>
@@ -57,7 +54,7 @@
       <a *ngFor="let item of menuItems" 
         [routerLink]="item.route"
         (click)="cerrarSidebarAlNavegar()"
-        [ngClass]="{'bg-indigo-700': currentRoute.includes(item.route.split('/').pop()!)}"
+        [ngClass]="{'bg-indigo-700': currentRoute === item.route}"
         class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-700 transition cursor-pointer"
       >
         <span class="text-xl">{{ item.icon }}</span>
@@ -66,8 +63,8 @@
     </nav>
 
     <!-- Logout Button -->
-    <div class="p-4 border-t border-indigo-700">
-      <button (click)="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-600 transition text-left">
+    <div class="p-4 border-t-2 border-indigo-700 dark:border-gray-700">
+      <button (click)="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-600 transition text-left text-white">
         <span class="text-xl">🚪</span>
         <span class="text-sm font-medium">Salir</span>
       </button>
@@ -77,23 +74,29 @@
   <!-- Main Content -->
   <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Top Bar -->
-    <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+    <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center px-6 shadow-sm transition-colors duration-300" *ngIf="isMobile">
+      <!-- Hamburguesa centrada en móvil -->
+      <button (click)="toggleSidebar()" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-3xl">
+        ☰
+      </button>
+    </header>
+
+    <!-- Top Bar Desktop -->
+    <header *ngIf="!isMobile" class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 shadow-sm transition-colors duration-300">
+      <h1 class="text-xl font-bold text-gray-900 dark:text-white">Gestión de Envíos - Eli Gómez</h1>
       <div class="flex items-center gap-4">
-        <!-- Hamburguesa en móvil -->
-        <button *ngIf="isMobile" (click)="toggleSidebar()" class="text-gray-600 hover:text-gray-900 text-2xl">
-          ☰
-        </button>
-        <h1 class="text-xl font-semibold text-gray-900">Encomiendas</h1>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="text-sm text-gray-600">
+        <div class="text-sm text-gray-600 dark:text-gray-300">
           <span class="font-medium hidden sm:inline" *ngIf="usuarioActual">{{ usuarioActual.nombre }} {{ usuarioActual.apellido }}</span>
-          <p class="text-xs text-gray-400 hidden sm:block">{{ usuarioActual?.usuario }}</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 dark:text-gray-400 hidden sm:block">{{ usuarioActual?.usuario }}</p>
         </div>
-        <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
+        <!-- Toggle Dark Mode -->
+        <button (click)="toggleDarkMode()" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Cambiar tema">
+          <span class="text-xl">{{ isDarkMode ? '☀️' : '🌙' }}</span>
+        </button>
+        <div class="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-700 flex items-center justify-center text-white font-bold">
           {{ usuarioActual?.nombre?.charAt(0) }}
         </div>
-        <button (click)="logout()" class="ml-2 text-gray-600 hover:text-red-600 transition" title="Cerrar sesión">
+        <button (click)="logout()" class="ml-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition" title="Cerrar sesión">
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"></path>
           </svg>
@@ -102,7 +105,7 @@
     </header>
 
     <!-- Content Area -->
-    <main class="flex-1 overflow-auto">
+    <main class="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div [ngClass]="isMobile ? 'p-3' : 'p-6'">
         <router-outlet></router-outlet>
       </div>

@@ -695,3 +695,128 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* =====================================================
+   DARK MODE GLOBAL STYLES
+   ===================================================== */
+
+/* Aplicar dark mode al documento cuando la clase está presente */
+:root.dark {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #374151;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e7eb;
+  --border-color: #4b5563;
+}
+
+/* Tablas en dark mode */
+.dark table {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+.dark table thead {
+  background-color: #111827;
+  color: #ffffff;
+  border-bottom-color: #4b5563;
+}
+
+.dark table tbody tr {
+  border-bottom-color: #374151;
+}
+
+.dark table tbody tr:hover {
+  background-color: #2d3748;
+}
+
+.dark th,
+.dark td {
+  border-color: #374151;
+}
+
+/* Inputs en dark mode */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark input[type="date"],
+.dark input[type="search"],
+.dark textarea,
+.dark select {
+  background-color: #1f2937;
+  color: #ffffff;
+  border-color: #4b5563;
+}
+
+.dark input[type="text"]::placeholder,
+.dark input[type="email"]::placeholder,
+.dark input[type="password"]::placeholder,
+.dark input[type="number"]::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af;
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="password"]:focus,
+.dark input[type="number"]:focus,
+.dark input[type="date"]:focus,
+.dark input[type="search"]:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Cards en dark mode */
+.dark .card,
+.dark [class*="bg-white"] {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+/* EXCEPCIÓN: Stickers siempre blancos (papel) */
+.dark #stickers-print,
+.dark #stickers-print * {
+  background-color: white !important;
+  color: #000 !important;
+}
+
+/* Botones en dark mode */
+.dark button:not(.dark *) {
+  transition: all 0.3s ease;
+}
+
+/* Modales en dark mode */
+.dark .modal,
+.dark [class*="modal"] {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+/* Scrollbar en dark mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Transiciones suaves */
+.transition-colors {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}

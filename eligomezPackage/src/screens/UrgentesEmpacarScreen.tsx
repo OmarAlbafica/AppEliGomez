@@ -133,71 +133,54 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
     await guardarEncontrados(nuevosEncontrados);
   };
 
-  const calcularProximoDiaEnvio = (): Date => {
-    const hoy = new Date();
-    const diaSemana = hoy.getDay(); // 0 = domingo
-
-    let proximoEnvio = new Date(hoy);
-
-    if (diaSemana === 0 || diaSemana === 1 || diaSemana === 2) {
-      // Domingo, lunes, martes -> próximo miércoles
-      proximoEnvio.setDate(hoy.getDate() + (3 - diaSemana));
-    } else if (diaSemana === 3) {
-      // Miércoles -> próximo sábado (en 3 días)
-      proximoEnvio.setDate(hoy.getDate() + 3);
-    } else if (diaSemana === 4 || diaSemana === 5) {
-      // Jueves, viernes -> próximo sábado
-      proximoEnvio.setDate(hoy.getDate() + (6 - diaSemana));
-    } else if (diaSemana === 6) {
-      // Sábado -> próximo miércoles (en 4 días)
-      proximoEnvio.setDate(hoy.getDate() + 4);
-    }
-
-    return proximoEnvio;
-  };
-
   const cargarPedidosUrgentes = async () => {
     try {
       setLoading(true);
       
-      // Calcular próximo día de envío
-      const proxEnvio = calcularProximoDiaEnvio();
-      setProximoEnvio(proxEnvio);
-
-      // Obtener pedidos pendientes y empacados
-      const todosPedidos = await pedidosServiceOptimizado.obtenerPedidosPorEstados(
-        ['pendiente', 'empacada'],
-        500
-      );
-
-      // Filtrar: solo los que están en rango del próximo envío (próximo envío + 2 días)
-      const fechaProxEnvio = new Date(proxEnvio.getFullYear(), proxEnvio.getMonth(), proxEnvio.getDate());
-      const finRango = new Date(fechaProxEnvio);
-      finRango.setDate(finRango.getDate() + 2);
-
-      const pedidosUrgentes = todosPedidos.filter(pedido => {
-        if (!pedido.fecha_entrega_programada) return false;
-        
-        const fechaEntrega = new Date(pedido.fecha_entrega_programada);
-        const fechaEntregaNormal = new Date(fechaEntrega.getFullYear(), fechaEntrega.getMonth(), fechaEntrega.getDate());
-        
-        return fechaEntregaNormal >= fechaProxEnvio && fechaEntregaNormal <= finRango;
-      });
-
-      // Ordenar por fecha de entrega
+      // ✅ Usar servicio centralizado (sin hardcodear URL)
+      const pedidosUrgentes = await pedidosServiceOptimizado.obtenerPedidosUrgentesEmpacar();
+      // Ordenar por fecha_entrega_programada ascendente
       pedidosUrgentes.sort((a, b) => {
         const fechaA = new Date(a.fecha_entrega_programada || '').getTime();
         const fechaB = new Date(b.fecha_entrega_programada || '').getTime();
         return fechaA - fechaB;
       });
-
       setPedidos(pedidosUrgentes);
+      
+      // Calcular rango de fechas
+      const hoy = new Date();
+      const ultimoEnvio = new Date();
+      const diaHoy = hoy.getDay();
+      
+      if (diaHoy === 3 || diaHoy === 6) {
+        ultimoEnvio.setDate(hoy.getDate());
+      } else {
+        let diasAtras = 1;
+        while (diasAtras <= 6) {
+          const fecha = new Date(hoy);
+          fecha.setDate(hoy.getDate() - diasAtras);
+          if (fecha.getDay() === 3 || fecha.getDay() === 6) {
+            ultimoEnvio.setTime(fecha.getTime());
+            break;
+          }
+          diasAtras++;
+        }
+      }
+      
+      const fechaLimite = new Date(ultimoEnvio);
+      fechaLimite.setDate(ultimoEnvio.getDate() + 7);
+      setProximoEnvio(fechaLimite);
+      
       setRangoFechas({
-        inicio: fechaProxEnvio.toLocaleDateString('es-ES'),
-        fin: finRango.toLocaleDateString('es-ES')
+        inicio: hoy.toLocaleDateString('es-ES'),
+        fin: fechaLimite.toLocaleDateString('es-ES')
       });
+      
+      console.log(`📱 [UrgentesEmpacar] Cargados ${pedidosUrgentes.length} pedidos urgentes`);
+      
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando pedidos urgentes:', error);
+      setPedidos([]);
     } finally {
       setLoading(false);
     }
@@ -213,6 +196,19 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
 
   const formatearFecha = (fecha: string | Date | undefined): string => {
     if (!fecha) return 'Sin fecha';
+    
+    // Si es un STRING tipo YYYY-MM-DD, no convertir a Date (evita problemas de zona horaria)
+    if (typeof fecha === 'string') {
+      const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        return `${diasSemana[dateObj.getDay()]} ${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+      }
+    }
+    
+    // Si es Date o ISO string, convertir normalmente
     const date = new Date(fecha);
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     return `${diasSemana[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`;
@@ -234,17 +230,21 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
     
     if (fotos.length > 0) {
       setCurrentImages(fotos);
-      setImageTitle(`Productos - ${pedido.codigo_pedido}`);
+      setImageTitle('📸 Productos');
       setImageViewerVisible(true);
     } else {
-      showAlert('Sin fotos', 'Este pedido no tiene fotos de productos');
+      // Mensaje más informativo
+      const mensaje = pedido.productos_datos && pedido.productos_datos.length > 0 
+        ? 'Los productos de este pedido no tienen fotos disponibles'
+        : `Este pedido tiene ${pedido.productos_id?.length || 0} producto(s) pero no se cargaron las fotos.\n\nCódigo: ${pedido.codigo_pedido}\nProductos ID: ${pedido.productos_codigos?.join(', ') || 'N/A'}`;
+      showAlert('Sin fotos de productos', mensaje);
     }
   };
 
   const verFotoPaquete = (pedido: PedidoCompleto) => {
     if (pedido.foto_paquete) {
       setCurrentImages([pedido.foto_paquete]);
-      setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
+      setImageTitle('📦 Paquete');
       setImageViewerVisible(true);
     } else {
       showAlert('Sin foto', 'Este pedido no tiene foto de paquete');
@@ -412,8 +412,8 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                     <Text style={{ color: esEncontrado ? '#666' : theme.colors.text, fontWeight: '800', fontSize: 13, textDecorationLine: esEncontrado ? 'line-through' : 'none' }}>
                       {pedido.codigo_pedido}
                     </Text>
-                    <Text style={{ color: esEncontrado ? '#999' : theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                      {pedido.cliente_datos?.nombre || 'N/A'}
+                    <Text style={{ color: esEncontrado ? '#999' : theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginTop: 2 }}>
+                      {pedido.cliente_nombre || pedido.nombre_tienda || 'Cliente'}
                     </Text>
                   </View>
 
@@ -441,7 +441,27 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                   </TouchableOpacity>
                 </View>
 
-                {/* Fila 2: Imágenes en miniatura */}
+                {/* Botón Ver Fotos de Productos - Grande y prominente */}
+                {!esEncontrado && (
+                  <TouchableOpacity 
+                    onPress={() => verFotosProductos(pedido)}
+                    style={{ marginBottom: 12, marginTop: 8 }}
+                  >
+                    <View style={{
+                      backgroundColor: '#536DFE',
+                      borderRadius: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      alignItems: 'center',
+                    }}>
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
+                        📸 VER PRODUCTOS {pedido.productos_datos && pedido.productos_datos.length > 0 ? `(${pedido.productos_datos.length})` : ''}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {/* Carrusel de miniaturas de productos */}
                 {!esEncontrado && pedido.productos_datos && pedido.productos_datos.length > 0 && (
                   <ScrollView 
                     horizontal 
@@ -517,7 +537,7 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                 </Text>
                 
                 <Text style={[styles.cardDetail, { color: theme.colors.textSecondary }]}>
-                  👤 Cliente: {pedido.cliente_datos?.nombre || 'N/A'}
+                  👤 Cliente: {pedido.cliente_nombre || 'N/A'}
                 </Text>
                 
                 <Text style={[styles.cardDetail, { color: theme.colors.textSecondary }]}>
@@ -531,7 +551,7 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                 )}
                 
                 <Text style={[styles.cardDetail, { color: theme.colors.textSecondary }]}>
-                  🚚 Encomendista: {pedido.encomendista_datos?.nombre || 'Personalizado'}
+                  🚚 Encomendista: {pedido.encomendista_nombre || 'Personalizado'}
                 </Text>
                 
                 <View style={[styles.fechaBox, { backgroundColor: '#DC2626' + '20', borderColor: '#DC2626' }]}>

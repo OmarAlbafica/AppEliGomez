@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ClientesService, Cliente } from '../../service/clientes/clientes.service';
 import { PedidosService, Pedido } from '../../service/pedidos/pedidos.service';
 import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal-confirmacion.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 import { ResponsiveService } from '../../service/responsive/responsive.service';
 import { Subscription } from 'rxjs';
 
@@ -51,7 +52,8 @@ export class ClientesComponent implements OnInit, OnDestroy {
     private clientesService: ClientesService,
     private pedidosService: PedidosService,
     private modalService: ModalConfirmacionService,
-    private responsiveService: ResponsiveService
+    private responsiveService: ResponsiveService,
+    private notificacionService: ModalNotificacionService
   ) {}
 
   ngOnInit() {
@@ -134,7 +136,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
 
   crearCliente() {
     if (!this.nuevoCliente.nombre.trim()) {
-      alert('El nombre es obligatorio');
+      this.notificacionService.mostrarError('El nombre es obligatorio');
       return;
     }
 
@@ -147,16 +149,21 @@ export class ClientesComponent implements OnInit, OnDestroy {
       .then(() => {
         this.mostrarModalNuevoCliente = false;
         this.nuevoCliente = { nombre: '', telefono: '', direccion: '' };
-        alert('Cliente creado exitosamente');
+        this.notificacionService.mostrarExito('Cliente creado exitosamente');
       })
       .catch((error) => {
         console.error('Error:', error);
-        alert('Error creando cliente');
+        this.notificacionService.mostrarError('Error creando cliente');
       });
   }
 
-  editCliente(cliente: any) {
-    console.log('Editar cliente:', cliente);
+  editCliente(cliente: Cliente) {
+    this.nuevoCliente = {
+      nombre: cliente.nombre,
+      telefono: cliente.telefono || '',
+      direccion: cliente.direccion || ''
+    };
+    this.mostrarModalNuevoCliente = true;
   }
 
   async deleteCliente(cliente: Cliente) {
@@ -171,11 +178,11 @@ export class ClientesComponent implements OnInit, OnDestroy {
 
     try {
       await this.clientesService.eliminarCliente(cliente.id);
-      alert('Cliente eliminado correctamente');
+      this.notificacionService.mostrarExito('Cliente eliminado correctamente');
       this.filtrarClientes();
     } catch (error) {
       console.error('Error al eliminar cliente:', error);
-      alert('Error al eliminar el cliente');
+      this.notificacionService.mostrarError('Error al eliminar el cliente');
     }
   }
 

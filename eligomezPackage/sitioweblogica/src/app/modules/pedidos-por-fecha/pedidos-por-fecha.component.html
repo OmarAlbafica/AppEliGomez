@@ -1,0 +1,233 @@
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-6 transition-colors duration-300">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header con gradiente -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 text-white rounded-lg p-6 shadow-lg border-b-4 border-blue-800">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 class="text-3xl font-bold">📅 Pedidos por Ciclo Semanal</h1>
+          <p class="text-blue-100 text-sm mt-1">Reporte de entregas agrupadas por ciclo (Miércoles y Sábado)</p>
+        </div>
+        <div class="bg-blue-800/50 rounded-lg px-4 py-2">
+          <p class="text-blue-100 text-xs">Total de Pedidos</p>
+          <p class="text-2xl font-bold text-white">{{ totalPedidos }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
+      <h3 class="font-bold text-gray-900 dark:text-white mb-3">🔍 Filtros</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Filtro por Estado -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
+          <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()" 
+                  class="w-full px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none">
+            <option value="todos">Todos los estados</option>
+            <option *ngFor="let estado of estadosList" [value]="estado">{{ estado | uppercase }}</option>
+          </select>
+        </div>
+
+        <!-- Filtro Fecha Inicio -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Desde</label>
+          <input [(ngModel)]="filtroFechaInicio" (change)="aplicarFiltros()" type="date"
+                 class="w-full px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none">
+        </div>
+
+        <!-- Filtro Fecha Fin -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hasta</label>
+          <input [(ngModel)]="filtroFechaFin" (change)="aplicarFiltros()" type="date"
+                 class="w-full px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Estadísticas Rápidas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow border-l-4 border-blue-500">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">Total Pedidos</p>
+        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ totalPedidos }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow border-l-4 border-green-500">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">Ciclos Activos</p>
+        <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ ciclos.length }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow border-l-4 border-purple-500">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">Ingresos (Sin Envíos)</p>
+        <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">${{ totalIngresos | number:'1.2-2' }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow border-l-4 border-orange-500">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">Total Envíos</p>
+        <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">${{ totalEnvios | number:'1.2-2' }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow border-l-4 border-red-500">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">Promedio por Ciclo</p>
+        <p class="text-2xl font-bold text-red-600 dark:text-red-400">${{ ciclos.length > 0 ? (totalIngresos / ciclos.length) : 0 | number:'1.2-2' }}</p>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="cargando" class="flex justify-center items-center py-12">
+      <div class="text-center">
+        <div class="animate-spin inline-block">
+          <svg class="h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <p class="mt-4 text-gray-600 dark:text-gray-400">Cargando pedidos...</p>
+      </div>
+    </div>
+
+    <!-- Mensaje vacío -->
+    <div *ngIf="!cargando && ciclos.length === 0" 
+         class="bg-yellow-50 border-2 border-yellow-300 dark:border-yellow-700 dark:bg-yellow-900/20 rounded-lg p-8 text-center">
+      <p class="text-lg font-bold text-yellow-900 dark:text-yellow-300">📭 Sin pedidos</p>
+      <p class="text-sm text-yellow-700 dark:text-yellow-400 mt-2">No hay pedidos en el rango de fechas seleccionado</p>
+    </div>
+
+    <!-- Ciclos Semanales (VISTA DESKTOP) -->
+    <div *ngIf="!cargando && !isMobile && ciclos.length > 0" class="space-y-6">
+      <div *ngFor="let ciclo of ciclos" class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border-l-8" 
+           [ngClass]="ciclo.ciclo === 'miercoles' ? 'border-l-blue-600' : 'border-l-purple-600'">
+        
+        <!-- Header del Ciclo -->
+        <div [ngClass]="ciclo.ciclo === 'miercoles' ? 'bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-700 dark:to-blue-800' : 'bg-gradient-to-r from-purple-500 to-purple-600 dark:from-purple-700 dark:to-purple-800'" 
+             class="text-white px-6 py-4">
+          <div class="flex items-center justify-between flex-wrap gap-4 mb-2">
+            <div>
+              <h2 class="text-2xl font-bold">{{ ciclo.etiqueta }}</h2>
+              <p class="text-sm opacity-90 mt-1">{{ ciclo.diasIncluidos }}</p>
+            </div>
+            <div class="flex gap-6 text-sm">
+              <div class="bg-white/10 rounded-lg px-3 py-2">
+                <p class="opacity-75">Pedidos</p>
+                <p class="text-2xl font-bold">{{ ciclo.cantidad }}</p>
+              </div>
+              <div class="bg-white/10 rounded-lg px-3 py-2">
+                <p class="opacity-75">Ingresos</p>
+                <p class="text-2xl font-bold">${{ ciclo.totalIngresos | number:'1.2-2' }}</p>
+              </div>
+              <div class="bg-white/10 rounded-lg px-3 py-2">
+                <p class="opacity-75">Envíos</p>
+                <p class="text-2xl font-bold">${{ ciclo.totalEnvios | number:'1.2-2' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fechas dentro del Ciclo -->
+        <div class="divide-y dark:divide-gray-700">
+          <div *ngFor="let fecha of ciclo.fechas" class="bg-gray-50 dark:bg-gray-700/30 px-6 py-4">
+            <!-- Sub-header de Fecha Individual -->
+            <div class="flex items-center justify-between mb-3 pb-3 border-b dark:border-gray-600">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ fecha.fechaFormato }}</h3>
+              <div class="flex gap-4 text-sm">
+                <span class="text-gray-600 dark:text-gray-400">
+                  <span class="font-bold text-gray-900 dark:text-white">{{ fecha.cantidad }}</span> pedidos
+                </span>
+                <span class="text-gray-600 dark:text-gray-400">
+                  <span class="font-bold text-gray-900 dark:text-white">${{ fecha.totalIngresos | number:'1.2-2' }}</span> ingresos
+                </span>
+              </div>
+            </div>
+
+            <!-- Tabla de Pedidos por Fecha -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b dark:border-gray-600 bg-gray-100 dark:bg-gray-600">
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Entrega</th>
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Cliente</th>
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Encomendista</th>
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Destino</th>
+                    <th class="px-3 py-2 text-center font-semibold text-gray-700 dark:text-gray-200">Horario</th>
+                    <th class="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-200">Total</th>
+                    <th class="px-3 py-2 text-center font-semibold text-gray-700 dark:text-gray-200">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y dark:divide-gray-600">
+                  <tr *ngFor="let pedido of fecha.pedidos" class="hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300 font-medium">{{ fecha.fechaFormato }}</td>
+                    <td class="px-3 py-2 text-gray-900 dark:text-white font-medium">{{ pedido.cliente_nombre }}</td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ pedido.encomendista_nombre }}</td>
+                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ pedido.destino_id }}</td>
+                    <td class="px-3 py-2 text-center text-gray-700 dark:text-gray-300">
+                      <span *ngIf="pedido.hora_inicio && pedido.hora_fin">{{ pedido.hora_inicio }} - {{ pedido.hora_fin }}</span>
+                      <span *ngIf="!pedido.hora_inicio" class="text-gray-400">-</span>
+                    </td>
+                    <td class="px-3 py-2 text-right font-bold text-gray-900 dark:text-white">${{ pedido.total | number:'1.2-2' }}</td>
+                    <td class="px-3 py-2 text-center">
+                      <span [ngClass]="obtenerColorEstado(pedido.estado)" class="inline-block px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                        {{ obtenerEmojiEstado(pedido.estado) }} {{ pedido.estado | uppercase }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ciclos Semanales (VISTA MOBILE) -->
+    <div *ngIf="!cargando && isMobile && ciclos.length > 0" class="space-y-4">
+      <div *ngFor="let ciclo of ciclos" class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border-l-4" 
+           [ngClass]="ciclo.ciclo === 'miercoles' ? 'border-l-blue-600' : 'border-l-purple-600'">
+        
+        <!-- Header del Ciclo -->
+        <div [ngClass]="ciclo.ciclo === 'miercoles' ? 'bg-blue-500 dark:bg-blue-700' : 'bg-purple-500 dark:bg-purple-700'" 
+             class="text-white px-4 py-3">
+          <h2 class="text-lg font-bold">{{ ciclo.etiqueta }}</h2>
+          <p class="text-xs opacity-90">{{ ciclo.diasIncluidos }}</p>
+          <div class="flex gap-3 mt-2 text-xs">
+            <span class="bg-white/20 rounded px-2 py-1">{{ ciclo.cantidad }} pedidos</span>
+            <span class="bg-white/20 rounded px-2 py-1">${{ ciclo.totalIngresos | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Fechas en Tarjetas -->
+        <div class="divide-y dark:divide-gray-700">
+          <div *ngFor="let fecha of ciclo.fechas" class="px-4 py-3 border-b dark:border-gray-700">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ fecha.fechaFormato }}</h3>
+            
+            <div *ngFor="let pedido of fecha.pedidos" class="bg-gray-50 dark:bg-gray-700 rounded p-3 mb-2 text-xs">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <p class="font-bold text-gray-900 dark:text-white">{{ pedido.cliente_nombre }}</p>
+                  <p class="text-gray-600 dark:text-gray-400">{{ pedido.encomendista_nombre }}</p>
+                  <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">📅 {{ formatearFechaEntrega(pedido.fecha_entrega_programada) }}</p>
+                </div>
+                <span [ngClass]="obtenerColorEstado(pedido.estado)" class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                  {{ obtenerEmojiEstado(pedido.estado) }}
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                <span>Destino: {{ pedido.destino_id }}</span>
+                <span class="text-right">Total: ${{ pedido.total | number:'1.2-2' }}</span>
+              </div>
+              <div *ngIf="pedido.hora_inicio && pedido.hora_fin" class="text-gray-600 dark:text-gray-400">
+                Horario: {{ pedido.hora_inicio }} - {{ pedido.hora_fin }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zoom Modal -->
+  <div *ngIf="mostrarZoom && imagenZoom" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50" 
+       (click)="cerrarZoom()">
+    <div class="relative max-w-4xl max-h-[90vh] rounded-lg overflow-hidden" (click)="$event.stopPropagation()">
+      <button (click)="cerrarZoom()" class="absolute top-4 right-4 bg-white/90 hover:bg-white text-black rounded-full w-10 h-10 flex items-center justify-center">
+        ✕
+      </button>
+      <img [src]="imagenZoom" alt="Zoom imagen" class="w-full h-auto">
+    </div>
+  </div>
+</div>

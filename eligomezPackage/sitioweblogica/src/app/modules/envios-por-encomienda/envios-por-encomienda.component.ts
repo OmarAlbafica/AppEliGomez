@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { PedidosService, Pedido } from '../../service/pedidos/pedidos.service';
 import { ClientesService } from '../../service/clientes/clientes.service';
 import { EncomendistasService } from '../../service/encomendistas/encomendistas.service';
-import { Subject } from 'rxjs';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
+import { Subject, combineLatest } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 interface PedidoCompleto extends Pedido {
@@ -47,29 +48,23 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
   constructor(
     private pedidosService: PedidosService,
     private clientesService: ClientesService,
-    private encomendistasService: EncomendistasService
+    private encomendistasService: EncomendistasService,
+    private notificacionService: ModalNotificacionService
   ) {}
 
   ngOnInit() {
-    // Cargar clientes
-    this.clientesService.cargarClientes()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((clientes: any) => {
+    // Cargar TODOS los datos en paralelo y esperar a que todos estén listos
+    combineLatest([
+      this.clientesService.cargarClientes(),
+      this.encomendistasService.cargarEncomendistas(),
+      this.pedidosService.cargarPedidos()
+    ]).pipe(takeUntil(this.destroy$))
+      .subscribe(([clientes, encomendistas, pedidos]) => {
         this.clientes = clientes;
-      });
-
-    // Cargar encomendistas
-    this.encomendistasService.cargarEncomendistas()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((encomendistas: any) => {
         this.encomendistas = encomendistas;
-      });
-
-    // Cargar pedidos
-    this.pedidosService.cargarPedidos()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((pedidos: Pedido[]) => {
         this.pedidos = pedidos as PedidoCompleto[];
+        
+        // Ahora sí enriquecemos (ya tenemos clientes y encomendistas)
         this.enriquecerPedidos();
         this.procesarEnvios();
       });
@@ -114,28 +109,30 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
     const hoy = new Date();
     const diaHoy = hoy.getDay(); // 0=DOM, 1=LUN, 2=MAR, 3=MIÉ, 4=JUE, 5=VIE, 6=SAB
 
+    // SIEMPRE empezar desde HOY para no perder pedidos programados para hoy
     let fechaInicio: Date = new Date(hoy);
     let fechaFin: Date = new Date(hoy);
 
     if (diaHoy === 3) {
-      // Hoy es MIÉRCOLES - buscar para MIÉ/JUE/VIE
-      this.diaEnvioHoy = '📦 Envíos MIÉRCOLES - Para: Miércoles, Jueves, Viernes';
+      // Hoy es MIÉRCOLES - buscar para MIÉ/JUE/VIE (< SÁB)
+      this.diaEnvioHoy = '📦 Envíos MIÉRCOLES - Para: Miércoles a Viernes';
       fechaFin = new Date(hoy);
-      fechaFin.setDate(hoy.getDate() + 2);
+      fechaFin.setDate(hoy.getDate() + 3); // MIÉ+3 = SÁB (se excluye con <)
     } else if (diaHoy === 6) {
-      // Hoy es SÁBADO - buscar para SAB/LUN/MAR
-      this.diaEnvioHoy = '📦 Envíos SÁBADO - Para: Sábado, Lunes, Martes';
+      // Hoy es SÁBADO - buscar para SAB/DOM/LUN/MAR (< MIÉ)
+      this.diaEnvioHoy = '📦 Envíos SÁBADO - Para: Sábado a Martes';
       fechaFin = new Date(hoy);
-      fechaFin.setDate(hoy.getDate() + 2);
+      fechaFin.setDate(hoy.getDate() + 4); // SÁB+4 = MIÉ (se excluye con <)
     } else {
       // Otro día - calcular próximo MIÉ o SAB
       const proximoDiaEnvio = this.calcularProximoDiaEnvio();
       const nombreDia = proximoDiaEnvio.getDay() === 3 ? 'MIÉRCOLES' : 'SÁBADO';
       this.diaEnvioHoy = `📦 Próximo Envío ${nombreDia}`;
       
-      fechaInicio = new Date(proximoDiaEnvio);
+      // IMPORTANTE: Incluir desde HOY hasta el próximo envío
+      // Así no se pierden pedidos programados para hoy o días anteriores al envío
+      fechaInicio = new Date(hoy); // SIMPRE desde HOY
       fechaFin = new Date(proximoDiaEnvio);
-      fechaFin.setDate(proximoDiaEnvio.getDate() + 2);
     }
 
     this.rangoFechas = {
@@ -173,11 +170,37 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
    * Filtra y agrupa los pedidos por encomendista
    */
   private filtrarYAgrupar(fechaInicio: Date, fechaFin: Date) {
+    // ⚠️ IMPORTANTE: Comparar SOLO año/mes/día (sin hora ni zona horaria)
+    // Convertimos a string YYYY-MM-DD en hora LOCAL para evitar problemas de timezone
+    const formatoFecha = (d: Date): string => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const inicioStr = formatoFecha(fechaInicio);
+    const finStr = formatoFecha(fechaFin);
+    
+    console.log(`[Filtro] Buscando pedidos del ${inicioStr} al ${finStr} (solo fecha, sin hora)`);
+    
     // Filtrar: solo pendiente/empacada y que la fecha esté en el rango
     const pedidosFiltrados = this.pedidos.filter(p => {
       if (!['pendiente', 'empacada'].includes(p.estado)) return false;
+      
       const fechaEntrega = this.obtenerFechaEntrega(p.fecha_entrega_programada);
-      return fechaEntrega >= fechaInicio && fechaEntrega <= fechaFin;
+      const fechaEntregaStr = formatoFecha(fechaEntrega);
+      
+      // Comparar strings YYYY-MM-DD - usar < para excluir el día del próximo envío
+      const dentroDeRango = fechaEntregaStr >= inicioStr && fechaEntregaStr < finStr;
+      
+      if (!dentroDeRango) {
+        console.log(`[Filtro] Pedido ${p.codigo_pedido || p.id} (${fechaEntregaStr}) FUERA de rango ${inicioStr} a ${finStr}`);
+      } else {
+        console.log(`[Filtro] ✅ Pedido ${p.codigo_pedido || p.id} (${fechaEntregaStr}) DENTRO de rango`);
+      }
+      
+      return dentroDeRango;
     });
 
     if (pedidosFiltrados.length === 0) {
@@ -210,13 +233,37 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Obtiene la fecha de entrega del pedido
+   * Obtiene la fecha de entrega del pedido (maneja Timestamp de Firestore, Date, string ISO)
    */
   private obtenerFechaEntrega(fecha: any): Date {
     if (!fecha) return new Date();
+    
+    // Timestamp de Firestore (tiene método toDate)
+    if (fecha.toDate && typeof fecha.toDate === 'function') {
+      return fecha.toDate();
+    }
+    
+    // Ya es Date
     if (fecha instanceof Date) return fecha;
-    if (typeof fecha === 'string') return new Date(fecha);
-    if (fecha.toDate) return fecha.toDate();
+    
+    // ✅ SI es string YYYY-MM-DD, parsearlo correctamente sin timezone issues
+    if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      // Crear fecha en zona horaria LOCAL (no UTC)
+      return new Date(year, month - 1, day);
+    }
+    
+    // String ISO o similar
+    if (typeof fecha === 'string') {
+      const parsed = new Date(fecha);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    }
+    
+    // Objeto con seconds (formato Firestore serializado)
+    if (fecha.seconds) {
+      return new Date(fecha.seconds * 1000);
+    }
+    
     return new Date();
   }
 
@@ -242,9 +289,9 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
           this.procesarEnvios();
         });
 
-      alert(`✅ Se marcaron ${encomiendaAgrupada.conteo} pedido(s) como enviados`);
+      this.notificacionService.mostrarExito(`Se marcaron ${encomiendaAgrupada.conteo} pedido(s) como enviados`);
     } catch (error) {
-      alert('❌ Error al marcar como enviado: ' + error);
+      this.notificacionService.mostrarError('Error al marcar como enviado: ' + error);
     }
   }
 
@@ -261,27 +308,29 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
       'no-retirado': 'bg-orange-600 text-white',
       'cancelado': 'bg-red-600 text-white',
       'retirado-local': 'bg-gray-900 text-white',
-      'liberado': 'bg-amber-700 text-white'
+      'liberado': 'bg-amber-700 text-white',
+      'remunero': 'bg-teal-600 text-white'
     };
     return colores[estadoLower] || 'bg-gray-600 text-white';
   }
 
   /**
-   * Obtiene color de body por estado
+   * Obtiene color de body por estado (con dark mode)
    */
   obtenerColorBody(estado: string): string {
     const estadoLower = estado?.toLowerCase();
     const colores: { [key: string]: string } = {
-      'pendiente': 'bg-yellow-50 border-l-4 border-yellow-600',
-      'empacada': 'bg-pink-50 border-l-4 border-pink-600',
-      'enviado': 'bg-purple-50 border-l-4 border-purple-600',
-      'retirado': 'bg-green-50 border-l-4 border-green-600',
-      'no-retirado': 'bg-orange-50 border-l-4 border-orange-600',
-      'cancelado': 'bg-red-50 border-l-4 border-red-600',
-      'retirado-local': 'bg-gray-50 border-l-4 border-gray-900',
-      'liberado': 'bg-amber-50 border-l-4 border-amber-700'
+      'pendiente': 'bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-600',
+      'empacada': 'bg-pink-50 dark:bg-pink-900/30 border-l-4 border-pink-600',
+      'enviado': 'bg-purple-50 dark:bg-purple-900/30 border-l-4 border-purple-600',
+      'retirado': 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600',
+      'no-retirado': 'bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-600',
+      'cancelado': 'bg-red-50 dark:bg-red-900/30 border-l-4 border-red-600',
+      'retirado-local': 'bg-gray-50 dark:bg-gray-900/50 border-l-4 border-gray-900 dark:border-gray-400',
+      'liberado': 'bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-700',
+      'remunero': 'bg-teal-50 dark:bg-teal-900/30 border-l-4 border-teal-600'
     };
-    return colores[estadoLower] || 'bg-gray-50 border-l-4 border-gray-600';
+    return colores[estadoLower] || 'bg-gray-50 dark:bg-gray-900/30 border-l-4 border-gray-600';
   }
 
   /**
@@ -296,7 +345,8 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
       'no-retirado': '❌',
       'cancelado': '🚫',
       'retirado-local': '📍',
-      'liberado': '🔓'
+      'liberado': '🔓',
+      'remunero': '💵'
     };
     return emojis[estado?.toLowerCase()] || '❓';
   }
@@ -313,7 +363,8 @@ export class EnviosPorEncomendaComponent implements OnInit, OnDestroy {
       'no-retirado': 'No Retirado',
       'cancelado': 'Cancelado',
       'retirado-local': 'Retirado Local',
-      'liberado': 'Liberado'
+      'liberado': 'Liberado',
+      'remunero': 'Remunerado'
     };
     return palabras[estado?.toLowerCase()] || estado || 'Desconocido';
   }

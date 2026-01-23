@@ -485,12 +485,42 @@ export const ScannerScreenVisionCamera: React.FC<ScannerScreenVisionCameraProps>
               </Picker>
             </View>
 
-            {/* Foto */}
-            <TouchableOpacity style={styles.button} onPress={handleSeleccionarFoto}>
-              <Text style={styles.buttonText}>
-                {foto_base64 ? '✓ Foto agregada' : '📸 Agregar foto'}
-              </Text>
-            </TouchableOpacity>
+            {/* 📸 FOTO - SOLO SI ES "EMPACADA" (IGUAL QUE WEB) */}
+            {nuevoEstado === 'empacada' && (
+              <View style={[styles.fotoContainer, { marginTop: scale(12), marginBottom: scale(12) }]}>
+                <Text style={styles.fotoLabel}>📸 Foto del Paquete Empacado</Text>
+                <Text style={styles.fotoInfo}>
+                  {foto_base64 ? '✓ Foto seleccionada (JPG, PNG)' : 'Carga una foto del paquete empacado'}
+                </Text>
+
+                {/* Botón para seleccionar foto */}
+                <TouchableOpacity 
+                  style={styles.fotoButtton}
+                  onPress={handleSeleccionarFoto}
+                >
+                  <Text style={styles.fotoButttonText}>
+                    {foto_base64 ? '🔄 Cambiar imagen' : '📁 Seleccionar Imagen'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Preview de la foto si se cargó */}
+                {foto_base64 && (
+                  <View style={{ marginTop: scale(8) }}>
+                    <Text style={styles.fotoPreviewLabel}>✓ Foto seleccionada:</Text>
+                    <Image
+                      source={{ uri: `data:image/jpeg;base64,${foto_base64}` }}
+                      style={{
+                        width: '100%',
+                        height: scale(120),
+                        borderRadius: 8,
+                        marginTop: scale(6),
+                      }}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Notas */}
             <Text style={styles.label}>Notas (opcional):</Text>
@@ -828,6 +858,46 @@ const createStyles = (scale: (size: number) => number, theme: any) => {
       color: '#fff',
       fontSize: scale(14),
       fontWeight: 'bold',
+    },
+    // 📸 ESTILOS PARA FOTO (IGUAL QUE WEB)
+    fotoContainer: {
+      backgroundColor: '#F0FDE4',
+      borderRadius: 8,
+      padding: scale(12),
+      borderWidth: 1,
+      borderColor: '#BBCD3F',
+    },
+    fotoLabel: {
+      fontSize: scale(13),
+      fontWeight: '700',
+      color: '#156C00',
+      marginBottom: scale(6),
+    },
+    fotoInfo: {
+      fontSize: scale(12),
+      color: '#4B9C20',
+      marginBottom: scale(8),
+    },
+    fotoButtton: {
+      borderWidth: 2,
+      borderStyle: 'dashed',
+      borderColor: '#A8D66E',
+      borderRadius: 8,
+      paddingVertical: scale(10),
+      paddingHorizontal: scale(12),
+      alignItems: 'center',
+      marginBottom: scale(8),
+    },
+    fotoButttonText: {
+      fontSize: scale(12),
+      color: '#4B9C20',
+      fontWeight: '600',
+    },
+    fotoPreviewLabel: {
+      fontSize: scale(12),
+      fontWeight: '600',
+      color: '#156C00',
+      marginBottom: scale(4),
     },
     emptyText: {
       textAlign: 'center',

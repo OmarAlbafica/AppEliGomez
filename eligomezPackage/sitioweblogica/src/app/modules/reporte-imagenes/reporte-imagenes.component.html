@@ -1,21 +1,22 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-6">
-  <div class="max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-      <h1 class="text-4xl font-bold text-gray-800 mb-2">📸 Reporte de Imágenes Canvas</h1>
-      <p class="text-gray-600">Gestiona qué imágenes agregar o eliminar de Canvas</p>
-      
-      <!-- Controles de rango -->
-      <div class="mt-6 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+﻿<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 md:p-6 transition-colors duration-300">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header con gradiente -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 text-white rounded-lg p-6 shadow-lg border-b-4 border-blue-800">
+      <h1 class="text-3xl font-bold">📸 Reporte de Imágenes Canvas</h1>
+      <p class="text-blue-100 dark:text-blue-200 text-sm mt-1">Gestiona qué imágenes agregar o eliminar de Canvas</p>
+    </div>
+    
+    <!-- Controles de rango -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500 dark:border-blue-400">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Selector de días -->
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Período a buscar:</label>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Período a buscar:</label>
             <div class="flex flex-wrap gap-2">
               <button 
                 (click)="cambiarRango(3)" 
                 [class.ring-2]="diasRango === 3"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 3"
                 [class.border-blue-500]="diasRango === 3">
                 3 días
@@ -23,7 +24,7 @@
               <button 
                 (click)="cambiarRango(7)" 
                 [class.ring-2]="diasRango === 7"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 7"
                 [class.border-blue-500]="diasRango === 7">
                 1 semana
@@ -31,7 +32,7 @@
               <button 
                 (click)="cambiarRango(10)" 
                 [class.ring-2]="diasRango === 10"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 10"
                 [class.border-blue-500]="diasRango === 10">
                 10 días
@@ -39,7 +40,7 @@
               <button 
                 (click)="cambiarRango(14)" 
                 [class.ring-2]="diasRango === 14"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 14"
                 [class.border-blue-500]="diasRango === 14">
                 2 semanas
@@ -47,7 +48,7 @@
               <button 
                 (click)="cambiarRango(20)" 
                 [class.ring-2]="diasRango === 20"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 20"
                 [class.border-blue-500]="diasRango === 20">
                 20 días
@@ -55,7 +56,7 @@
               <button 
                 (click)="cambiarRango(30)" 
                 [class.ring-2]="diasRango === 30"
-                class="px-3 py-2 rounded-lg bg-white border border-gray-300 text-sm font-medium transition"
+                class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-sm font-medium transition"
                 [class.ring-blue-500]="diasRango === 30"
                 [class.border-blue-500]="diasRango === 30">
                 1 mes
@@ -65,14 +66,14 @@
           
           <!-- Input personalizado -->
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">O ingresa días personalizados:</label>
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">O ingresa días personalizados:</label>
             <div class="flex gap-2">
               <input 
                 type="number" 
                 [(ngModel)]="diasRango"
                 min="1"
                 max="365"
-                class="px-3 py-2 rounded-lg border border-gray-300 w-24 text-sm">
+                class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 w-24 text-sm">
               <button 
                 (click)="cambiarRango(diasRango)"
                 class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700">
@@ -84,10 +85,10 @@
 
         <!-- Rango actual -->
         <div class="mt-4 pt-4 border-t border-blue-200">
-          <p class="text-sm text-gray-700">
+          <p class="text-sm text-gray-700 dark:text-gray-300">
             <strong>Período:</strong> {{ formatearFecha(fechaInicio) }} → {{ formatearFecha(fechaFin) }}
           </p>
-          <p class="text-xs text-gray-500 mt-1">{{ diasRango }} días hacia atrás (contando hoy)</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ diasRango }} días hacia atrás (contando hoy)</p>
         </div>
       </div>
     </div>
@@ -101,14 +102,14 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
-        <p class="text-gray-600 mt-4">Cargando reporte...</p>
+        <p class="text-gray-600 dark:text-gray-400 mt-4">Cargando reporte...</p>
       </div>
     </div>
 
     <!-- Grid de dos columnas -->
     <div *ngIf="!cargando" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- PARA AGREGAR EN CANVAS (Liberados) -->
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         <div class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4">
           <h2 class="text-2xl font-bold">➕ AGREGAR en Canvas</h2>
           <p class="text-green-100 text-sm mt-1">Productos Liberados ({{ pedidosLiberados.length }})</p>
@@ -116,17 +117,17 @@
 
         <div class="p-6">
           <div *ngIf="pedidosLiberados.length === 0" class="text-center py-8">
-            <p class="text-gray-500">No hay pedidos liberados en este período</p>
+            <p class="text-gray-500 dark:text-gray-400">No hay pedidos liberados en este período</p>
           </div>
 
           <div *ngIf="pedidosLiberados.length > 0" class="space-y-4">
             <!-- Desktop Grid -->
             <div *ngIf="!isMobile" class="space-y-6">
-              <div *ngFor="let pedido of pedidosLiberados" class="border rounded-lg p-4 bg-gray-50">
+              <div *ngFor="let pedido of pedidosLiberados" class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
                 <div class="flex items-start gap-4 mb-4">
                   <div>
-                    <p class="font-bold text-lg text-gray-800">{{ pedido.codigo_pedido || pedido.id }}</p>
-                    <p class="text-sm text-gray-600">{{ pedido.cliente_nombre }}</p>
+                    <p class="font-bold text-lg text-gray-800 dark:text-white">{{ pedido.codigo_pedido || pedido.id }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ pedido.cliente_nombre }}</p>
                     <p class="text-sm text-green-600 font-medium">Creado: {{ formatearFecha(pedido.fecha_creacion) }}</p>
                   </div>
                 </div>
@@ -134,13 +135,13 @@
                 <!-- Galería de productos -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div *ngFor="let producto of pedido.productos" class="group relative">
-                    <div class="relative overflow-hidden rounded-lg bg-gray-100 aspect-square shadow-md hover:shadow-lg transition cursor-pointer"
+                    <div class="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 aspect-square shadow-md hover:shadow-lg transition cursor-pointer"
                          (click)="abrirZoom((producto.url_thumbnail || producto.url_imagen) || '')">
                       <img [src]="producto.url_thumbnail || producto.url_imagen" 
                            alt="Producto" 
                            class="w-full h-full object-cover group-hover:opacity-75 transition hover:scale-105">
                     </div>
-                    <p class="text-xs text-center mt-2 font-semibold text-gray-700">{{ producto.codigo }}</p>
+                    <p class="text-xs text-center mt-2 font-semibold text-gray-700 dark:text-gray-300">{{ producto.codigo }}</p>
                   </div>
                 </div>
               </div>
@@ -148,10 +149,10 @@
 
             <!-- Mobile List -->
             <div *ngIf="isMobile" class="space-y-3">
-              <div *ngFor="let pedido of pedidosLiberados" class="bg-gray-50 p-3 rounded-lg">
+              <div *ngFor="let pedido of pedidosLiberados" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                 <div class="mb-3">
-                  <p class="font-bold text-sm text-gray-800">{{ pedido.codigo_pedido || pedido.id }}</p>
-                  <p class="text-xs text-gray-600">{{ pedido.cliente_nombre }}</p>
+                  <p class="font-bold text-sm text-gray-800 dark:text-white">{{ pedido.codigo_pedido || pedido.id }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">{{ pedido.cliente_nombre }}</p>
                   <p class="text-xs text-green-600 mt-1">{{ formatearFecha(pedido.fecha_creacion) }}</p>
                 </div>
                 
@@ -162,7 +163,7 @@
                       <img [src]="producto.url_thumbnail || producto.url_imagen" 
                            alt="Producto"
                            class="w-full aspect-square object-cover rounded">
-                      <p class="text-xs text-center mt-1 font-semibold text-gray-700">{{ producto.codigo }}</p>
+                      <p class="text-xs text-center mt-1 font-semibold text-gray-700 dark:text-gray-300">{{ producto.codigo }}</p>
                     </div>
                   </div>
                 </div>
@@ -173,7 +174,7 @@
       </div>
 
       <!-- PARA ELIMINAR DE CANVAS (Reservados) -->
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         <div class="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-4">
           <h2 class="text-2xl font-bold">🗑️ ELIMINAR de Canvas</h2>
           <p class="text-red-100 text-sm mt-1">Productos Reservados ({{ pedidosReservados.length }})</p>
@@ -181,17 +182,17 @@
 
         <div class="p-6">
           <div *ngIf="pedidosReservados.length === 0" class="text-center py-8">
-            <p class="text-gray-500">No hay pedidos reservados en este período</p>
+            <p class="text-gray-500 dark:text-gray-400">No hay pedidos reservados en este período</p>
           </div>
 
           <div *ngIf="pedidosReservados.length > 0" class="space-y-4">
             <!-- Desktop Grid -->
             <div *ngIf="!isMobile" class="space-y-6">
-              <div *ngFor="let pedido of pedidosReservados" class="border rounded-lg p-4 bg-gray-50">
+              <div *ngFor="let pedido of pedidosReservados" class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
                 <div class="flex items-start gap-4 mb-4">
                   <div>
-                    <p class="font-bold text-lg text-gray-800">{{ pedido.codigo_pedido || pedido.id }}</p>
-                    <p class="text-sm text-gray-600">{{ pedido.cliente_nombre }}</p>
+                    <p class="font-bold text-lg text-gray-800 dark:text-white">{{ pedido.codigo_pedido || pedido.id }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ pedido.cliente_nombre }}</p>
                     <p class="text-sm text-red-600 font-medium">{{ formatearFecha(pedido.fecha_creacion) }}</p>
                   </div>
                 </div>
@@ -199,13 +200,13 @@
                 <!-- Galería de productos -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div *ngFor="let producto of pedido.productos" class="group relative">
-                    <div class="relative overflow-hidden rounded-lg bg-gray-100 aspect-square shadow-md hover:shadow-lg transition cursor-pointer"
+                    <div class="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 aspect-square shadow-md hover:shadow-lg transition cursor-pointer"
                          (click)="abrirZoom((producto.url_thumbnail || producto.url_imagen) || '')">
                       <img [src]="producto.url_thumbnail || producto.url_imagen" 
                            alt="Producto" 
                            class="w-full h-full object-cover group-hover:opacity-75 transition hover:scale-105">
                     </div>
-                    <p class="text-xs text-center mt-2 font-semibold text-gray-700">{{ producto.codigo }}</p>
+                    <p class="text-xs text-center mt-2 font-semibold text-gray-700 dark:text-gray-300">{{ producto.codigo }}</p>
                   </div>
                 </div>
               </div>
@@ -213,10 +214,10 @@
 
             <!-- Mobile List -->
             <div *ngIf="isMobile" class="space-y-3">
-              <div *ngFor="let pedido of pedidosReservados" class="bg-gray-50 p-3 rounded-lg">
+              <div *ngFor="let pedido of pedidosReservados" class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                 <div class="mb-3">
-                  <p class="font-bold text-sm text-gray-800">{{ pedido.codigo_pedido || pedido.id }}</p>
-                  <p class="text-xs text-gray-600">{{ pedido.cliente_nombre }}</p>
+                  <p class="font-bold text-sm text-gray-800 dark:text-white">{{ pedido.codigo_pedido || pedido.id }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">{{ pedido.cliente_nombre }}</p>
                   <p class="text-xs text-red-600 mt-1">{{ formatearFecha(pedido.fecha_creacion) }}</p>
                 </div>
                 
@@ -227,7 +228,7 @@
                       <img [src]="producto.url_thumbnail || producto.url_imagen" 
                            alt="Producto"
                            class="w-full aspect-square object-cover rounded">
-                      <p class="text-xs text-center mt-1 font-semibold text-gray-700">{{ producto.codigo }}</p>
+                      <p class="text-xs text-center mt-1 font-semibold text-gray-700 dark:text-gray-300">{{ producto.codigo }}</p>
                     </div>
                   </div>
                 </div>
@@ -239,42 +240,41 @@
     </div>
 
     <!-- Resumen -->
-    <div *ngIf="!cargando && (pedidosLiberados.length > 0 || pedidosReservados.length > 0)" class="mt-6 bg-white rounded-lg shadow p-6">
-      <h3 class="text-lg font-bold text-gray-800 mb-3">📊 Resumen</h3>
+    <div *ngIf="!cargando && (pedidosLiberados.length > 0 || pedidosReservados.length > 0)" class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-3">📊 Resumen</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="text-center">
           <p class="text-3xl font-bold text-green-600">{{ pedidosLiberados.length }}</p>
-          <p class="text-sm text-gray-600">Agregar</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Agregar</p>
         </div>
         <div class="text-center">
           <p class="text-3xl font-bold text-red-600">{{ pedidosReservados.length }}</p>
-          <p class="text-sm text-gray-600">Eliminar</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Eliminar</p>
         </div>
         <div class="text-center">
           <p class="text-3xl font-bold text-blue-600">{{ pedidosLiberados.length + pedidosReservados.length }}</p>
-          <p class="text-sm text-gray-600">Total</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Total</p>
         </div>
         <div class="text-center">
           <p class="text-3xl font-bold text-indigo-600">{{ diasRango }}</p>
-          <p class="text-sm text-gray-600">Días</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Días</p>
         </div>
       </div>
     </div>
   </div>
-</div>
 
 <!-- Modal de Zoom -->
 <div *ngIf="mostrarZoom && imagenZoom" 
      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
-  <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-screen overflow-hidden flex flex-col">
-    <div class="flex justify-between items-center p-4 border-b border-gray-300">
-      <h3 class="text-xl font-bold text-gray-800">🔍 Vista Ampliada</h3>
-      <button (click)="cerrarZoom()" class="text-2xl text-gray-600 hover:text-gray-900 font-bold">✕</button>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-screen overflow-hidden flex flex-col">
+    <div class="flex justify-between items-center p-4 border-b border-gray-300 dark:border-gray-600">
+      <h3 class="text-xl font-bold text-gray-800 dark:text-white">🔍 Vista Ampliada</h3>
+      <button (click)="cerrarZoom()" class="text-2xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white font-bold">✕</button>
     </div>
     <div class="flex-1 flex items-center justify-center p-4 overflow-auto bg-gray-900">
       <img [src]="imagenZoom" alt="Imagen ampliada" class="max-w-full max-h-full object-contain">
     </div>
-    <div class="p-4 border-t border-gray-300 text-center text-sm text-gray-600">
+    <div class="p-4 border-t border-gray-300 dark:border-gray-600 text-center text-sm text-gray-600 dark:text-gray-400">
       💡 Usa el zoom del navegador (Ctrl + rueda) para ampliar más o haz clic fuera para cerrar
     </div>
   </div>

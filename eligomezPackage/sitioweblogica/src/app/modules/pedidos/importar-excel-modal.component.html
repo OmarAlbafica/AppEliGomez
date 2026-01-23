@@ -1,5 +1,5 @@
-<div *ngIf="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+﻿<div *ngIf="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
     <!-- Header -->
     <div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-t-lg sticky top-0">
       <h2 class="text-2xl font-bold">📊 Importar Pedidos desde Excel</h2>
@@ -21,14 +21,14 @@
 
       <!-- File input -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">📁 Seleccionar archivo Excel</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">📁 Seleccionar archivo Excel</label>
         <input 
           type="file" 
           accept=".xlsx,.xls,.csv"
           (change)="onArchivoSeleccionado($event)"
-          class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg focus:outline-none focus:border-green-500 cursor-pointer"
+          class="w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-green-500 cursor-pointer"
           placeholder="Arrastra el archivo aquí o haz clic para seleccionar">
-        <p class="text-xs text-gray-500 mt-2">Formatos soportados: .xlsx, .xls, .csv</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Formatos soportados: .xlsx, .xls, .csv</p>
       </div>
 
       <!-- Preview de archivo seleccionado -->
@@ -40,23 +40,23 @@
       <!-- Resumen de datos -->
       <div *ngIf="resumenCargado" class="space-y-4">
         <!-- Estadísticas generales -->
-        <div class="bg-gray-50 rounded-lg p-4 space-y-2">
-          <h3 class="font-bold text-gray-900">📊 Resumen de datos a importar:</h3>
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-2">
+          <h3 class="font-bold text-gray-900 dark:text-white">📊 Resumen de datos a importar:</h3>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div class="bg-white p-3 rounded border-l-4 border-blue-400">
-              <span class="text-gray-600">Clientes:</span>
+            <div class="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-blue-400">
+              <span class="text-gray-600 dark:text-gray-400">Clientes:</span>
               <span class="font-bold text-blue-600 ml-2">{{ datosResumen.clientes }}</span>
             </div>
-            <div class="bg-white p-3 rounded border-l-4 border-purple-400">
-              <span class="text-gray-600">Encomendistas:</span>
+            <div class="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-purple-400">
+              <span class="text-gray-600 dark:text-gray-400">Encomendistas:</span>
               <span class="font-bold text-purple-600 ml-2">{{ datosResumen.encomendistas }}</span>
             </div>
-            <div class="bg-white p-3 rounded border-l-4 border-orange-400">
-              <span class="text-gray-600">Destinos:</span>
+            <div class="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-orange-400">
+              <span class="text-gray-600 dark:text-gray-400">Destinos:</span>
               <span class="font-bold text-orange-600 ml-2">{{ datosResumen.destinos }}</span>
             </div>
-            <div class="bg-white p-3 rounded border-l-4 border-green-400">
-              <span class="text-gray-600">Pedidos:</span>
+            <div class="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-green-400">
+              <span class="text-gray-600 dark:text-gray-400">Pedidos:</span>
               <span class="font-bold text-green-600 ml-2">{{ datosResumen.pedidos }}</span>
             </div>
           </div>
@@ -64,13 +64,13 @@
 
         <!-- Preview detallado con tabs -->
         <div class="border rounded-lg">
-          <div class="flex flex-wrap border-b bg-gray-100">
+          <div class="flex flex-wrap border-b bg-gray-100 dark:bg-gray-700">
             <button 
               (click)="tabActual = 'clientes'"
               [class.bg-white]="tabActual === 'clientes'"
               [class.border-b-2]="tabActual === 'clientes'"
               [class.border-blue-600]="tabActual === 'clientes'"
-              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              class="px-4 py-2 font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:bg-gray-800 transition">
               👤 Clientes ({{ datosResumen.clientes }})
             </button>
             <button 
@@ -78,7 +78,7 @@
               [class.bg-white]="tabActual === 'encomendistas'"
               [class.border-b-2]="tabActual === 'encomendistas'"
               [class.border-purple-600]="tabActual === 'encomendistas'"
-              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              class="px-4 py-2 font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:bg-gray-800 transition">
               🚚 Encomendistas ({{ datosResumen.encomendistas }})
             </button>
             <button 
@@ -86,7 +86,7 @@
               [class.bg-white]="tabActual === 'destinos'"
               [class.border-b-2]="tabActual === 'destinos'"
               [class.border-orange-600]="tabActual === 'destinos'"
-              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              class="px-4 py-2 font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:bg-gray-800 transition">
               📍 Destinos ({{ datosResumen.destinos }})
             </button>
             <button 
@@ -94,7 +94,7 @@
               [class.bg-white]="tabActual === 'pedidos'"
               [class.border-b-2]="tabActual === 'pedidos'"
               [class.border-green-600]="tabActual === 'pedidos'"
-              class="px-4 py-2 font-medium text-gray-700 hover:bg-white transition">
+              class="px-4 py-2 font-medium text-gray-700 dark:text-gray-300 hover:bg-white dark:bg-gray-800 transition">
               📦 Pedidos ({{ datosResumen.pedidos }})
             </button>
           </div>
@@ -104,12 +104,12 @@
             <!-- Tab Clientes -->
             <div *ngIf="tabActual === 'clientes'" class="space-y-2">
               <div *ngFor="let cliente of datosParaImportar?.clientes" class="bg-blue-50 p-3 rounded border-l-4 border-blue-400 text-sm">
-                <div class="font-medium text-gray-900">{{ cliente.nombre }}</div>
-                <div class="text-gray-600 text-xs mt-1">
+                <div class="font-medium text-gray-900 dark:text-white">{{ cliente.nombre }}</div>
+                <div class="text-gray-600 dark:text-gray-400 text-xs mt-1">
                   📱 {{ cliente.telefono || 'N/A' }} | 📍 {{ cliente.direccion || 'N/A' }}
                 </div>
               </div>
-              <div *ngIf="!datosParaImportar?.clientes?.length" class="text-gray-500 text-center py-4">
+              <div *ngIf="!datosParaImportar?.clientes?.length" class="text-gray-500 dark:text-gray-400 text-center py-4">
                 Sin clientes
               </div>
             </div>
@@ -117,12 +117,12 @@
             <!-- Tab Encomendistas -->
             <div *ngIf="tabActual === 'encomendistas'" class="space-y-2">
               <div *ngFor="let enc of datosParaImportar?.encomendistas" class="bg-purple-50 p-3 rounded border-l-4 border-purple-400 text-sm">
-                <div class="font-medium text-gray-900">{{ enc.nombre }}</div>
-                <div class="text-gray-600 text-xs mt-1">
+                <div class="font-medium text-gray-900 dark:text-white">{{ enc.nombre }}</div>
+                <div class="text-gray-600 dark:text-gray-400 text-xs mt-1">
                   📱 {{ enc.telefono || 'N/A' }} | 📍 {{ enc.local || 'N/A' }}
                 </div>
               </div>
-              <div *ngIf="!datosParaImportar?.encomendistas?.length" class="text-gray-500 text-center py-4">
+              <div *ngIf="!datosParaImportar?.encomendistas?.length" class="text-gray-500 dark:text-gray-400 text-center py-4">
                 Sin encomendistas
               </div>
             </div>
@@ -130,9 +130,9 @@
             <!-- Tab Destinos -->
             <div *ngIf="tabActual === 'destinos'" class="space-y-2">
               <div *ngFor="let destino of datosParaImportar?.destinos" class="bg-orange-50 p-3 rounded border-l-4 border-orange-400 text-sm">
-                <div class="font-medium text-gray-900">📍 {{ destino }}</div>
+                <div class="font-medium text-gray-900 dark:text-white">📍 {{ destino }}</div>
               </div>
-              <div *ngIf="!datosParaImportar?.destinos?.length" class="text-gray-500 text-center py-4">
+              <div *ngIf="!datosParaImportar?.destinos?.length" class="text-gray-500 dark:text-gray-400 text-center py-4">
                 Sin destinos
               </div>
             </div>
@@ -140,8 +140,8 @@
             <!-- Tab Pedidos -->
             <div *ngIf="tabActual === 'pedidos'" class="space-y-2">
               <div *ngFor="let pedido of datosParaImportar?.pedidos | slice:0:10" class="bg-green-50 p-3 rounded border-l-4 border-green-400 text-sm">
-                <div class="font-medium text-gray-900">{{ pedido.cliente_nombre }}</div>
-                <div class="text-gray-600 text-xs mt-1 space-y-1">
+                <div class="font-medium text-gray-900 dark:text-white">{{ pedido.cliente_nombre }}</div>
+                <div class="text-gray-600 dark:text-gray-400 text-xs mt-1 space-y-1">
                   <div>📍 {{ pedido.destino_id }}</div>
                   <div>💰 ${{ pedido.total?.toFixed?.(2) || '0.00' }} | 📦 {{ pedido.cantidad_prendas || 0 }} prendas</div>
                   <div>📅 {{ formatearFecha(pedido.fecha_entrega_programada) }} | 🕐 {{ convertirHora12(pedido.hora_inicio) }} - {{ convertirHora12(pedido.hora_fin) }}</div>
@@ -152,10 +152,10 @@
                   </div>
                 </div>
               </div>
-              <div *ngIf="datosParaImportar && datosParaImportar.pedidos && datosParaImportar.pedidos.length > 10" class="text-gray-500 text-center py-2 text-xs">
+              <div *ngIf="datosParaImportar && datosParaImportar.pedidos && datosParaImportar.pedidos.length > 10" class="text-gray-500 dark:text-gray-400 text-center py-2 text-xs">
                 ... y {{ datosParaImportar.pedidos.length - 10 }} más
               </div>
-              <div *ngIf="!datosParaImportar?.pedidos?.length" class="text-gray-500 text-center py-4">
+              <div *ngIf="!datosParaImportar?.pedidos?.length" class="text-gray-500 dark:text-gray-400 text-center py-4">
                 Sin pedidos
               </div>
             </div>
@@ -179,7 +179,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex gap-3 justify-between border-t sticky bottom-0 flex-wrap">
+    <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 rounded-b-lg flex gap-3 justify-between border-t sticky bottom-0 flex-wrap">
       <button 
         (click)="limpiarBaseDatos()"
         title="Elimina TODOS los clientes, encomendistas y pedidos de la base de datos"
@@ -190,7 +190,7 @@
       <div class="flex gap-3 flex-wrap">
         <button 
           (click)="cerrar()"
-          class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 font-medium transition">
+          class="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-50 dark:bg-gray-7000 font-medium transition">
           ❌ Cancelar
         </button>
         

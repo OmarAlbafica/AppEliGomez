@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientesService, Cliente } from '../../service/clientes/clientes.service';
@@ -9,6 +9,7 @@ import { TiendasService } from '../../service/tiendas/tiendas.service';
 import { FavoritosPedidosService, FavoritoPedido } from '../../service/favoritos/favoritos-pedidos.service';
 import { OcrService } from '../../service/ocr/ocr.service';
 import { AuthService } from '../../service/auth/auth.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 import { Tienda } from '../../models/tienda.model';
 import { Subscription } from 'rxjs';
 
@@ -64,6 +65,7 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
   nombreEncomendistaBusqueda: string = '';
   encomendistaBuscadas: Encomendista[] = [];
   nombreDestinoBusqueda: string = '';
+  nombreDestinoBuscada: string = ''; // Para mantener control de búsqueda
   destinosBuscados: DestinoEncomendista[] = [];
   direccion_personalizada: string = '';
   hora_inicio_personalizada: string = '09:00';
@@ -91,6 +93,11 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
   // Control de carga para extracción de precios
   extrayendoPrecioImagen: boolean = false;
 
+  // Modal de resumen de precios extraídos
+  mostrarResumenPrecios: boolean = false;
+  preciosExtraidos: { codigo: string; nombre: string; precio: number }[] = [];
+  totalPreciosExtraidos: number = 0;
+
   // Mensajes
   mensaje: { tipo: 'éxito' | 'error'; texto: string } | null = null;
 
@@ -109,7 +116,9 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
   nuevoHorarioParaDestino = {
     dias: [] as string[],
     hora_inicio: '09:00',
-    hora_fin: '17:00'
+    hora_fin: '17:00',
+    hora_inicio_12h_display: '9:00 AM',
+    hora_fin_12h_display: '5:00 PM'
   };
   diasSeleccionadosParaHorario: string[] = [];
 
@@ -126,6 +135,8 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
   private favoritosPedidosService = inject(FavoritosPedidosService);
   private ocrService = inject(OcrService);
   private authService = inject(AuthService);
+  private notificacionService = inject(ModalNotificacionService);
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit() {
     // Obtener usuario actual para guardar favoritos con ID correcto
@@ -299,8 +310,10 @@ export class CrearPedidoComponent implements OnInit, OnDestroy {
     // Cerrar modal de favoritos para permitir continuar
     this.mostrarModalFavoritos = false;
     
-    // Cargar destinos de la encomendista
-    this.seleccionarEncomendista();
+    // Cargar destinos SOLO en modo normal
+    if (this.modo === 'normal') {
+      this.seleccionarEncomendista();
+    }
   }
 
   /**
@@ -344,11 +357,13 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     this.modo = favorito.modo;
     
     // Establecer encomendista y destino según el modo
+    const destinoGuardado = favorito.destino_id || '';
     if (favorito.modo === 'normal') {
       this.encomendista_id = favorito.encomendista_id;
-      this.destino_id = favorito.destino_id || '';
+      this.destino_id = destinoGuardado;
       this.direccion_personalizada = '';
     } else {
+      // Modo personalizado: rellenar dirección y encomendista
       this.direccion_personalizada = favorito.direccion_personalizada || '';
       this.encomendista_id = favorito.encomendista_id;
       this.destino_id = '';
@@ -357,14 +372,31 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     // Cerrar modal
     this.mostrarModalFavoritos = false;
     
-    // Cargar destinos del encomendista
-    this.seleccionarEncomendista();
-    
-    // Cargar horarios y días disponibles
-    if (favorito.modo === 'normal') {
+    // Cargar destinos del encomendista (PERO NO LIMPIAR DESTINO_ID en modo normal)
+    if (this.modo === 'normal') {
+      // En modo normal, cargamos encomendista pero preservamos destino_id
+      const encomendista = this.encomendistas.find(e => e.id === this.encomendista_id);
+      const destinos = encomendista?.destinos || [];
+      
+      // Ordenar destinos alfabéticamente por nombre
+      this.destinosDisponibles = destinos.sort((a, b) => 
+        a.nombre.localeCompare(b.nombre)
+      );
+      
+      // Restaurar destino_id después de cargar encomendistas
+      this.destino_id = destinoGuardado;
+      
+      // Cargar horarios y días disponibles
       setTimeout(() => {
         this.seleccionarDestino();
       }, 50);
+    } else {
+      // Modo personalizado: cargar encomendistas pero sin destinos
+      const encomendista = this.encomendistas.find(e => e.id === this.encomendista_id);
+      const destinos = encomendista?.destinos || [];
+      this.destinosDisponibles = destinos.sort((a, b) => 
+        a.nombre.localeCompare(b.nombre)
+      );
     }
     
     // Cargar fechas disponibles si ya hay día seleccionado
@@ -476,6 +508,18 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     this.destinosDisponibles = destinos.sort((a, b) => 
       a.nombre.localeCompare(b.nombre)
     );
+
+    // Limpiar destino y fechas cuando cambia encomendista
+    this.destino_id = '';
+    this.nombreDestinoBusqueda = '';
+    this.nombreDestinoBuscada = '';
+    this.destinosBuscados = [];
+    this.diasProximos = [];
+    this.dia_entrega = '';
+    this.fechasDisponibles = [];
+    this.fechaSeleccionada = '';
+    this.dia_entrega_fecha = null;
+    this.fechasOffset = 0;
   }
 
   /**
@@ -661,6 +705,8 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
   seleccionarFecha(fechaObj: { fecha: Date; fechaFormato: string }) {
     this.fechaSeleccionada = fechaObj.fechaFormato;
     this.dia_entrega_fecha = fechaObj.fecha;
+    // Forzar detección de cambios para actualizar el estilo dinámico
+    this.cdr.markForCheck();
   }
 
   /**
@@ -740,6 +786,16 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
       }
     }
     
+    // IMPORTANTE: Convertir fecha a STRING (YYYY-MM-DD) ANTES de guardar
+    // Esto evita que Firestore la interprete como timestamp
+    let fechaEntregaString = '';
+    if (fechaEntrega) {
+      const year = fechaEntrega.getFullYear();
+      const month = String(fechaEntrega.getMonth() + 1).padStart(2, '0');
+      const day = String(fechaEntrega.getDate()).padStart(2, '0');
+      fechaEntregaString = `${year}-${month}-${day}`;
+    }
+    
     if (this.modo === 'normal') {
       const horarioDelDia = this.diasProximos.find(d => d.dia === this.dia_entrega);
       hora_inicio = horarioDelDia?.proximoHorario?.hora_inicio || '09:00';
@@ -752,9 +808,20 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
 
     // Crear pedido
     const clienteSeleccionado = this.clientes.find(c => c.id === this.cliente_id);
+    const encomendista = this.encomendistas.find(e => e.id === this.encomendista_id);
+    let destino: DestinoEncomendista | undefined = undefined;
+    if (this.modo === 'normal' && this.destino_id && encomendista) {
+      destino = encomendista.destinos?.find((d: DestinoEncomendista) => d.nombre === this.destino_id);
+    }
+
     const nuevoPedido: any = {
       cliente_id: this.cliente_id,
+      cliente_nombre: clienteSeleccionado?.nombre || '', // NUEVO: Nombre del cliente
       telefono_cliente: clienteSeleccionado?.telefono || '', // NUEVO: Agregar teléfono del cliente
+      encomendista_id: this.encomendista_id,
+      encomendista_nombre: encomendista?.nombre || '', // NUEVO: Nombre del encomendista
+      destino_id: this.modo === 'normal' ? this.destino_id : undefined,
+      destino_nombre: this.modo === 'normal' ? destino?.nombre || '' : undefined, // NUEVO: Nombre del destino
       tienda_id: this.tienda_id,
       nombre_tienda: this.tienda_seleccionada?.nombre_pagina || '',
       nombre_perfil: this.tienda_seleccionada?.nombre_perfil_reserva || '',
@@ -763,7 +830,7 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
       monto_envio: this.monto_envio,
       total: this.total_pedido,
       dia_entrega: this.dia_entrega,
-      fecha_entrega_programada: fechaEntrega,
+      fecha_entrega_programada: fechaEntregaString, // ✅ STRING YYYY-MM-DD, NO Date object
       hora_inicio: hora_inicio,
       hora_fin: hora_fin,
       notas: this.notas || null,
@@ -1031,6 +1098,8 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
 
     // Iniciar splash de extracción
     this.extrayendoPrecioImagen = true;
+    this.preciosExtraidos = []; // Limpiar precios anteriores
+    this.totalPreciosExtraidos = 0;
 
     try {
       let totalPrecioExtraido = 0;
@@ -1067,6 +1136,14 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
             if (!isNaN(precio)) {
               totalPrecioExtraido += precio;
               productosConPrecio++;
+              
+              // Registrar en array de precios extraídos
+              this.preciosExtraidos.push({
+                codigo: producto.codigo,
+                nombre: producto.codigo,
+                precio: precio
+              });
+              
               console.log(`✅ Precio extraído de ${producto.codigo}: $${precio.toFixed(2)}`);
             }
           }
@@ -1077,10 +1154,14 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
 
       // Si se extrajeron precios, setear el costo de prendas
       if (productosConPrecio > 0) {
+        this.totalPreciosExtraidos = totalPrecioExtraido;
         this.costo_prendas = totalPrecioExtraido;
         this.calcularTotal();
         console.log(`✅ Total de precios extraído: $${totalPrecioExtraido.toFixed(2)} de ${productosConPrecio} producto(s)`);
         this.mostrarMensaje('éxito', `Precios extraídos: $${totalPrecioExtraido.toFixed(2)}`);
+        
+        // Mostrar modal de resumen
+        this.mostrarResumenPrecios = true;
       } else {
         console.log('ℹ️ No se extrajeron precios de las imágenes');
       }
@@ -1106,6 +1187,15 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
   cerrarZoom() {
     this.mostrarZoom = false;
     this.imagenZoom = '';
+  }
+
+  /**
+   * Cierra el modal de resumen de precios
+   */
+  cerrarResumenPrecios() {
+    this.mostrarResumenPrecios = false;
+    this.preciosExtraidos = [];
+    this.totalPreciosExtraidos = 0;
   }
 
   /**
@@ -1185,6 +1275,17 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
   }
 
   /**
+   * Formatea un número como precio con punto y 2 decimales
+   * Ejemplo: 100.50, 1000.00, 50.99
+   */
+  formatearPrecio(valor: number): string {
+    return valor.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  }
+
+  /**
    * Genera un código único de pedido con formato: YYYYMMDD###
    * Ejemplo: 20250106001, 20250106002, etc.
    * Se reinicia cada día
@@ -1234,7 +1335,7 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
    * Abre modal para crear nueva encomienda
    */
   abrirModalNuevaEncomienda() {
-    alert('Usa el menú de Encomendistas para crear una nueva encomienda');
+    this.notificacionService.mostrarError('Usa el menú de Encomendistas para crear una nueva encomienda');
   }
 
   /**
@@ -1319,7 +1420,9 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
     this.nuevoHorarioParaDestino = {
       dias: [],
       hora_inicio: '09:00',
-      hora_fin: '17:00'
+      hora_fin: '17:00',
+      hora_inicio_12h_display: '9:00 AM',
+      hora_fin_12h_display: '5:00 PM'
     };
   }
 
@@ -1328,6 +1431,45 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
    */
   cerrarModalAgregarHorario() {
     this.mostrarModalAgregarHorario = false;
+  }
+
+  /**
+   * Convierte formato 12h a 24h para crear-pedido
+   */
+  actualizarHora24hCrear(tipo: 'inicio' | 'fin') {
+    const display = tipo === 'inicio' ? this.nuevoHorarioParaDestino.hora_inicio_12h_display : this.nuevoHorarioParaDestino.hora_fin_12h_display;
+    const hora24h = this.parsearFormatoHora12h(display);
+    
+    if (tipo === 'inicio') {
+      this.nuevoHorarioParaDestino.hora_inicio = hora24h;
+    } else {
+      this.nuevoHorarioParaDestino.hora_fin = hora24h;
+    }
+  }
+
+  /**
+   * Parsea formato "9:00 AM" o "5:00 PM" a "09:00" o "17:00"
+   */
+  private parsearFormatoHora12h(entrada: string): string {
+    if (!entrada) return '09:00';
+    
+    const regex = /(\d{1,2}):?(\d{2})?\s*(am|pm)/i;
+    const match = entrada.match(regex);
+    
+    if (!match) return '09:00';
+    
+    let hora = parseInt(match[1], 10);
+    const minutos = match[2] ? match[2] : '00';
+    const periodo = match[3].toLowerCase();
+    
+    // Convertir a 24h
+    if (periodo === 'pm' && hora !== 12) {
+      hora += 12;
+    } else if (periodo === 'am' && hora === 12) {
+      hora = 0;
+    }
+    
+    return `${hora.toString().padStart(2, '0')}:${minutos}`;
   }
 
   /**
@@ -1398,7 +1540,9 @@ const favoritos = await this.favoritosPedidosService.obtenerFavoritosPorCliente(
       this.nuevoHorarioParaDestino = {
         dias: [],
         hora_inicio: '09:00',
-        hora_fin: '17:00'
+        hora_fin: '17:00',
+        hora_inicio_12h_display: '9:00 AM',
+        hora_fin_12h_display: '5:00 PM'
       };
       this.diasSeleccionadosParaHorario = [];
     } catch (error) {

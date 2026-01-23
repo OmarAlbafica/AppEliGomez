@@ -3,3 +3,8 @@
 [0;34m════════════════════════════════════════════════════════[0m
 
 [1;33m[1/3] Compilando APK en release...[0m
+> [CXX1429] error when building with cmake using /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt: C++ build system [prefab] failed while executing:
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+For more on this, please refer to https://docs.gradle.org/9.0.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+BUILD FAILED in 33s
+[0;31m❌ Error: APK no generado[0m

@@ -1,15 +1,15 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-  <div class="max-w-7xl mx-auto">
-    <!-- Header -->
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+﻿<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-6 transition-colors duration-300">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header con gradiente -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 text-white rounded-lg p-6 shadow-lg border-b-4 border-blue-800">
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 class="text-4xl font-bold text-gray-800">📦 Envíos por Encomienda</h1>
-          <p class="text-gray-600 mt-2">{{ diaEnvioHoy }}</p>
+          <h1 class="text-3xl font-bold">📦 Envíos por Encomienda</h1>
+          <p class="text-blue-100 dark:text-blue-200 text-sm mt-1">{{ diaEnvioHoy }}</p>
         </div>
-        <div class="text-right">
-          <p class="text-sm text-gray-600">Rango de fechas:</p>
-          <p class="text-lg font-bold text-indigo-600">{{ rangoFechas.inicio }} a {{ rangoFechas.fin }}</p>
+        <div class="text-right bg-blue-700/50 px-4 py-2 rounded-lg">
+          <p class="text-xs text-blue-100">Rango:</p>
+          <p class="text-lg font-bold">{{ rangoFechas.inicio }} a {{ rangoFechas.fin }}</p>
         </div>
       </div>
     </div>
@@ -23,21 +23,21 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
-        <p class="text-gray-600 mt-4">Cargando pedidos...</p>
+        <p class="text-gray-600 dark:text-gray-400 mt-4">Cargando pedidos...</p>
       </div>
     </div>
 
     <!-- Mensaje vacío -->
     <div *ngIf="!cargando && mensajeVacio && encomiendasAgrupadas.length === 0" 
-         class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-      <p class="text-yellow-800 text-lg">{{ mensajeVacio }}</p>
+         class="bg-yellow-50 dark:bg-gray-700 border border-yellow-200 dark:border-gray-600 rounded-lg p-6 text-center transition-colors duration-300">
+      <p class="text-yellow-800 dark:text-yellow-400 text-lg">{{ mensajeVacio }}</p>
     </div>
 
     <!-- Encomiendas agrupadas -->
     <div *ngIf="!cargando && encomiendasAgrupadas.length > 0" class="space-y-6">
       <!-- Resumen general -->
-      <div class="bg-white rounded-lg shadow p-4">
-        <p class="text-gray-700 text-lg">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <p class="text-gray-700 dark:text-gray-300 text-lg">
           <strong class="text-indigo-600">{{ encomiendasAgrupadas.length }}</strong> encomendista(s) | 
           <strong class="text-indigo-600">{{ totalPedidos }}</strong> pedidos totales
         </p>
@@ -45,7 +45,7 @@
 
       <!-- Cada encomienda -->
       <div *ngFor="let encomienda of encomiendasAgrupadas" 
-           class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+           class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
         
         <!-- Header de la encomienda con color por estado más común -->
         <div class="p-6" [ngClass]="obtenerColorHeader(encomienda.pedidos[0].estado)">
@@ -62,7 +62,7 @@
         </div>
 
         <!-- Lista de pedidos en grid -->
-        <div class="p-6 bg-gray-50">
+        <div class="p-6 bg-gray-50 dark:bg-gray-700/50">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div *ngFor="let pedido of encomienda.pedidos"
                  [ngClass]="obtenerColorBody(pedido.estado)"
@@ -78,14 +78,14 @@
               </div>
 
               <!-- QR con Código (IMPORTANTE - PRIMERO) -->
-              <div class="bg-white rounded-lg border-2 border-purple-300 p-2 flex flex-col items-center justify-center mb-3">
+              <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-purple-300 dark:border-purple-600 p-2 flex flex-col items-center justify-center mb-3">
                 <img [src]="'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + (pedido.codigo_pedido || pedido.id)" 
                      alt="QR" class="w-20 h-20 object-contain">
-                <p class="text-xs font-bold text-gray-800 mt-2 text-center break-all">{{ pedido.codigo_pedido || pedido.id }}</p>
+                <p class="text-xs font-bold text-gray-800 dark:text-white mt-2 text-center break-all">{{ pedido.codigo_pedido || pedido.id }}</p>
               </div>
 
               <!-- Foto del paquete -->
-              <div *ngIf="pedido.foto_paquete" class="mb-3 rounded-lg overflow-hidden border-2 border-gray-300">
+              <div *ngIf="pedido.foto_paquete" class="mb-3 rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600">
                 <img [src]="pedido.foto_paquete" 
                      alt="Foto paquete"
                      class="w-full h-40 object-cover cursor-pointer hover:opacity-80 transition"
@@ -93,21 +93,21 @@
               </div>
 
               <!-- Cliente -->
-              <p class="font-bold text-gray-800 truncate">{{ pedido.cliente_nombre }}</p>
+              <p class="font-bold text-gray-900 dark:text-white truncate">{{ pedido.cliente_nombre }}</p>
               
               <!-- ID del pedido -->
-              <p class="text-xs text-gray-500 font-mono">{{ pedido.codigo_pedido || pedido.id }}</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 font-mono">{{ pedido.codigo_pedido || pedido.id }}</p>
 
               <!-- Fecha de entrega -->
-              <p class="text-sm font-semibold text-gray-700 mt-2">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mt-2">
                 📅 {{ pedido.fecha_entrega_programada | date: 'dd/MM/yyyy' }}
               </p>
 
               <!-- Total -->
-              <p class="text-lg font-bold text-indigo-600 mt-2">${{ (pedido.total || 0).toFixed(2) }}</p>
+              <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-2">${{ (pedido.total || 0).toFixed(2) }}</p>
 
               <!-- Destino -->
-              <p class="text-xs text-gray-600 mt-2 truncate" *ngIf="pedido.direccion_personalizada">
+              <p class="text-xs text-gray-700 dark:text-gray-300 mt-2 truncate" *ngIf="pedido.direccion_personalizada">
                 📍 {{ pedido.direccion_personalizada }}
               </p>
             </div>
@@ -124,7 +124,7 @@
     <div class="relative max-w-2xl" (click)="$event.stopPropagation()">
       <img [src]="imagenZoom" alt="Zoom foto paquete" class="max-w-full max-h-screen rounded-lg shadow-2xl">
       <button (click)="cerrarZoom()" 
-              class="absolute top-4 right-4 bg-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 shadow-lg font-bold text-xl">
+              class="absolute top-4 right-4 bg-white dark:bg-gray-800 rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 dark:bg-gray-600 shadow-lg font-bold text-xl">
         ✕
       </button>
     </div>

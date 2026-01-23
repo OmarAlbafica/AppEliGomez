@@ -1,4 +1,4 @@
-
+﻿
 <!-- Formulario para crear usuario -->
 <div *ngIf="!isEditMode">
   <div class="px-40 flex flex-1 justify-center py-5">
@@ -16,7 +16,7 @@
             <input
               formControlName="name"
               placeholder="Nombre"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="createForm.get('name')?.invalid && createForm.get('name')?.touched" class="text-red-500 text-sm">El nombre es requerido.</div>
           </label>
@@ -28,7 +28,7 @@
               formControlName="email"
               type="email"
               placeholder="Email"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="createForm.get('email')?.invalid && createForm.get('email')?.touched" class="text-red-500 text-sm">El email es requerido y debe ser válido.</div>
           </label>
@@ -40,7 +40,7 @@
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
               placeholder="Password"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="createForm.get('password')?.invalid && createForm.get('password')?.touched" class="text-red-500 text-sm">La contraseña es requerida.</div>
           </label>
@@ -52,13 +52,13 @@
               formControlName="confirmPassword"
               [type]="showPassword ? 'text' : 'password'"
               placeholder="Confirmar Password"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="createForm.get('confirmPassword')?.invalid && createForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">La confirmación de la contraseña es requerida.</div>
             <div *ngIf="createForm.errors?.['mismatch'] && createForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">Las contraseñas no coinciden.</div>
           </label>
         </div>
-        <div class="flex items-center gap-4 bg-white px-4 min-h-[72px] py-2 justify-between">
+        <div class="flex items-center gap-4 bg-white dark:bg-gray-800 px-4 min-h-[72px] py-2 justify-between">
           <div class="flex items-center gap-4">
             <div class="flex size-7 items-center justify-center">
               <input
@@ -109,7 +109,7 @@
             <input
               formControlName="name"
               placeholder="Nombre"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="updateForm.get('name')?.invalid && updateForm.get('name')?.touched" class="text-red-500 text-sm">El nombre es requerido.</div>
           </label>
@@ -121,7 +121,7 @@
               formControlName="email"
               type="email"
               placeholder="Email"
-              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+              class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
             />
             <div *ngIf="updateForm.get('email')?.invalid && updateForm.get('email')?.touched" class="text-red-500 text-sm">El email es requerido y debe ser válido.</div>
           </label>
@@ -134,7 +134,7 @@
                 formControlName="password"
                 [type]="showPassword ? 'text' : 'password'"
                 placeholder="Password"
-                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
               />
               <div *ngIf="updateForm.get('password')?.invalid && updateForm.get('password')?.touched" class="text-red-500 text-sm">La contraseña es requerida.</div>
             </label>
@@ -146,7 +146,7 @@
                 formControlName="confirmPassword"
                 [type]="showPassword ? 'text' : 'password'"
                 placeholder="Confirmar Password"
-                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
+                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#111517] focus:outline-0 focus:ring-0 border border-[#dce1e5] bg-white dark:bg-gray-800 focus:border-[#dce1e5] h-14 placeholder:text-[#647787] p-[15px] text-base font-normal leading-normal"
               />
               <div *ngIf="updateForm.get('confirmPassword')?.invalid && updateForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">La confirmación de la contraseña es requerida.</div>
               <div *ngIf="updateForm.errors?.['mismatch'] && updateForm.get('confirmPassword')?.touched" class="text-red-500 text-sm">Las contraseñas no coinciden.</div>
@@ -159,7 +159,7 @@
             <button type="button" class="ml-4 px-4 py-2 rounded bg-yellow-500 text-white font-semibold" (click)="showPasswordFields = true">Sí, cambiar contraseña</button>
           </div>
         </div>
-        <div class="flex items-center gap-4 bg-white px-4 min-h-[72px] py-2 justify-between">
+        <div class="flex items-center gap-4 bg-white dark:bg-gray-800 px-4 min-h-[72px] py-2 justify-between">
           <div class="flex items-center gap-4" *ngIf="showPasswordFields">
             <div class="flex size-7 items-center justify-center">
               <input

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Pedido } from '../../service/pedidos/pedidos.service';
 import { StickerPdfService } from '../../service/pdf/sticker-pdf.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import * as QRCode from 'qrcode';
@@ -34,7 +35,7 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
   stickersPorPagina: number = 8; // 1 columna x 8 filas, forzamos 8 por página
   qrImages: { [key: string]: string } = {}; // Almacenar QR como imágenes (data URLs)
 
-  constructor(private pdfService: StickerPdfService, private cdr: ChangeDetectorRef) {}
+  constructor(private pdfService: StickerPdfService, private cdr: ChangeDetectorRef, private notificacionService: ModalNotificacionService) {}
 
   ngOnInit(): void {
     this.calcularTotalPaginas();
@@ -115,9 +116,9 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
   }
 
   obtenerStickersPagina(): PedidoCompleto[] {
-    // Solo permitir seleccionar 10 stickers para la página
-    // Si hay más de 10, solo mostrar los primeros 10
-    return this.pedidos.slice(0, this.stickersPorPagina);
+    const inicio = (this.paginaActual - 1) * this.stickersPorPagina;
+    const fin = inicio + this.stickersPorPagina;
+    return this.pedidos.slice(inicio, fin);
   }
 
   obtenerPlaceholders(): number[] {
@@ -142,11 +143,24 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
     }
   }
 
+  /**
+   * 🖨️ NUEVO: Imprime directamente usando window.print()
+   * Sin html2canvas, sin jsPDF
+   * Usa el motor de impresión nativo del navegador
+   * El usuario puede elegir: imprimir o guardar como PDF
+   */
+  imprimirDirecto(): void {
+    console.log('🖨️ Abriendo diálogo de impresión nativa del navegador...');
+    
+    // El CSS @media print oculta todo excepto #stickers-print
+    window.print();
+  }
+
   async imprimir(): Promise<void> {
     const element = document.getElementById('stickers-print');
     
     if (!element) {
-      alert('Error: No se puede capturar el contenido');
+      this.notificacionService.mostrarError('Error: No se puede capturar el contenido');
       return;
     }
 
@@ -179,24 +193,46 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const canvas = await html2canvas(element, {
-          scale: 3,
+          scale: 2, // Reducido a 2 para mejor equilibrio (4 magnifica errores)
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
           windowHeight: element.scrollHeight,
-          windowWidth: element.scrollWidth
+          windowWidth: element.scrollWidth,
+          imageTimeout: 10000,
+          onclone: (clonedDocument) => {
+            // Fijar altura A4 exacta (297mm ≈ 1122px, ancho 210mm ≈ 794px)
+            const clonedElement = clonedDocument.getElementById('stickers-print');
+            if (clonedElement) {
+              clonedElement.style.width = '794px';
+              clonedElement.style.height = '1122px';
+              clonedElement.style.overflow = 'hidden';
+              clonedElement.style.margin = '0';
+              clonedElement.style.padding = '8px'; // 2mm en px (2mm × 96dpi ≈ 8px)
+            }
+          }
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pageWidth;
-        const imgHeight = (canvas.height * pageWidth) / canvas.width;
+        const pageWidth = 210; // mm
+        const pageHeight = 297; // mm A4
 
         if (i > 1) {
           pdf.addPage();
         }
 
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        // NO estiramos dinámicamente, usamos altura A4 fija
+        pdf.addImage(
+          imgData,
+          'PNG',
+          0,
+          0,
+          pageWidth,
+          pageHeight,
+          undefined,
+          'FAST'
+        );
       }
 
       this.paginaActual = paginaOriginal;
@@ -206,7 +242,7 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
       pdf.save(`Stickers_Eli_Gomez_${fecha}.pdf`);
 
       console.log('✅ PDF generado correctamente');
-      alert(`✅ PDF descargado: ${this.pedidos.length} stickers en ${this.totalPaginas} página(s)`);
+      this.notificacionService.mostrarExito(`PDF descargado: ${this.pedidos.length} stickers en ${this.totalPaginas} página(s)`);
 
       if (btnDescarga) {
         btnDescarga.disabled = false;
@@ -214,7 +250,7 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
       }
     } catch (error) {
       console.error('❌ Error al generar PDF:', error);
-      alert('Error al generar PDF: ' + (error as any).message);
+      this.notificacionService.mostrarError('Error al generar PDF: ' + (error as any).message);
       
       if (btnDescarga) {
         btnDescarga.disabled = false;
@@ -387,9 +423,26 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
       'no-retirado': 'No Retirado',
       'cancelado': 'Cancelado',
       'retirado-local': 'Retirado del Local',
-      'liberado': 'Liberado'
+      'liberado': 'Liberado',
+      'remunero': 'Remunerado'
     };
     return estados[estado] || estado;
+  }
+
+  /**
+   * Limpia el nombre de la encomienda removiendo palabras redundantes
+   * "Encomienda", "Encomiendas", etc.
+   */
+  limpiarNombreEncomienda(nombre: string | undefined): string {
+    if (!nombre) return 'N/A';
+    
+    // Remover "Encomienda" o "Encomiendas" (case-insensitive) del inicio o final
+    let limpio = nombre
+      .replace(/\b(encomienda|encomiendas)\b/gi, '') // Remover palabra completa
+      .trim() // Remover espacios extras
+      .replace(/\s+/g, ' '); // Normalizar espacios múltiples
+    
+    return limpio || nombre; // Si queda vacío, devolver original
   }
 
   /**
@@ -405,7 +458,8 @@ export class StickerPreviewModalComponent implements OnInit, OnChanges, AfterVie
       'no-retirado': '❌',
       'cancelado': '🚫',
       'retirado-local': '📍',
-      'liberado': '🔓'
+      'liberado': '🔓',
+      'remunero': '💵'
     };
     return emojis[estado] || '•';
   }

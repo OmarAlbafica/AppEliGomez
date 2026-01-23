@@ -9,7 +9,7 @@ PROJECT_DIR="/Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage"
 APK_PATH="$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk"
 FIREBASE_APP_ID="1:1030711833270:android:f95121a96dc5242c9e2c17"
 FIREBASE_PROJECT="eli-gomez-web"
-RELEASE_NOTES="✨ v1.0.3 - Estado 💰 Remunerado, Auditoría Completa, Headers Colapsables"
+RELEASE_NOTES="📦 v1.0.18 - Marcar pedidos como retirado directamente en la pantalla de hoy"
 TESTERS="sr.vmago@gmail.com"
 
 GREEN='\033[0;32m'

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OcrService, TextoExtraido } from '../../service/ocr/ocr.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 
 interface PedidoExtraido {
   id: string;
@@ -44,7 +45,7 @@ export class CargaMasivaComponent implements OnInit {
 
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-  constructor(private ocrService: OcrService) {}
+  constructor(private ocrService: OcrService, private notificacionService: ModalNotificacionService) {}
 
   ngOnInit() {
     this.ocrService.progreso$.subscribe(progreso => {
@@ -67,7 +68,7 @@ export class CargaMasivaComponent implements OnInit {
    */
   procesarImagenes() {
     if (this.archivos.length === 0) {
-      alert('Selecciona al menos una imagen');
+      this.notificacionService.mostrarError('Selecciona al menos una imagen');
       return;
     }
 
@@ -93,7 +94,7 @@ export class CargaMasivaComponent implements OnInit {
         },
         error: (error: any) => {
           console.error('Error en OCR:', error);
-          alert('Error al procesar imágenes');
+          this.notificacionService.mostrarError('Error al procesar imágenes');
           this.cargando = false;
         },
         complete: () => {
@@ -102,7 +103,7 @@ export class CargaMasivaComponent implements OnInit {
       });
     } catch (error) {
       console.error('Error en OCR:', error);
-      alert('Error al procesar imágenes');
+      this.notificacionService.mostrarError('Error al procesar imágenes');
       this.cargando = false;
     }
   }
@@ -137,7 +138,7 @@ export class CargaMasivaComponent implements OnInit {
    */
   async guardarPedidos() {
     if (this.pedidosExtraidos.length === 0) {
-      alert('No hay pedidos para guardar');
+      this.notificacionService.mostrarError('No hay pedidos para guardar');
       return;
     }
 
@@ -146,13 +147,13 @@ export class CargaMasivaComponent implements OnInit {
     try {
       // Aquí guardarías en Firestore
       console.log('Pedidos a guardar:', this.pedidosExtraidos);
-      alert(`✓ Se guardaron ${this.pedidosExtraidos.length} pedidos exitosamente`);
+      this.notificacionService.mostrarExito(`Se guardaron ${this.pedidosExtraidos.length} pedidos exitosamente`);
       
       // Limpiar
       this.limpiar();
     } catch (error) {
       console.error('Error guardando:', error);
-      alert('Error al guardar los pedidos');
+      this.notificacionService.mostrarError('Error al guardar los pedidos');
     } finally {
       this.cargando = false;
     }

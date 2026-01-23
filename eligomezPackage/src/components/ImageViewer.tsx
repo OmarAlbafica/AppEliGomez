@@ -30,12 +30,21 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   title,
 }) => {
   const { theme } = useTheme();
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const imageZoomIndexRef = React.useRef(0);
+  const [displayIndex, setDisplayIndex] = useState(0);
 
   // Resetear índice cuando las imágenes cambian
   React.useEffect(() => {
-    setCurrentIndex(0);
-  }, [images]);
+    if (visible) {
+      imageZoomIndexRef.current = 0;
+      setDisplayIndex(0);
+    }
+  }, [images, visible]);
+
+  const handleThumbnailPress = React.useCallback((index: number) => {
+    imageZoomIndexRef.current = index;
+    setDisplayIndex(index);
+  }, []);
 
   if (!visible || images.length === 0) return null;
 
@@ -51,7 +60,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   }));
 
   return (
-    <Modal visible={visible} transparent={true} animationType="fade">
+    <Modal visible={visible} transparent={true} animationType="fade" key={`modal-${images.join('-')}`}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
@@ -65,18 +74,29 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
         {/* Image Zoom Viewer */}
         <ImageZoom
+          key={`zoom-${displayIndex}`}
           imageUrls={imageData}
-          index={currentIndex}
+          index={displayIndex}
           enableImageZoom={true}
           onCancel={onClose}
-          onChange={() => {}} // Desactivar cambio de imagen por swipe
+          onChange={(index) => {
+            // Solo actualizar si el índice cambió (por swipe del usuario)
+            // No actualizar si fue por click en thumbnail (que ya actualizó displayIndex)
+            if (typeof index === 'number' && index >= 0 && index < images.length) {
+              // Usar setTimeout para evitar actualizar durante render
+              setTimeout(() => {
+                imageZoomIndexRef.current = index;
+                setDisplayIndex(index);
+              }, 0);
+            }
+          }}
           enableSwipeDown={false}
           doubleClickInterval={300}
-          pageAnimateTime={100}
+          pageAnimateTime={260}
           useNativeDriver={true}
           enablePreload={true}
           backgroundColor="transparent"
-          flipThreshold={0}
+          flipThreshold={50}
           maxOverflow={0}
           renderHeader={(currentIndex) => (
             <View style={styles.headerOverlay}>
@@ -94,39 +114,6 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           }}
         />
 
-        {/* Controles de navegación */}
-        {images.length > 1 && (
-          <View style={styles.controls}>
-            <TouchableOpacity
-              onPress={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-              disabled={currentIndex === 0}
-              style={[
-                styles.controlButton,
-                { backgroundColor: theme.colors.primary },
-                currentIndex === 0 && styles.controlButtonDisabled,
-              ]}
-            >
-              <Text style={[styles.controlButtonText, { color: theme.colors.text }]}>
-                ◀ Anterior
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setCurrentIndex(Math.min(images.length - 1, currentIndex + 1))}
-              disabled={currentIndex === images.length - 1}
-              style={[
-                styles.controlButton,
-                { backgroundColor: theme.colors.primary },
-                currentIndex === images.length - 1 && styles.controlButtonDisabled,
-              ]}
-            >
-              <Text style={[styles.controlButtonText, { color: theme.colors.text }]}>
-                Siguiente ▶
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Thumbnails Gallery */}
         {images.length > 1 && (
           <ScrollView
@@ -138,11 +125,11 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             {images.map((img, index) => (
               <TouchableOpacity
                 key={index}
-                onPress={() => setCurrentIndex(index)}
+                onPress={() => handleThumbnailPress(index)}
                 style={[
                   styles.thumbnail,
                   { borderColor: theme.colors.primary },
-                  index === currentIndex && styles.thumbnailActive,
+                  index === displayIndex && styles.thumbnailActive,
                 ]}
               >
                 <Image
@@ -167,25 +154,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 15,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
     zIndex: 1000,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
   },
   headerOverlay: {
@@ -196,24 +183,6 @@ const styles = StyleSheet.create({
   headerOverlayText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  controlButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-  },
-  controlButtonDisabled: {
-    opacity: 0.3,
-  },
-  controlButtonText: {
-    fontSize: 13,
     fontWeight: '600',
   },
   thumbnailContainer: {

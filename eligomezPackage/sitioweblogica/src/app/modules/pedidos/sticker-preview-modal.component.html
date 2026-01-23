@@ -1,5 +1,5 @@
-<div *ngIf="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-  <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+﻿<div *ngIf="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="modal-content bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto">
     <!-- Header Premium -->
     <div class="modal-header bg-gradient-to-r from-pink-500 via-pink-400 to-rose-400 text-white px-8 py-6 sticky top-0 rounded-t-xl">
       <div class="flex items-center justify-between">
@@ -12,14 +12,14 @@
     </div>
 
     <!-- Preview de Página Completa -->
-    <div id="preview-completo" class="p-4 bg-gradient-to-b from-gray-50 to-gray-100">
+    <div id="preview-completo" class="p-4 bg-white dark:bg-gray-800 !bg-white" style="background-color: white !important; background-image: none !important;">
       <!-- Página A4 con stickers -->
-      <div id="stickers-print" #contenidoPdf class="bg-white shadow-xl mx-auto overflow-visible border-2 border-gray-300" style="width: 210mm; min-height: 297mm; padding: 2mm;">
+      <div id="stickers-print" #contenidoPdf class="bg-white dark:bg-gray-800 shadow-xl mx-auto overflow-visible border-2 border-gray-300 dark:border-gray-600" style="width: 210mm; min-height: 297mm; padding: 2mm;">
         <!-- Grid de 2 columnas x 4 filas = 8 stickers por página -->
         <div class="grid grid-cols-2 gap-2">
           <div *ngFor="let pedido of obtenerStickersPagina()" 
-               class="sticker relative overflow-hidden rounded-lg transition-transform flex bg-white"
-               [style]="'border: 6px solid ' + (pedido?.color_sticker || '#ec4899') + '; height: 7.1cm; max-height: 7.1cm; min-height: 7.1cm; padding: 0.25cm;'">
+               class="sticker relative rounded-lg transition-transform flex bg-white dark:bg-gray-800"
+               [style]="'border: 6px solid ' + (pedido?.color_sticker || '#ec4899') + '; min-height: 7.1cm; padding: 0.25cm;'">
             
             <!-- LADO IZQUIERDO: Logo, Contactos y QR (columna vertical) -->
             <div class="sticker-left flex flex-col items-center justify-between gap-0 pr-2 py-0.5" [style]="'border-right: 2px solid ' + (pedido?.color_sticker || '#ec4899')">
@@ -36,95 +36,87 @@
               </div>
               
               <!-- QR empujado al fondo -->
-              <div class="w-12 h-12 bg-white rounded border-2 flex-shrink-0 overflow-hidden flex items-center justify-center" [style]="'border-color: ' + (pedido?.color_sticker || '#ec4899')">
+              <div class="w-12 h-12 bg-white dark:bg-gray-800 rounded border-2 flex-shrink-0 overflow-hidden flex items-center justify-center" [style]="'border-color: ' + (pedido?.color_sticker || '#ec4899')">
                 <img *ngIf="obtenerImagenQR(pedido)" [src]="obtenerImagenQR(pedido)" alt="QR" class="w-full h-full object-contain">
                 <div *ngIf="!obtenerImagenQR(pedido)" class="text-xs text-gray-400">Gen...</div>
               </div>
             </div>
             
             <!-- LADO DERECHO: Contenido del Sticker -->
-            <div class="sticker-right flex-1 pl-0.5 pt-0.25 pr-0.5 overflow-hidden flex flex-col" style="gap: 2px;" >
+            <div class="sticker-right flex-1 pl-0.5 pt-0 pr-0.5 overflow-hidden flex flex-col" style="gap: 0px;">
               <!-- Tabla de datos -->
-              <div class="sticker-content text-sm flex-1 flex flex-col" [style.gap]="pedido?.direccion_personalizada ? '2px' : '4px'">
+              <div class="sticker-content text-base flex-1 flex flex-col" [style.gap]="pedido?.direccion_personalizada ? '4px' : '4px'">
                 <!-- Vendedor -->
-                <div style="display: flex; justify-content: space-between;">
-                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Vendedor:</span>
-                  <span class="text-gray-800 text-right flex-1 ml-0.5 text-sm">{{ pedido?.nombre_tienda || 'Eli Gomez' }}</span>
+                <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                  <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Vendedor:</span>
+                  <span class="text-gray-800 dark:text-white text-right flex-1 ml-0.5 text-base">{{ pedido?.nombre_tienda || 'Eli Gomez' }}</span>
                 </div>
                 
                 <!-- Cliente -->
-                <div style="display: flex; justify-content: space-between;">
-                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Cliente:</span>
-                  <span class="text-gray-800 text-right flex-1 ml-0.5 text-sm">{{ pedido?.cliente_nombre || 'N/A' }}</span>
+                <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                  <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Cliente:</span>
+                  <span class="text-gray-800 dark:text-white text-right flex-1 ml-0.5 text-base">{{ pedido?.cliente_nombre || 'N/A' }}</span>
                 </div>
                 
                 <!-- Teléfono Cliente -->
                 <ng-container *ngIf="pedido?.telefono_cliente">
-                  <div style="display: flex; justify-content: space-between;">
-                    <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Telefono:</span>
-                    <span class="text-gray-800 text-right flex-1 ml-0.5 font-semibold text-sm">{{ pedido?.telefono_cliente }}</span>
+                  <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                    <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Telefono:</span>
+                    <span class="text-gray-800 dark:text-white text-right flex-1 ml-0.5 font-semibold text-base">{{ pedido?.telefono_cliente }}</span>
                   </div>
                 </ng-container>
                 
                 <!-- Destino -->
                 <ng-container *ngIf="!pedido?.direccion_personalizada">
-                  <div style="display: flex; justify-content: space-between;">
-                    <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Destino:</span>
-                    <span class="text-gray-800 text-right flex-1 ml-0.5 break-words text-sm">
+                  <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                    <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Destino:</span>
+                    <span class="text-gray-800 dark:text-white text-right flex-1 ml-0.5 break-words text-base">
                       {{ pedido?.destino_id || 'N/A' }}
                     </span>
                   </div>
                 </ng-container>
                 
                 <ng-container *ngIf="pedido?.direccion_personalizada">
-                  <div style="display: flex; flex-direction: column;">
-                    <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Destino:</span>
-                    <span class="text-gray-800 text-sm break-words">
+                  <div style="display: flex; flex-direction: column; line-height: 1.27; gap: 0px; max-height: 5.2em; overflow: hidden;">
+                    <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Destino:</span>
+                    <span class="text-gray-800 dark:text-white text-base break-words leading-tight">
                       {{ pedido?.direccion_personalizada }}
                     </span>
                   </div>
                 </ng-container>
                 
                 <!-- Día -->
-                <div style="display: flex; justify-content: space-between;">
-                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Día:</span>
-                  <span class="text-gray-800 font-semibold text-sm">{{ traducirDia(pedido?.dia_entrega || '') }}</span>
+                <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                  <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Día:</span>
+                  <span class="text-gray-800 dark:text-white font-semibold text-base">{{ traducirDia(pedido?.dia_entrega || '') }}</span>
                 </div>
                 
                 <!-- Hora -->
                 <ng-container *ngIf="pedido?.modo !== 'personalizado' && pedido?.hora_inicio && pedido?.hora_fin">
-                  <div style="display: flex; justify-content: space-between;">
-                    <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Hora:</span>
-                    <span class="text-gray-800 text-sm">{{ formatearHora(pedido?.hora_inicio, pedido?.hora_fin) }}</span>
+                  <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                    <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Hora:</span>
+                    <span class="text-gray-800 dark:text-white text-base">{{ formatearHora(pedido?.hora_inicio, pedido?.hora_fin) }}</span>
                   </div>
                 </ng-container>
                 
                 <!-- Fecha de Envío -->
                 <ng-container *ngIf="!pedido?.direccion_personalizada">
-                  <div style="display: flex; justify-content: space-between;">
-                    <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Fecha Envio:</span>
-                    <span class="text-gray-800 font-semibold text-sm">{{ formatearFechaDisplay(fechaEnvio) }}</span>
+                  <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                    <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Fecha Envio:</span>
+                    <span class="text-gray-800 dark:text-white font-semibold text-base">{{ formatearFechaDisplay(fechaEnvio) }}</span>
                   </div>
                 </ng-container>
                 
                 <!-- Total (Grande y Negrita) -->
-                <div style="display: flex; justify-content: space-between;" class="font-bold text-sm">
+                <div style="display: flex; justify-content: space-between; line-height: 1.27;" class="font-bold text-lg">
                   <span [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Total:</span>
-                  <span class="text-gray-800 font-black">{{ '$' + ((pedido?.costo_prendas || 0) + (pedido?.monto_envio || 0)).toFixed(2) }}</span>
-                </div>
-                
-                <!-- Estado con Emoji -->
-                <div style="display: flex; justify-content: space-between;">
-                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Estado:</span>
-                  <span class="text-gray-800 text-right flex-1 ml-0.5 text-sm font-semibold">
-                    <span class="text-lg mr-1">{{ obtenerEmojiEstado(pedido?.estado) }}</span>{{ formatearEstado(pedido?.estado) }}
-                  </span>
+                  <span class="text-gray-800 dark:text-white font-black text-lg">{{ '$' + ((pedido?.costo_prendas || 0) + (pedido?.monto_envio || 0)).toFixed(2) }}</span>
                 </div>
                 
                 <!-- Encomienda -->
-                <div style="display: flex; justify-content: space-between;">
-                  <span class="font-bold text-xs" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Encomienda:</span>
-                  <span class="text-gray-800 text-right flex-1 ml-0.5 text-sm">{{ pedido?.encomendista_nombre || 'N/A' }}</span>
+                <div style="display: flex; justify-content: space-between; line-height: 1.27;">
+                  <span class="font-bold text-base" [style]="'color: ' + obtenerColorTexto(pedido?.color_sticker)">Encomienda:</span>
+                  <span class="text-gray-800 dark:text-white text-right flex-1 ml-0.5 text-base">{{ limpiarNombreEncomienda(pedido?.encomendista_nombre) }}</span>
                 </div>
               </div>
             </div>
@@ -134,7 +126,7 @@
     </div>
 
     <!-- Controles de navegación -->
-    <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-4 flex gap-4 justify-between items-center border-t-2 border-pink-200">
+    <div class="bg-white dark:bg-gray-800 px-8 py-4 flex gap-4 justify-between items-center border-t-2 border-pink-200" style="background-color: white !important;">
       <button (click)="paginaAnterior()"
               [disabled]="paginaActual === 1"
               class="px-6 py-2 bg-pink-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-600 transition font-semibold shadow-md">
@@ -142,7 +134,7 @@
       </button>
 
       <div class="flex items-center gap-4">
-        <span class="text-sm font-semibold text-gray-700">Página <span class="text-pink-600 text-lg font-bold">{{ paginaActual }}</span> de {{ totalPaginas }}</span>
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Página <span class="text-pink-600 text-lg font-bold">{{ paginaActual }}</span> de {{ totalPaginas }}</span>
       </div>
 
       <button (click)="paginaSiguiente()"
@@ -153,15 +145,15 @@
     </div>
 
     <!-- Botones de acción -->
-    <div class="bg-white px-8 py-4 flex gap-4 justify-end border-t-2 border-pink-200 rounded-b-xl">
+    <div class="bg-white dark:bg-gray-800 px-8 py-4 flex gap-4 justify-end border-t-2 border-pink-200 rounded-b-xl">
       <button (click)="cerrarModal.emit()"
-              class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold shadow-md">
+              class="px-6 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition font-semibold shadow-md">
         ✕ Cerrar
       </button>
 
-      <button (click)="imprimir()"
-              class="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition font-bold shadow-md">
-        📥 Descargar PDF
+      <button (click)="imprimirDirecto()"
+              class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-bold shadow-md">
+        🖨️ Imprimir Directamente
       </button>
     </div>
   </div>

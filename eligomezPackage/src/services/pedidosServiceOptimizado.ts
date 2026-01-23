@@ -14,7 +14,8 @@
  *   const pedido = await pedidosServiceOptimizado.obtenerPedidoCompleto('PED-ID-123');
  */
 
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { collection, addDoc, query, where, orderBy, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';  // 🔴 Para fallback de usuario
 
 const API_BASE_URL = 'https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2';
@@ -453,26 +454,26 @@ class PedidosServiceOptimizado {
       let usuarioEmail = 'unknown@app.com';
 
       console.log(`\n🔴🔴🔴 INICIANDO CAMBIAR ESTADO 🔴🔴🔴`);
-      console.log(`[PASO 1] Verificando auth.currentUser...`);
+      console.log(`[PASO 0] Verificando auth.currentUser...`);
       const currentUser = auth.currentUser;
-      console.log(`[PASO 1] currentUser: ${currentUser ? '✅ EXISTE' : '❌ NULL'}`);
+      console.log(`[PASO 0] currentUser: ${currentUser ? '✅ EXISTE' : '❌ NULL'}`);
       
       if (currentUser) {
         usuarioId = currentUser.uid;
         usuarioEmail = currentUser.email || 'unknown@app.com';
-        console.log(`[PASO 2] ✅ Usuario de Firebase encontrado`);
-        console.log(`[PASO 2] - UID: ${usuarioId}`);
-        console.log(`[PASO 2] - EMAIL: ${usuarioEmail}`);
+        console.log(`[PASO 0] ✅ Usuario de Firebase encontrado`);
+        console.log(`[PASO 0] - UID: ${usuarioId}`);
+        console.log(`[PASO 0] - EMAIL: ${usuarioEmail}`);
       } else {
-        console.log(`[PASO 2] ❌ Firebase currentUser es NULL`);
-        console.log(`[PASO 3] Intentando obtener de AsyncStorage...`);
+        console.log(`[PASO 0] ❌ Firebase currentUser es NULL`);
+        console.log(`[PASO 0] Intentando obtener de AsyncStorage...`);
         const storedEmail = await AsyncStorage.getItem('@eli_gomez_current_user');
-        console.log(`[PASO 3] AsyncStorage '@eli_gomez_current_user': ${storedEmail ? '✅ ENCONTRADO' : '❌ NO ENCONTRADO'}`);
+        console.log(`[PASO 0] AsyncStorage '@eli_gomez_current_user': ${storedEmail ? '✅ ENCONTRADO' : '❌ NO ENCONTRADO'}`);
         if (storedEmail) {
           usuarioEmail = storedEmail;
-          console.log(`[PASO 3] Email recuperado: ${usuarioEmail}`);
+          console.log(`[PASO 0] Email recuperado: ${usuarioEmail}`);
         } else {
-          console.error(`[PASO 3] ❌ NO HAY EMAIL EN ASYNCSTORAGE`);
+          console.error(`[PASO 0] ❌ NO HAY EMAIL EN ASYNCSTORAGE`);
         }
       }
 
@@ -488,28 +489,55 @@ class PedidosServiceOptimizado {
         console.log(`[📸 Tamaño foto] ${(fotoBase64.length / 1024).toFixed(2)} KB`);
       }
 
+      // ============================================================
+      // PASO 1: SI HAY FOTO Y ES "EMPACADA" → SUBIR FOTO A /subirFotoPaquete
+      // (IGUAL QUE LA WEB)
+      // ============================================================
+      if (fotoBase64 && nuevoEstado === 'empacada') {
+        console.log(`\n[PASO 1] 📸 Subiendo foto a /subirFotoPaquete...`);
+        try {
+          const fotoResponse = await fetch(`${API_BASE_URL}/subirFotoPaquete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              fotoBas64: fotoBase64,
+              usuario_id: usuarioId,
+              pedidoId: pedidoId
+            })
+          });
+
+          if (!fotoResponse.ok) {
+            const fotoError = await fotoResponse.text();
+            console.error(`[PASO 1] ❌ Error subiendo foto ${fotoResponse.status}:`, fotoError);
+            // No retornar false aquí - continuar sin foto
+          } else {
+            const fotoData = await fotoResponse.json() as any;
+            console.log(`[PASO 1] ✅ Foto subida exitosamente:`, fotoData.url);
+          }
+        } catch (fotoError) {
+          console.error(`[PASO 1] ❌ Error en petición de foto:`, fotoError);
+          // Continuar sin foto - no bloquear el cambio de estado
+        }
+      }
+
+      // ============================================================
+      // PASO 2: CAMBIAR ESTADO (SIN FOTO EN BODY, YA FUE GUARDADA)
+      // ============================================================
+      console.log(`\n[PASO 2] 🔄 Cambiando estado sin incluir foto en body...`);
+      
       const bodyEnvio = {
         nuevoEstado,
-        foto_base64: fotoBase64 || null,
+        // ❌ NO incluir foto_base64 aquí - ya fue subida en PASO 1
         notas: notas || '',
         usuario_id: usuarioId,
-        usuario_email: usuarioEmail,
-        pedidoId: pedidoId  // 🔴 IMPORTANTE: Agregamos ID al body como respaldo
+        usuario_email: usuarioEmail
       };
 
       const urlEndpoint = `${API_BASE_URL}/pedido/${pedidoId}/cambiar-estado`;
-      console.log(`\n[📤 ENVIANDO REQUEST]`);
-      console.log(`[URL] ${urlEndpoint}`);
-      console.log(`[BODY] ${JSON.stringify({
-        nuevoEstado,
-        foto_base64: fotoBase64 ? `[BASE64-${fotoBase64.length} chars]` : null,
-        notas,
-        usuario_email: usuarioEmail,
-        usuario_id: usuarioId,
-        pedidoId
-      }, null, 2)}`);
+      console.log(`[PASO 2] 📤 POST a ${urlEndpoint}`);
 
-      console.log(`\n[⏳ Ejecutando fetch...]`);
       const response = await fetch(urlEndpoint, {
         method: 'POST',
         headers: {
@@ -518,22 +546,22 @@ class PedidosServiceOptimizado {
         body: JSON.stringify(bodyEnvio)
       });
 
-      console.log(`[✅ Response Status] ${response.status}`);
+      console.log(`[PASO 2] ✅ Response Status: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[❌ Error ${response.status}]`, errorText);
+        console.error(`[PASO 2] ❌ Error ${response.status}:`, errorText);
         return false;
       }
 
       const data = await response.json() as any;
 
       if (!data.success) {
-        console.error(`[❌ Error en respuesta API]`, data.error);
+        console.error(`[PASO 2] ❌ Error en respuesta API:`, data.error);
         return false;
       }
 
-      console.log(`[✅✅✅ ÉXITO! Estado actualizado a ${nuevoEstado}`);
+      console.log(`\n[✅✅✅ ÉXITO TOTAL! Estado actualizado a ${nuevoEstado}`);
       console.log(data);
       return true;
 
@@ -561,6 +589,121 @@ class PedidosServiceOptimizado {
   }
 
   /**
+   * Obtiene pedidos URGENTES DE EMPACAR (sincronizado con lógica WEB)
+   * Usa la fecha_límite calculada en backend igual a web
+   */
+  async obtenerPedidosUrgentesEmpacar(): Promise<PedidoCompleto[]> {
+    try {
+      const hoy = new Date();
+      const hoyStr = hoy.getFullYear() + '-' +
+        String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+        String(hoy.getDate()).padStart(2, '0');
+      console.log('[PedidosService] Enviando fecha_hoy (local):', hoyStr, typeof hoyStr, 'a /pedidos-urgentes-empacar');
+      const response = await fetch(`${API_BASE_URL}/pedidos-urgentes-empacar?fecha_hoy=${hoyStr}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json() as {
+        success: boolean;
+        pedidos?: PedidoCompleto[];
+        error?: string;
+      };
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Error obteniendo urgentes');
+      }
+      
+      return data.pedidos || [];
+    } catch (error) {
+      console.error(`❌ Error en obtenerPedidosUrgentesEmpacar:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene pedidos POR REMUNERAR (enviado, retirado, no-retirado)
+   * Con toda la data completa: cliente, encomendista, destino, productos, foto
+   */
+  async obtenerPedidosPorRemunerar(): Promise<PedidoCompleto[]> {
+    try {
+      const hoy = new Date();
+      const hoyStr = hoy.getFullYear() + '-' +
+        String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+        String(hoy.getDate()).padStart(2, '0');
+      console.log('[PedidosService] Enviando fecha_hoy (local):', hoyStr, typeof hoyStr, 'a /pedidos-por-remunerar');
+      const response = await fetch(`${API_BASE_URL}/pedidos-por-remunerar?fecha_hoy=${hoyStr}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json() as {
+        success: boolean;
+        pedidos?: PedidoCompleto[];
+        error?: string;
+      };
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Error obteniendo pedidos por remunerar');
+      }
+      
+      return data.pedidos || [];
+    } catch (error) {
+      console.error(`❌ Error en obtenerPedidosPorRemunerar:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene pedidos PARA ENVÍOS (sincronizado con lógica WEB)
+   * Calcula automáticamente si HOY es día de envío o el próximo
+   */
+  async obtenerPedidosParaEnvios(): Promise<{
+    pedidos: PedidoCompleto[];
+    dia_envio: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+  }> {
+    try {
+      const hoy = new Date();
+      const hoyStr = hoy.getFullYear() + '-' +
+        String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+        String(hoy.getDate()).padStart(2, '0');
+      console.log('[PedidosService] Enviando fecha_hoy (local):', hoyStr, typeof hoyStr, 'a /pedidos-para-envios');
+      const response = await fetch(`${API_BASE_URL}/pedidos-para-envios?fecha_hoy=${hoyStr}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json() as {
+        success: boolean;
+        pedidos?: PedidoCompleto[];
+        dia_envio?: string;
+        fecha_inicio?: string;
+        fecha_fin?: string;
+        error?: string;
+      };
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Error obteniendo envíos');
+      }
+      
+      return {
+        pedidos: data.pedidos || [],
+        dia_envio: data.dia_envio || 'DESCONOCIDO',
+        fecha_inicio: data.fecha_inicio || '',
+        fecha_fin: data.fecha_fin || ''
+      };
+    } catch (error) {
+      console.error(`❌ Error en obtenerPedidosParaEnvios:`, error);
+      return { pedidos: [], dia_envio: 'ERROR', fecha_inicio: '', fecha_fin: '' };
+    }
+  }
+
+  /**
    * Utilidad: Convertir cambios_estado a formato legible
    */
   formatearCambioEstado(cambio: CambioEstado): string {
@@ -584,7 +727,289 @@ class PedidosServiceOptimizado {
       ? new Date(ultimoCambio.fecha)
       : ultimoCambio.fecha;
   }
-}
 
+  /**
+   * 📊 Graba una remuneración en la colección remuneraciones_diarias (Firestore directo)
+   * Se usa cuando se marca un pedido como retirado/no-retirado
+   * 🔴 Solo usa STRINGS para fecha, sin objetos Date
+   */
+  async grabarRemuneracionDiaria(
+    pedidoId: string,
+    tipo: 'retirado' | 'no-retirado',
+    monto: number,
+    usuarioNombre: string,
+    encomiendistaNombre: string
+  ): Promise<boolean> {
+    try {
+      console.log(`[📊 Iniciando grabarRemuneracionDiaria]`);
+      
+      // Validar autenticación
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.warn(`[⚠️ No hay usuario autenticado, usando datos sin auth]`);
+      }
+
+      // Obtener fecha de hoy en formato YYYY-MM-DD (STRING)
+      const hoy = new Date();
+      const fecha = hoy.getFullYear() + '-' + 
+                    String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(hoy.getDate()).padStart(2, '0');
+
+      // Obtener timestamp en formato ISO (STRING)
+      const timestamp = new Date().toISOString();
+
+      // Grabar directamente en Firestore
+      const remuneracionesRef = collection(db, 'remuneraciones_diarias');
+      
+      const docRef = await addDoc(remuneracionesRef, {
+        pedido_id: pedidoId,
+        tipo: tipo,
+        monto: monto,
+        usuario_nombre: usuarioNombre,
+        encomiendista_nombre: encomiendistaNombre,
+        fecha: fecha,  // YYYY-MM-DD como STRING
+        timestamp: timestamp  // ISO como STRING
+      });
+
+      console.log(`[✅ Remuneración grabada en Firestore]`);
+      console.log(`[📄 Doc ID: ${docRef.id}]`);
+      console.log({
+        pedido_id: pedidoId,
+        tipo,
+        monto,
+        usuario_nombre: usuarioNombre,
+        encomiendista_nombre: encomiendistaNombre,
+        fecha,
+        timestamp
+      });
+      return true;
+
+    } catch (error: any) {
+      console.error(`[❌ Error grabando remuneración]`, error.message || error);
+      console.error(`[❌ Error code: ${error.code}]`);
+      console.error(`[❌ Full error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 📊 Obtiene remuneraciones de hoy en tiempo real desde Firestore
+   * @param fecha - YYYY-MM-DD (opcional, usa hoy si no se proporciona)
+   * @param callback - Función que se ejecuta cuando hay cambios
+   * @returns Función para desuscribirse
+   */
+  escucharRemuneracionesDiarias(
+    callback: (remuneraciones: any[]) => void,
+    fecha?: string
+  ): () => void {
+    try {
+      console.log(`\n[📊 INICIANDO ESCUCHA DE REMUNERACIONES]`);
+      
+      // Si no se proporciona fecha, usar hoy
+      const fechaFinal = fecha || (new Date().getFullYear() + '-' + 
+                                   String(new Date().getMonth() + 1).padStart(2, '0') + '-' + 
+                                   String(new Date().getDate()).padStart(2, '0'));
+
+      console.log(`[📅 Escuchando remuneraciones del: ${fechaFinal}]`);
+
+      const remuneracionesRef = collection(db, 'remuneraciones_diarias');
+      
+      // Query: obtener remuneraciones del día ordenadas por timestamp descendente
+      const q = query(
+        remuneracionesRef,
+        where('fecha', '==', fechaFinal),
+        orderBy('timestamp', 'desc')
+      );
+
+      console.log(`[🔍 Query configurada]`);
+
+      // Escuchar cambios en tiempo real
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        console.log(`\n[📥 SNAPSHOT RECIBIDO]`);
+        console.log(`[📊 Total documentos: ${snapshot.docs.length}]`);
+        
+        const remuneraciones = snapshot.docs.map((doc, index) => {
+          const data = doc.data();
+          console.log(`\n[📋 Doc ${index + 1}]`);
+          console.log(`  - ID: ${doc.id}`);
+          console.log(`  - Pedido: ${data.pedido_id}`);
+          console.log(`  - Usuario: ${data.usuario_nombre}`);
+          console.log(`  - Tipo: ${data.tipo}`);
+          console.log(`  - Monto: $${data.monto}`);
+          console.log(`  - Timestamp: ${data.timestamp}`);
+          
+          return {
+            id: doc.id,
+            ...data
+          };
+        });
+        
+        console.log(`[✅ Remuneraciones procesadas: ${remuneraciones.length}]`);
+        console.log(`[🔄 Ejecutando callback...]\n`);
+        callback(remuneraciones);
+      }, (error: any) => {
+        console.error(`\n[❌ ERROR EN SNAPSHOT]`);
+        console.error(`[❌ Message: ${error.message}]`);
+        console.error(`[❌ Code: ${error.code}]`);
+        console.error(`[❌ Full error:`, error);
+        // Retornar array vacío en caso de error
+        callback([]);
+      });
+
+      console.log(`[✅ ESCUCHA INICIADA CORRECTAMENTE]\n`);
+      return unsubscribe;
+    } catch (error: any) {
+      console.error(`\n[❌ ERROR EN escucharRemuneracionesDiarias]`);
+      console.error(`[❌ Message: ${error.message}]`);
+      console.error(`[❌ Full error:`, error);
+      return () => {};
+    }
+  }
+
+  /**
+   * 🔄 Toggle remuneración: si existe → elimina, si no existe → crea
+   * @param pedidoId - ID del pedido
+   * @param tipo - 'retirado' o 'no-retirado'
+   * @param monto - Monto a remunerar
+   * @param usuarioNombre - Nombre del usuario actual
+   * @param encomiendistaNombre - Nombre del encomendista
+   * @returns { accion: 'creada' | 'eliminada', resultado: boolean }
+   */
+  async toggleRemuneracionDiaria(
+    pedidoId: string,
+    tipo: 'retirado' | 'no-retirado',
+    monto: number,
+    usuarioNombre: string,
+    encomiendistaNombre: string
+  ): Promise<{ accion: 'creada' | 'eliminada', resultado: boolean }> {
+    try {
+      console.log(`[🔄 TOGGLE Remuneración para pedido: ${pedidoId}]`);
+      
+      // Obtener usuario actual para guardar su ID
+      const currentUser = auth.currentUser;
+      const usuarioId = currentUser?.uid || '';
+      
+      // Obtener fecha de hoy
+      const hoy = new Date();
+      const fecha = hoy.getFullYear() + '-' + 
+                    String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(hoy.getDate()).padStart(2, '0');
+
+      console.log(`[📅 Buscando remuneración para fecha: ${fecha}, tipo: ${tipo}]`);
+
+      // Buscar si ya existe remuneración para este pedido hoy
+      const remuneracionesRef = collection(db, 'remuneraciones_diarias');
+      const q = query(
+        remuneracionesRef,
+        where('pedido_id', '==', pedidoId),
+        where('fecha', '==', fecha),
+        where('tipo', '==', tipo)
+      );
+
+      const querySnapshot = await getDocs(q);
+      console.log(`[🔍 Búsqueda completada: ${querySnapshot.docs.length} registro(s) encontrado(s)]`);
+
+      // Si existe → eliminar (desmarcar)
+      if (!querySnapshot.empty) {
+        console.log(`[🗑️  Encontrado registro existente, eliminando...]`);
+        const docId = querySnapshot.docs[0].id;
+        
+        // Usar deleteDoc correctamente
+        await deleteDoc(querySnapshot.docs[0].ref);
+        
+        console.log(`[✅ Remuneración eliminada (desmarcada)]`);
+        console.log(`[📄 Doc eliminado: ${docId}]`);
+        return { accion: 'eliminada', resultado: true };
+      }
+
+      // Si no existe → crear (marcar)
+      console.log(`[✨ No existe registro, creando nuevo...]`);
+      const timestamp = new Date().toISOString();
+      
+      const docRef = await addDoc(remuneracionesRef, {
+        pedido_id: pedidoId,
+        tipo: tipo,
+        monto: monto,
+        usuario_id: usuarioId,
+        usuario_nombre: usuarioNombre,
+        encomiendista_nombre: encomiendistaNombre,
+        fecha: fecha,
+        timestamp: timestamp
+      });
+
+      console.log(`[✅ Remuneración creada (marcada)]`);
+      console.log(`[📄 Doc ID: ${docRef.id}]`);
+      return { accion: 'creada', resultado: true };
+
+    } catch (error: any) {
+      console.error(`[❌ Error en toggleRemuneracionDiaria]`, error.message || error);
+      console.error(`[❌ Error code: ${error.code}]`);
+      return { accion: 'creada', resultado: false };
+    }
+  }
+
+  /**
+   * Valida si un código de pedido ya existe en la BD
+   * @param codigoPedido - Código a validar (ej: "EG20260109001")
+   * @returns true si existe, false si no existe
+   */
+  async validarCodigoPedidoExiste(codigoPedido: string): Promise<boolean> {
+    try {
+      console.log(`[🔍 Validando código: ${codigoPedido}]`);
+      const response = await fetch(`${API_BASE_URL}/pedido/codigo/${codigoPedido}`);
+      
+      if (response.ok) {
+        console.log(`[⚠️  Código ${codigoPedido} YA EXISTE en BD]`);
+        return true; // Existe
+      } else if (response.status === 404) {
+        console.log(`[✅ Código ${codigoPedido} NO existe, disponible]`);
+        return false; // No existe (está disponible)
+      } else {
+        console.log(`[❌ Error inesperado: ${response.status}]`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`[❌ Error validando código:]`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Genera un código de pedido VALIDADO contra la BD
+   * Si el código existe, suma 1 y reintenta hasta encontrar uno disponible
+   */
+  async generarCodigoValidado(tiendaNombre: string, codigoInicial: string): Promise<string> {
+    let codigoActual = codigoInicial;
+    let intentos = 0;
+    const maxIntentos = 100;
+
+    console.log(`\n[🔐 INICIANDO VALIDACIÓN DE CÓDIGO]`);
+    console.log(`[📍 Tienda: ${tiendaNombre}]`);
+    console.log(`[🔢 Código inicial: ${codigoActual}]`);
+
+    while (intentos < maxIntentos) {
+      intentos++;
+      console.log(`[⏳ Intento ${intentos}/${maxIntentos}]`);
+
+      const existe = await this.validarCodigoPedidoExiste(codigoActual);
+
+      if (!existe) {
+        console.log(`[✅ CÓDIGO DISPONIBLE: ${codigoActual}]`);
+        console.log(`[📊 Intentos necesarios: ${intentos}]`);
+        return codigoActual;
+      }
+
+      const prefijo = codigoActual.substring(0, 10);
+      const secuenciaStr = codigoActual.substring(10);
+      const secuencia = parseInt(secuenciaStr, 10);
+      const proximaSecuencia = secuencia + 1;
+      codigoActual = `${prefijo}${String(proximaSecuencia).padStart(3, '0')}`;
+      
+      console.log(`[➕ Código existe, incrementando: ${codigoActual}]`);
+    }
+
+    throw new Error(`No se pudo generar código único después de ${maxIntentos} intentos`);
+  }
+}
 export default new PedidosServiceOptimizado();
 export const pedidosServiceOptimizado = new PedidosServiceOptimizado();

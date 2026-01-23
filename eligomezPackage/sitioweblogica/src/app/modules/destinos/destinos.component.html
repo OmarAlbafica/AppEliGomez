@@ -1,9 +1,9 @@
-<div class="space-y-6">
+﻿<div class="space-y-6">
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900">Destinos / Rutas</h1>
-      <p class="text-gray-500 mt-2">Gestiona las rutas de encomiendas regulares</p>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Destinos / Rutas</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">Gestiona las rutas de encomiendas regulares</p>
     </div>
     <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
       + Nueva Ruta
@@ -11,32 +11,32 @@
   </div>
 
   <!-- Table -->
-  <div class="bg-white rounded-lg shadow overflow-x-auto">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
     <table class="w-full">
-      <thead class="bg-gray-50 border-b">
+      <thead class="bg-gray-50 dark:bg-gray-700 border-b">
         <tr>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
             <button (click)="toggleOrdenamiento()" class="flex items-center gap-2 hover:opacity-80">
               Destino
               <span *ngIf="ordenAscendente" class="text-lg">⬆️</span>
               <span *ngIf="!ordenAscendente" class="text-lg">⬇️</span>
             </button>
           </th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Día</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Hora</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Costo</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Encomendista</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Estado</th>
-          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Acciones</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Día</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Hora</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Costo</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Encomendista</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Estado</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Acciones</th>
         </tr>
       </thead>
       <tbody class="divide-y">
-        <tr *ngFor="let destino of getDestinosOrdenados()" class="hover:bg-gray-50">
-          <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ destino.nombre }}</td>
-          <td class="px-6 py-4 text-sm text-gray-600">{{ destino.dia }}</td>
-          <td class="px-6 py-4 text-sm text-gray-600">{{ destino.hora }}</td>
-          <td class="px-6 py-4 text-sm text-gray-600">${{ destino.costo | number }}</td>
-          <td class="px-6 py-4 text-sm text-gray-600">{{ destino.encomendista }}</td>
+        <tr *ngFor="let destino of getDestinosOrdenados()" class="hover:bg-gray-50 dark:bg-gray-700">
+          <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{{ destino.nombre }}</td>
+          <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ destino.dia }}</td>
+          <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ destino.hora }}</td>
+          <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">${{ destino.costo | number }}</td>
+          <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ destino.encomendista }}</td>
           <td class="px-6 py-4 text-sm">
             <span *ngIf="destino.activo" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Activo</span>
             <span *ngIf="!destino.activo" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">Inactivo</span>

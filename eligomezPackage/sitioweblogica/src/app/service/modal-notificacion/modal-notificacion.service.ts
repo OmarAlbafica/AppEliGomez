@@ -18,7 +18,7 @@ export class ModalNotificacionService {
   mostrar(tipo: 'éxito' | 'error', mensaje: string, titulo?: string) {
     const notificacion: Notificacion = {
       tipo,
-      titulo: titulo || (tipo === 'éxito' ? '✅ Éxito' : '❌ Error'),
+      titulo: titulo || (tipo === 'éxito' ? 'Éxito' : 'Error'),
       mensaje,
       id: Date.now().toString()
     };

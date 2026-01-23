@@ -42,6 +42,34 @@ interface PedidoPendiente {
   monto: number;
 }
 
+interface Remuneracion {
+  fecha: Date;
+  tipo: 'miercoles' | 'sabado';
+  fechasIncluidas: string;
+  pedidos: {
+    id: string;
+    cliente: string;
+    destino: string;
+    encomendista?: string;
+    estado: string;
+    montoEnvio: number;
+    montoTotal: number;
+    montoSinEnvio: number;
+    fechaEntrega: Date;
+    fechaEntregaFormato?: string;
+  }[];
+  totalSinEnvio: number;
+  totalEnvios: number;
+  totalGeneral: number;
+  // Separados por estado
+  remunerados: any[];
+  cancelados: any[];
+  enviados: any[];
+  subtotalesRemunerado: { totalEnvios: number; totalSinEnvio: number; totalGeneral: number };
+  subtotalesCancelado: { totalEnvios: number; totalSinEnvio: number; totalGeneral: number };
+  subtotalesEnviado: { totalEnvios: number; totalSinEnvio: number; totalGeneral: number };
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -67,6 +95,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   retiroHoy: RetiroItem[] = [];
   retiroTomorrow: RetiroItem[] = [];
   pedidosNoRetirados: PedidoPendiente[] = [];
+  remuneraciones: Remuneracion[] = [];
+  reporteActual: 'miercoles' | 'sabado' = 'miercoles';
 
   private destroy$ = new Subject<void>();
   private subscriptions: Subscription[] = [];
@@ -102,21 +132,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private cargarDatosIniciales() {
+    // Cargar todos los datos en paralelo
     const pedidosSub = this.pedidosService.cargarPedidos().subscribe((pedidos: Pedido[]) => {
       this.pedidos = pedidos;
-      this.calcularEstadisticas();
+      this.verificarYCalcular();
     });
     this.subscriptions.push(pedidosSub);
 
     const clientesSub = this.clientesService.cargarClientes().subscribe((clientes: Cliente[]) => {
       this.clientes = clientes;
+      this.verificarYCalcular();
     });
     this.subscriptions.push(clientesSub);
 
     const encomendistaSub = this.encomendistasService.cargarEncomendistas().subscribe((encomendistas: Encomendista[]) => {
       this.encomendistas = encomendistas;
+      this.verificarYCalcular();
     });
     this.subscriptions.push(encomendistaSub);
+  }
+
+  private verificarYCalcular() {
+    // Calcular solo cuando TODOS los datos estén listos
+    if (this.pedidos.length > 0 && this.clientes.length > 0 && this.encomendistas.length > 0) {
+      this.calcularEstadisticas();
+    }
   }
 
   cargarDatos() {
@@ -194,6 +234,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.construirRetiros();
     this.construirPendientes();
+    this.calcularRemuneraciones();
   }
 
   private construirRetiros() {
@@ -291,6 +332,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private obtenerFechaEntrega(fecha: any): Date {
     if (!fecha) return new Date();
+    
+    // ✅ SI es string YYYY-MM-DD, parsearlo correctamente sin timezone issues
+    if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      // Crear fecha en zona horaria LOCAL (no UTC)
+      return new Date(year, month - 1, day);
+    }
+    
     if (fecha instanceof Date) return fecha;
     if (typeof fecha === 'string') return new Date(fecha);
     if (fecha.toDate && typeof fecha.toDate === 'function') return fecha.toDate();
@@ -327,10 +376,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const hoy = new Date();
     const diferencia = hoy.getTime() - fecha.getTime();
     return Math.floor(diferencia / (1000 * 3600 * 24));
-  }
-
-  private obtenerNombreCliente(clienteId: string): string {
-    return this.clientes.find(c => c.id === clienteId)?.nombre || 'Desconocido';
   }
 
   /**
@@ -379,20 +424,344 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleRetiroHoy(index: number) {
-    this.retiroHoy[index].expanded = !this.retiroHoy[index].expanded;
+  private calcularRemuneraciones() {
+    const hoy = new Date();
+    const diaHoy = hoy.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    hoy.setHours(0, 0, 0, 0);
+    
+    console.log('=== CALCULAR REMUNERACIONES ===');
+    console.log('Hoy:', hoy, 'Día de semana:', diaHoy);
+    console.log('Total pedidos disponibles:', this.pedidos.length);
+    
+    this.remuneraciones = [];
+
+    if (diaHoy === 3) {
+      // HOY ES MIÉRCOLES
+      // Mostrar: Sab-Dom-Lun-Mar (4 días hasta hoy inclusive)
+      const inicioMiercoles = new Date(hoy);
+      inicioMiercoles.setDate(inicioMiercoles.getDate() - 4);
+      
+      console.log('HOY ES MIÉRCOLES - Reporte MIÉRCOLES:', inicioMiercoles, 'a', hoy);
+      
+      const reporteMiercoles = this.filtrarPorDiasEspecificos(
+        inicioMiercoles,
+        hoy,
+        'miercoles',
+        [6, 0, 1, 2],
+        'Sab-Dom-Lun-Mar'
+      );
+      console.log('Reporte Miércoles resultado:', reporteMiercoles);
+      if (reporteMiercoles) {
+        this.remuneraciones.push(reporteMiercoles);
+      }
+
+      // REPORTE SÁBADO: 3 días antes del ÚLTIMO SÁBADO (hace 4 días)
+      const ultimoSabado = new Date(hoy);
+      ultimoSabado.setDate(ultimoSabado.getDate() - 4); // Sábado anterior
+      const inicioSabado = new Date(ultimoSabado);
+      inicioSabado.setDate(inicioSabado.getDate() - 3); // 3 días antes del sábado
+      
+      console.log('Reporte SÁBADO:', inicioSabado, 'a', ultimoSabado);
+      
+      const reporteSabado = this.filtrarPorDiasEspecificos(
+        inicioSabado,
+        ultimoSabado,
+        'sabado',
+        [3, 4, 5],
+        'Mié-Jue-Vie'
+      );
+      console.log('Reporte Sábado resultado:', reporteSabado);
+      if (reporteSabado) {
+        this.remuneraciones.push(reporteSabado);
+      }
+
+      this.reporteActual = 'miercoles';
+
+    } else if (diaHoy === 6) {
+      // HOY ES SÁBADO
+      // Mostrar: Mié-Jue-Vie (3 días antes del sábado de hoy inclusive)
+      const inicioSabado = new Date(hoy);
+      inicioSabado.setDate(inicioSabado.getDate() - 3);
+      
+      console.log('HOY ES SÁBADO - Reporte SÁBADO:', inicioSabado, 'a', hoy);
+      
+      const reporteSabado = this.filtrarPorDiasEspecificos(
+        inicioSabado,
+        hoy,
+        'sabado',
+        [3, 4, 5],
+        'Mié-Jue-Vie'
+      );
+      console.log('Reporte Sábado resultado:', reporteSabado);
+      if (reporteSabado) {
+        this.remuneraciones.push(reporteSabado);
+      }
+
+      // REPORTE MIÉRCOLES: 4 días antes del ÚLTIMO MIÉRCOLES (hace 3 días)
+      const ultimoMiercoles = new Date(hoy);
+      ultimoMiercoles.setDate(ultimoMiercoles.getDate() - 3); // Miércoles anterior
+      const inicioMiercoles = new Date(ultimoMiercoles);
+      inicioMiercoles.setDate(inicioMiercoles.getDate() - 4); // 4 días antes del miércoles
+      
+      console.log('Reporte MIÉRCOLES:', inicioMiercoles, 'a', ultimoMiercoles);
+      
+      const reporteMiercoles = this.filtrarPorDiasEspecificos(
+        inicioMiercoles,
+        ultimoMiercoles,
+        'miercoles',
+        [6, 0, 1, 2],
+        'Sab-Dom-Lun-Mar'
+      );
+      console.log('Reporte Miércoles resultado:', reporteMiercoles);
+      if (reporteMiercoles) {
+        this.remuneraciones.push(reporteMiercoles);
+      }
+
+      this.reporteActual = 'sabado';
+
+    } else if (diaHoy === 4 || diaHoy === 5) {
+      // JUEVES O VIERNES: Próximo es SÁBADO
+      const proximoSabado = new Date(hoy);
+      const diasParaSabado = (6 - diaHoy + 7) % 7;
+      proximoSabado.setDate(proximoSabado.getDate() + diasParaSabado);
+      
+      const inicioSabado = new Date(proximoSabado);
+      inicioSabado.setDate(inicioSabado.getDate() - 3);
+      
+      console.log('JUEVES/VIERNES - Reporte SÁBADO (próximo):', inicioSabado, 'a', proximoSabado);
+      
+      const reporteSabado = this.filtrarPorDiasEspecificos(
+        inicioSabado,
+        proximoSabado,
+        'sabado',
+        [3, 4, 5],
+        'Mié-Jue-Vie'
+      );
+      console.log('Reporte Sábado resultado:', reporteSabado);
+      if (reporteSabado) {
+        this.remuneraciones.push(reporteSabado);
+      }
+
+      // REPORTE MIÉRCOLES: ANTERIOR (pasado)
+      const ultimoMiercoles = new Date(hoy);
+      const diasAlMiercoles = (3 - diaHoy + 7) % 7;
+      ultimoMiercoles.setDate(ultimoMiercoles.getDate() - (diasAlMiercoles === 0 ? 7 : diasAlMiercoles));
+      
+      const inicioMiercoles = new Date(ultimoMiercoles);
+      inicioMiercoles.setDate(inicioMiercoles.getDate() - 4);
+      
+      console.log('Reporte MIÉRCOLES (anterior):', inicioMiercoles, 'a', ultimoMiercoles);
+      
+      const reporteMiercoles = this.filtrarPorDiasEspecificos(
+        inicioMiercoles,
+        ultimoMiercoles,
+        'miercoles',
+        [6, 0, 1, 2],
+        'Sab-Dom-Lun-Mar'
+      );
+      console.log('Reporte Miércoles resultado:', reporteMiercoles);
+      if (reporteMiercoles) {
+        this.remuneraciones.push(reporteMiercoles);
+      }
+
+      this.reporteActual = 'sabado';
+
+    } else {
+      // DOMINGO, LUNES O MARTES: Próximo es MIÉRCOLES
+      const proximoMiercoles = new Date(hoy);
+      const diasParaMiercoles = (3 - diaHoy + 7) % 7;
+      proximoMiercoles.setDate(proximoMiercoles.getDate() + diasParaMiercoles);
+      
+      const inicioMiercoles = new Date(proximoMiercoles);
+      inicioMiercoles.setDate(inicioMiercoles.getDate() - 4);
+      
+      console.log('DOM/LUN/MAR - Reporte MIÉRCOLES (próximo):', inicioMiercoles, 'a', proximoMiercoles);
+      
+      const reporteMiercoles = this.filtrarPorDiasEspecificos(
+        inicioMiercoles,
+        proximoMiercoles,
+        'miercoles',
+        [6, 0, 1, 2],
+        'Sab-Dom-Lun-Mar'
+      );
+      console.log('Reporte Miércoles resultado:', reporteMiercoles);
+      if (reporteMiercoles) {
+        this.remuneraciones.push(reporteMiercoles);
+      }
+
+      // REPORTE SÁBADO: ANTERIOR (pasado)
+      const ultimoSabado = new Date(hoy);
+      const diasAlSabado = (6 - diaHoy + 7) % 7;
+      ultimoSabado.setDate(ultimoSabado.getDate() - (diasAlSabado === 0 ? 7 : diasAlSabado));
+      
+      const inicioSabado = new Date(ultimoSabado);
+      inicioSabado.setDate(inicioSabado.getDate() - 3);
+      
+      console.log('Reporte SÁBADO (anterior):', inicioSabado, 'a', ultimoSabado);
+      
+      const reporteSabado = this.filtrarPorDiasEspecificos(
+        inicioSabado,
+        ultimoSabado,
+        'sabado',
+        [3, 4, 5],
+        'Mié-Jue-Vie'
+      );
+      console.log('Reporte Sábado resultado:', reporteSabado);
+      if (reporteSabado) {
+        this.remuneraciones.push(reporteSabado);
+      }
+
+      this.reporteActual = 'miercoles';
+    }
+
+    console.log('Total remuneraciones:', this.remuneraciones.length);
   }
 
-  toggleRetiroTomorrow(index: number) {
-    this.retiroTomorrow[index].expanded = !this.retiroTomorrow[index].expanded;
+  private filtrarPorDiasEspecificos(
+    fechaInicio: Date,
+    fechaFin: Date,
+    tipo: 'miercoles' | 'sabado',
+    diasParaMostrar: number[],
+    nombrePeriodo: string
+  ): Remuneracion | null {
+    const pedidosFiltrados = this.pedidos.filter(p => {
+      // Incluir remunero, cancelado, enviado Y retirado
+      if (!['remunero', 'cancelado', 'enviado', 'retirado', 'retirado-local'].includes(p.estado)) {
+        return false;
+      }
+
+      const fecha = this.obtenerFechaEntrega(p.fecha_entrega_programada);
+      
+      // Verificar que está en el rango de fechas Y es uno de los días que queremos
+      if (fecha >= fechaInicio && fecha <= fechaFin) {
+        const diaFecha = fecha.getDay();
+        return diasParaMostrar.includes(diaFecha);
+      }
+      
+      return false;
+    });
+
+    if (pedidosFiltrados.length === 0) {
+      return null;
+    }
+
+    const pedidosDetalle = pedidosFiltrados.map(p => {
+      const montoTotal = p.total || 0;
+      const montoEnvio = p.monto_envio || 0;
+      const montoSinEnvio = montoTotal - montoEnvio;
+      
+      const clienteNombre = this.obtenerNombreCliente(p.cliente_id);
+      const destinoNombre = this.obtenerNombreDestino(p.destino_id, p.direccion_personalizada);
+      const encomendistaNombre = this.obtenerNombreEncomendista(p.encomendista_id);
+
+      return {
+        id: p.id,
+        cliente: clienteNombre,
+        destino: destinoNombre,
+        encomendista: encomendistaNombre,
+        estado: p.estado,
+        montoEnvio: montoEnvio,
+        montoTotal: montoTotal,
+        montoSinEnvio: montoSinEnvio,
+        fechaEntrega: this.obtenerFechaEntrega(p.fecha_entrega_programada),
+        fechaEntregaFormato: p.fecha_entrega_programada ? new Date(p.fecha_entrega_programada).toLocaleDateString('es-CL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'
+      };
+    });
+
+    // Separar por estado y calcular totales por estado
+    const remunerados = pedidosDetalle.filter(p => p.estado === 'remunero');
+    const cancelados = pedidosDetalle.filter(p => p.estado === 'cancelado');
+    const enviados = pedidosDetalle.filter(p => p.estado === 'enviado');
+
+    const totalEnvios = pedidosDetalle.reduce((sum, p) => sum + p.montoEnvio, 0);
+    const totalSinEnvio = pedidosDetalle.reduce((sum, p) => sum + p.montoSinEnvio, 0);
+    const totalGeneral = pedidosDetalle.reduce((sum, p) => sum + p.montoTotal, 0);
+
+    // Calcular subtotales por estado
+    const calcularSubtotales = (pedidos: any[]) => ({
+      totalEnvios: pedidos.reduce((sum, p) => sum + p.montoEnvio, 0),
+      totalSinEnvio: pedidos.reduce((sum, p) => sum + p.montoSinEnvio, 0),
+      totalGeneral: pedidos.reduce((sum, p) => sum + p.montoTotal, 0)
+    });
+
+    return {
+      fecha: new Date(),
+      tipo: tipo,
+      fechasIncluidas: nombrePeriodo,
+      pedidos: pedidosDetalle,
+      totalSinEnvio: totalSinEnvio,
+      totalEnvios: totalEnvios,
+      totalGeneral: totalGeneral,
+      // Subtotales por estado
+      remunerados: remunerados,
+      cancelados: cancelados,
+      enviados: enviados,
+      subtotalesRemunerado: calcularSubtotales(remunerados),
+      subtotalesCancelado: calcularSubtotales(cancelados),
+      subtotalesEnviado: calcularSubtotales(enviados)
+    };
+  }
+
+  toggleReporte(tipo: 'miercoles' | 'sabado') {
+    this.reporteActual = tipo;
+  }
+
+  obtenerReporteActual(): Remuneracion | undefined {
+    return this.remuneraciones.find(r => r.tipo === this.reporteActual);
+  }
+
+  private obtenerNombreCliente(clienteId: string): string {
+    const cliente = this.clientes.find(c => c.id === clienteId);
+    return cliente ? cliente.nombre : 'Desconocido';
+  }
+
+  private obtenerNombreDestino(destinoId: string | null | undefined, direccionPersonalizada?: string): string {
+    // Si no hay ID de destino, usar dirección personalizada
+    if (!destinoId) {
+      return direccionPersonalizada && direccionPersonalizada.trim() ? direccionPersonalizada : 'Personalizado';
+    }
+    
+    // Buscar en todos los encomendistas
+    for (const enc of this.encomendistas) {
+      if (enc.destinos && Array.isArray(enc.destinos)) {
+        const destino = enc.destinos.find((d: any) => d && (d.id === destinoId || d.nombre === destinoId));
+        if (destino && destino.nombre) {
+          return destino.nombre;
+        }
+      }
+    }
+    
+    // Si no encuentra en destinos, pero hay dirección personalizada, usarla
+    if (direccionPersonalizada && direccionPersonalizada.trim()) {
+      return direccionPersonalizada;
+    }
+    
+    console.warn(`⚠️ Destino no encontrado: "${destinoId}"`);
+    
+    return 'Personalizado';
+  }
+
+  private obtenerNombreEncomendista(encomendista_id?: string | null): string {
+    if (!encomendista_id) return 'Personalizado';
+    
+    const enc = this.encomendistas.find(e => e && e.id === encomendista_id);
+    if (!enc) {
+      console.warn(`⚠️ Encomendista no encontrado: "${encomendista_id}"`);
+    }
+    return enc && enc.nombre ? enc.nombre : 'Personalizado';
+  }
+
+  toggleRemuneracion(index: number) {
+    // Placeholder para futuras expansiones
   }
 
   formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'CLP',
-      minimumFractionDigits: 0
-    }).format(value);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value).replace('CLP', '').trim();
   }
 
   getDiasSinRetirarColor(dias: number): string {

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PedidosService } from '../../service/pedidos/pedidos.service';
 import { ProductosService, Producto } from '../../service/productos/productos.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 import { Subscription } from 'rxjs';
 
 interface PedidoConFoto {
@@ -44,7 +45,8 @@ export class ReporteImagenesComponent implements OnInit, OnDestroy {
 
   constructor(
     private pedidosService: PedidosService,
-    private productosService: ProductosService
+    private productosService: ProductosService,
+    private notificacionService: ModalNotificacionService
   ) {
     this.actualizarRangoFechas();
   }
@@ -98,72 +100,85 @@ export class ReporteImagenesComponent implements OnInit, OnDestroy {
   }
 
   procesarPedidos(pedidos: any[], productos: Producto[]) {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+    // ⚠️ IMPORTANTE: Comparar SOLO año/mes/día (sin hora ni zona horaria)
+    const formatoFecha = (d: Date): string => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     
-    const inicio = new Date(this.fechaInicio);
-    inicio.setHours(0, 0, 0, 0);
+    const hoyStr = formatoFecha(new Date());
+    const inicioStr = formatoFecha(this.fechaInicio);
 
     this.pedidosLiberados = [];
     this.pedidosReservados = [];
 
-    console.log('🔍 Procesando pedidos. Rango:', inicio, 'a', hoy);
+    console.log('🔍 Procesando. Rango:', inicioStr, 'a', hoyStr, '(solo fecha, sin hora)');
     console.log('🔍 Productos disponibles:', productos.length);
 
+    // ============================================
+    // LIBERADOS: Buscar PRODUCTOS con fecha_liberado
+    // (cuando se elimina un pedido, el producto queda con fecha_liberado)
+    // ============================================
+    const productosLiberados = productos.filter(producto => {
+      if (!producto.fecha_liberado) return false;
+      
+      const fechaLib = this.obtenerFecha(producto.fecha_liberado);
+      const fechaLibStr = formatoFecha(fechaLib);
+      const enRango = fechaLibStr >= inicioStr && fechaLibStr <= hoyStr;
+      
+      console.log(`🔓 Producto ${producto.codigo}: fecha_liberado=${fechaLibStr}, enRango=${enRango}, reservado=${producto.reservado}`);
+      
+      // Solo productos liberados que NO están reservados actualmente
+      return enRango && !producto.reservado;
+    });
+
+    if (productosLiberados.length > 0) {
+      // Agrupar productos liberados como un "pedido virtual" para mostrar
+      this.pedidosLiberados.push({
+        id: 'productos-liberados',
+        codigo_pedido: 'PRODUCTOS LIBERADOS',
+        estado: 'liberado',
+        productos: productosLiberados,
+        fecha_cambio: new Date()
+      });
+      console.log(`✅ ${productosLiberados.length} productos LIBERADOS para agregar a Canvas`);
+    }
+
+    // ============================================
+    // RESERVADOS: Buscar PEDIDOS activos
+    // ============================================
     pedidos.forEach(pedido => {
       // Enriquecer con datos de productos
       const productosDelPedido = pedido.productos_id 
         ? productos.filter(p => pedido.productos_id.includes(p.id))
         : [];
 
-      console.log(`📦 Pedido ${pedido.codigo_pedido}:`, {
-        productos_id: pedido.productos_id,
-        encontrados: productosDelPedido.length,
-        urls: productosDelPedido.map(p => ({ id: p.id, url: p.url_imagen }))
-      });
-
-      // LIBERADOS: buscar productos que tengan fecha_liberado en el rango
-      if (productosDelPedido.length > 0) {
-        // Filtrar solo los productos que están liberados (tienen fecha_liberado) en el rango
-        const productosLiberados = productosDelPedido.filter(p => {
-          if (!p.fecha_liberado) return false;
-          const fecha = this.obtenerFecha(p.fecha_liberado);
-          return fecha >= inicio && fecha <= hoy;
-        });
-
-        if (productosLiberados.length > 0) {
-          this.pedidosLiberados.push({
-            ...pedido,
-            productos: productosLiberados,
-            fecha_cambio: this.obtenerFecha(productosLiberados[0].fecha_liberado)
-          });
-          console.log(`✅ Agregado a LIBERADOS: ${pedido.codigo_pedido} con ${productosLiberados.length} productos liberados`);
-          return;
-        }
-      }
-
-      // RESERVADOS: todos los pedidos creados en el rango que tengan productos SIN fecha_liberado
+      // Obtener fecha del pedido (fecha_creacion)
       const fechaCreacion = this.obtenerFecha(pedido.fecha_creacion);
+      const fechaCreacionStr = formatoFecha(fechaCreacion);
       
-      // Verificar que:
-      // 1. Está en el rango de fechas
-      // 2. Tiene productos agregados que NO estén liberados
-      if (fechaCreacion >= inicio && fechaCreacion <= hoy && productosDelPedido.length > 0) {
-        // Filtrar productos que NO están liberados
-        const productosNoLiberados = productosDelPedido.filter(p => !p.fecha_liberado);
-        
-        if (productosNoLiberados.length > 0) {
-          this.pedidosReservados.push({
-            ...pedido,
-            productos: productosNoLiberados,
-            fecha_cambio: fechaCreacion
-          });
-          console.log(`✅ Agregado a RESERVADOS: ${pedido.codigo_pedido} con ${productosNoLiberados.length} productos sin liberar`);
-        }
+      // RESERVADOS: usar fecha_creacion
+      const enRango = fechaCreacionStr >= inicioStr && fechaCreacionStr <= hoyStr;
+      
+      console.log(`📦 Pedido ${pedido.codigo_pedido}: estado=${pedido.estado}, fecha=${fechaCreacionStr}, enRango=${enRango}, productos=${productosDelPedido.length}`);
+
+      if (!enRango || productosDelPedido.length === 0) return;
+
+      // RESERVADOS: pedidos activos = productos que deben SALIR de Canvas
+      const estadosReservados = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'reservado'];
+      if (estadosReservados.includes(pedido.estado)) {
+        this.pedidosReservados.push({
+          ...pedido,
+          productos: productosDelPedido,
+          fecha_cambio: fechaCreacion
+        });
+        console.log(`✅ Agregado a RESERVADOS (eliminar de Canvas): ${pedido.codigo_pedido}`);
       }
     });
 
-    console.log(`📊 Final: ${this.pedidosLiberados.length} liberados, ${this.pedidosReservados.length} reservados`);
+    console.log(`📊 Final: ${this.pedidosLiberados.length} grupos liberados, ${this.pedidosReservados.length} reservados`);
 
     // Ordenar por fecha más reciente primero
     this.pedidosLiberados.sort((a, b) => 
@@ -193,7 +208,7 @@ export class ReporteImagenesComponent implements OnInit, OnDestroy {
 
   copiarAlPortapapeles(texto: string) {
     navigator.clipboard.writeText(texto).then(() => {
-      alert('Copiado al portapapeles');
+      this.notificacionService.mostrarExito('Copiado al portapapeles');
     });
   }
 

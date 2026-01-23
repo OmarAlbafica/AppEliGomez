@@ -51,7 +51,9 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   horarioActual = { // Para agregar horarios nuevos
     diasSeleccionados: [] as string[],
     hora_inicio: '09:00',
-    hora_fin: '17:00'
+    hora_fin: '17:00',
+    hora_inicio_12h_display: '9:00 AM',
+    hora_fin_12h_display: '5:00 PM'
   };
   
   // OCR para destinos
@@ -283,7 +285,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
   abrirModalAgregarDestino(encomendista: Encomendista) {
     this.encomendistaSelecionado = encomendista;
     this.nuevoDestino = { nombre: '', horarios: [], local: '' };
-    this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00' };
+    this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00', hora_inicio_12h_display: '9:00 AM', hora_fin_12h_display: '5:00 PM' };
     this.archivosDestino = [];
     this.mostrarModalDestino = true;
   }
@@ -759,7 +761,7 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
       this.mostrarMensaje('éxito', 'Destino agregado con múltiples horarios');
       this.mostrarModalDestino = false;
       this.nuevoDestino = { nombre: '', horarios: [], local: '' };
-      this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00' };
+      this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00', hora_inicio_12h_display: '9:00 AM', hora_fin_12h_display: '5:00 PM' };
       this.cargarEncomendistas();
     }).catch((error: any) => {
       console.error('Error:', error);
@@ -807,8 +809,47 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
     });
 
     // Limpiar para agregar otro horario
-    this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00' };
+    this.horarioActual = { diasSeleccionados: [], hora_inicio: '09:00', hora_fin: '17:00', hora_inicio_12h_display: '9:00 AM', hora_fin_12h_display: '5:00 PM' };
     this.mostrarMensaje('éxito', 'Horario agregado');
+  }
+
+  /**
+   * Convierte formato 12h a 24h
+   */
+  actualizarHora24h(tipo: 'inicio' | 'fin') {
+    const display = tipo === 'inicio' ? this.horarioActual.hora_inicio_12h_display : this.horarioActual.hora_fin_12h_display;
+    const hora24h = this.parsearFormatoHora12h(display);
+    
+    if (tipo === 'inicio') {
+      this.horarioActual.hora_inicio = hora24h;
+    } else {
+      this.horarioActual.hora_fin = hora24h;
+    }
+  }
+
+  /**
+   * Parsea formato "9:00 AM" o "5:00 PM" a "09:00" o "17:00"
+   */
+  private parsearFormatoHora12h(entrada: string): string {
+    if (!entrada) return '09:00';
+    
+    const regex = /(\d{1,2}):?(\d{2})?\s*(am|pm)/i;
+    const match = entrada.match(regex);
+    
+    if (!match) return '09:00';
+    
+    let hora = parseInt(match[1], 10);
+    const minutos = match[2] ? match[2] : '00';
+    const periodo = match[3].toLowerCase();
+    
+    // Convertir a 24h
+    if (periodo === 'pm' && hora !== 12) {
+      hora += 12;
+    } else if (periodo === 'am' && hora === 12) {
+      hora = 0;
+    }
+    
+    return `${hora.toString().padStart(2, '0')}:${minutos}`;
   }
 
   /**
@@ -1083,7 +1124,9 @@ export class EncomendistasComponent implements OnInit, OnDestroy {
     this.horarioActual = {
       diasSeleccionados: [],
       hora_inicio: '09:00',
-      hora_fin: '17:00'
+      hora_fin: '17:00',
+      hora_inicio_12h_display: '9:00 AM',
+      hora_fin_12h_display: '5:00 PM'
     };
   }
 

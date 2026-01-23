@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TiendasService } from '../../service/tiendas/tiendas.service';
 import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal-confirmacion.service';
+import { ModalNotificacionService } from '../../service/modal-notificacion/modal-notificacion.service';
 import { Tienda } from '../../models/tienda.model';
 import { Subscription } from 'rxjs';
 
@@ -27,7 +28,8 @@ export class TiendasComponent implements OnInit, OnDestroy {
 
   constructor(
     private tiendasService: TiendasService,
-    private modalService: ModalConfirmacionService
+    private modalService: ModalConfirmacionService,
+    private notificacionService: ModalNotificacionService
   ) {}
 
   ngOnInit(): void {
@@ -56,7 +58,7 @@ export class TiendasComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('❌ Error cargando tiendas:', error);
-        alert('Error al cargar las tiendas');
+        this.notificacionService.mostrarError('Error al cargar las tiendas');
       }
     });
     this.subscriptions.push(sub);
@@ -84,28 +86,28 @@ export class TiendasComponent implements OnInit, OnDestroy {
 
   async crearTienda(): Promise<void> {
     if (!this.formularioNuevo.nombre_pagina?.trim()) {
-      alert('El nombre de la página es requerido');
+      this.notificacionService.mostrarError('El nombre de la página es requerido');
       return;
     }
 
     if (!this.formularioNuevo.nombre_perfil_reserva?.trim()) {
-      alert('El nombre del perfil de reserva es requerido');
+      this.notificacionService.mostrarError('El nombre del perfil de reserva es requerido');
       return;
     }
 
     if (!this.formularioNuevo.color_sticker) {
-      alert('El color del sticker es requerido');
+      this.notificacionService.mostrarError('El color del sticker es requerido');
       return;
     }
 
     try {
       await this.tiendasService.crearTienda(this.formularioNuevo);
       console.log('✅ Tienda creada exitosamente');
-      alert('✅ Tienda creada exitosamente');
+      this.notificacionService.mostrarExito('Tienda creada exitosamente');
       this.cerrarModalNueva();
     } catch (error) {
       console.error('❌ Error creando tienda:', error);
-      alert('Error al crear la tienda');
+      this.notificacionService.mostrarError('Error al crear la tienda');
     }
   }
 
@@ -113,28 +115,28 @@ export class TiendasComponent implements OnInit, OnDestroy {
     if (!this.tiendasEditando) return;
 
     if (!this.tiendasEditando.nombre_pagina?.trim()) {
-      alert('El nombre de la página es requerido');
+      this.notificacionService.mostrarError('El nombre de la página es requerido');
       return;
     }
 
     if (!this.tiendasEditando.nombre_perfil_reserva?.trim()) {
-      alert('El nombre del perfil de reserva es requerido');
+      this.notificacionService.mostrarError('El nombre del perfil de reserva es requerido');
       return;
     }
 
     if (!this.tiendasEditando.color_sticker) {
-      alert('El color del sticker es requerido');
+      this.notificacionService.mostrarError('El color del sticker es requerido');
       return;
     }
 
     try {
       await this.tiendasService.actualizarTienda(this.tiendasEditando.id!, this.tiendasEditando);
       console.log('✅ Tienda actualizada exitosamente');
-      alert('✅ Tienda actualizada exitosamente');
+      this.notificacionService.mostrarExito('Tienda actualizada exitosamente');
       this.cerrarModalEditar();
     } catch (error) {
       console.error('❌ Error actualizando tienda:', error);
-      alert('Error al actualizar la tienda');
+      this.notificacionService.mostrarError('Error al actualizar la tienda');
     }
   }
 
@@ -151,10 +153,10 @@ export class TiendasComponent implements OnInit, OnDestroy {
     try {
       await this.tiendasService.eliminarTienda(tienda.id!);
       console.log('✅ Tienda eliminada exitosamente');
-      alert('✅ Tienda eliminada exitosamente');
+      this.notificacionService.mostrarExito('Tienda eliminada exitosamente');
     } catch (error) {
       console.error('❌ Error eliminando tienda:', error);
-      alert('Error al eliminar la tienda');
+      this.notificacionService.mostrarError('Error al eliminar la tienda');
     }
   }
 
@@ -196,12 +198,12 @@ export class TiendasComponent implements OnInit, OnDestroy {
    */
   async cargarImagenAlFirebase(): Promise<void> {
     if (!this.archivoImagen) {
-      alert('Selecciona una imagen primero');
+      this.notificacionService.mostrarError('Selecciona una imagen primero');
       return;
     }
 
     if (!this.formularioNuevo.nombre_pagina || !this.formularioNuevo.nombre_pagina.trim()) {
-      alert('Ingresa el nombre de la tienda primero');
+      this.notificacionService.mostrarError('Ingresa el nombre de la tienda primero');
       return;
     }
 
@@ -212,11 +214,11 @@ export class TiendasComponent implements OnInit, OnDestroy {
       const url = await this.tiendasService.cargarImagenTienda(this.archivoImagen, this.formularioNuevo.nombre_pagina);
       this.formularioNuevo.imagen_url = url;
       
-      alert('✅ Imagen cargada exitosamente');
+      this.notificacionService.mostrarExito('Imagen cargada exitosamente');
       this.cerrarModalCargarImagen();
     } catch (error) {
       console.error('Error cargando imagen:', error);
-      alert('Error al cargar la imagen');
+      this.notificacionService.mostrarError('Error al cargar la imagen');
     } finally {
       this.cargandoImagen = false;
     }
@@ -227,12 +229,12 @@ export class TiendasComponent implements OnInit, OnDestroy {
    */
   async cargarImagenAlFirebaseEdicion(): Promise<void> {
     if (!this.archivoImagen) {
-      alert('Selecciona una imagen primero');
+      this.notificacionService.mostrarError('Selecciona una imagen primero');
       return;
     }
 
     if (!this.tiendasEditando || !this.tiendasEditando.nombre_pagina) {
-      alert('Tienda no válida');
+      this.notificacionService.mostrarError('Tienda no válida');
       return;
     }
 
@@ -242,11 +244,11 @@ export class TiendasComponent implements OnInit, OnDestroy {
       const url = await this.tiendasService.cargarImagenTienda(this.archivoImagen, this.tiendasEditando.nombre_pagina);
       this.tiendasEditando.imagen_url = url;
       
-      alert('✅ Imagen cargada exitosamente');
+      this.notificacionService.mostrarExito('Imagen cargada exitosamente');
       this.cerrarModalCargarImagen();
     } catch (error) {
       console.error('Error cargando imagen:', error);
-      alert('Error al cargar la imagen');
+      this.notificacionService.mostrarError('Error al cargar la imagen');
     } finally {
       this.cargandoImagen = false;
     }

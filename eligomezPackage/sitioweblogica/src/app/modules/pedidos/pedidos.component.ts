@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ResponsiveService } from '../../service/responsive/responsive.service';
 import { PedidosService, Pedido } from '../../service/pedidos/pedidos.service';
 import { ClientesService, Cliente } from '../../service/clientes/clientes.service';
-import { EncomendistasService, Encomendista } from '../../service/encomendistas/encomendistas.service';
+import { EncomendistasService, Encomendista, DestinoEncomendista } from '../../service/encomendistas/encomendistas.service';
 import { ProductosService, Producto } from '../../service/productos/productos.service';
 import { TiendasService } from '../../service/tiendas/tiendas.service';
 import { ModalConfirmacionService } from '../../service/modal-confirmacion/modal-confirmacion.service';
@@ -41,13 +41,25 @@ export class PedidosComponent implements OnInit, OnDestroy {
   tiendas: Tienda[] = [];  // NUEVO: Agregar tiendas
   tiendaSeleccionada: Tienda | null = null;  // NUEVO: Tienda seleccionada para crear pedido
 
-  filtroEstado = 'todos';
+  filtroEstado = 'sin-finalizar';
   filtroNombre = '';
-  estadosList = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
+  estadosList = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado', 'remunero'];
   // Array con todos los filtros posibles incluyendo opciones especiales
-  estados = ['todos', 'urgentes-empacar', 'por-enviar', 'enviados', 'por-remunerar', 'por-retirar-hoy', 'pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
+  estados = ['sin-finalizar', 'todos', 'urgentes-empacar', 'por-enviar', 'enviados', 'por-remunerar', 'por-retirar-hoy', 'pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado', 'remunero'];
   // Array SOLO para el modal de cambio de estado - solo los 8 estados principales
-  estadosParaModal = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado'];
+  estadosParaModal = ['pendiente', 'empacada', 'enviado', 'retirado', 'no-retirado', 'retirado-local', 'cancelado', 'liberado', 'remunero'];
+
+  // Control de banner urgentes
+  mostrarUrgentes = false;
+
+  /**
+   * Obtiene los nombres formateados de los pedidos urgentes
+   */
+  obtenerNombresUrgentes(): string {
+    return this.obtenerPedidosUrgencia()
+      .map(p => (p.cliente_nombre || 'Cliente').split(' ')[0])
+      .join(', ');
+  }
 
   // Modal de cambio de estado
   mostrarModalEstado = false;
@@ -58,6 +70,9 @@ export class PedidosComponent implements OnInit, OnDestroy {
   // Filtro por fecha
   filtroFechaDesde: string = '';
   filtroFechaHasta: string = '';
+
+  // Filtro de días para "por-retirar-hoy"
+  diasRetiroSeleccionado: number = 0; // 0 = Hoy, 1 = Ayer, 2 = Anteayer, etc.
 
   // Zoom de imagen
   imagenZoom: string | null = null;
@@ -93,6 +108,39 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   // Modal de importación de Excel
   mostrarImportarExcel = false;
+
+  // Modal de edición puntual de pedidos
+  mostrarModalEdicionPuntual = false;
+  pedidoEnEdicion: PedidoCompleto | null = null;
+  edicionForm = {
+    tienda_id: '', // NUEVO: Para cambiar tienda en edición
+    encomendista_id: '',
+    destino_id: '',
+    dia_entrega: '',
+    hora_inicio: '',
+    hora_fin: '',
+    costo_prendas: 0,
+    monto_envio: 0,
+    notas: '',
+    tipo_envio: 'normal', // 'normal' o 'personalizado'
+    direccion_personalizada: '' // Para envíos personalizados
+  };
+  destinosDisponiblesEdicion: DestinoEncomendista[] = [];
+  
+  // Búsqueda de encomendista en edición
+  nombreEncomendistaBusquedaEdicion: string = '';
+  encomendistaBuscadasEdicion: Encomendista[] = [];
+  
+  // Búsqueda de destino en edición
+  nombreDestinoBusquedaEdicion: string = '';
+  destinosBuscadosEdicion: DestinoEncomendista[] = [];
+  
+  // Selección de día y fechas en edición
+  diasProximosEdicion: { dia: string; proximoHorario?: { hora_inicio: string; hora_fin: string } }[] = [];
+  fechasDisponiblesEdicion: { fecha: Date; fechaFormato: string }[] = [];
+  fechasOffsetEdicion: number = 0;
+  fechaSeleccionadaEdicion: string = ''; // Almacena la fecha seleccionada en formato legible
+  diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
   // Ordenamiento de tabla
   ordenarPor: 'cliente' | 'encomendista' = 'cliente';
@@ -307,7 +355,12 @@ export class PedidosComponent implements OnInit, OnDestroy {
       }
 
       // Filtro por estado (incluyendo opciones especiales)
-      if (this.filtroEstado === 'urgentes-empacar') {
+      if (this.filtroEstado === 'sin-finalizar') {
+        // Sin finalizar = todos EXCEPTO no-retirado, cancelado, retirado-local
+        if (['no-retirado', 'cancelado', 'retirado-local'].includes(p.estado)) {
+          return false;
+        }
+      } else if (this.filtroEstado === 'urgentes-empacar') {
         // Mostrar solo los urgentes
         if (!this.esUrgente(p)) {
           return false;
@@ -324,8 +377,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
         }
       } else if (this.filtroEstado === 'por-remunerar') {
         // Por remunerar = NO enviado, retirados, no retirados desde la fecha actual hacia atrás
-        // NO está en: liberado, retirado-local, cancelado, pendiente, empacada
-        const finalizados = ['liberado', 'retirado-local', 'cancelado', 'pendiente', 'empacada'];
+        // NO está en: liberado, retirado-local, cancelado, pendiente, empacada, remunero
+        const finalizados = ['liberado', 'retirado-local', 'cancelado', 'pendiente', 'empacada', 'remunero'];
         if (finalizados.includes(p.estado)) {
           return false;
         }
@@ -337,16 +390,22 @@ export class PedidosComponent implements OnInit, OnDestroy {
           return false;
         }
       } else if (this.filtroEstado === 'por-retirar-hoy') {
-        // Por retirar hoy = fecha entrega es hoy Y estado es ENVIADO (aún no retirado)
+        // Por retirar hoy/ayer/anteayer etc = fecha entrega es la seleccionada Y estado es ENVIADO (aún no retirado)
         if (p.estado !== 'enviado') {
           return false;
         }
         const fechaPedido = this.obtenerFechaEntrega(p.fecha_entrega_programada);
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
-        const mañana = new Date(hoy);
-        mañana.setDate(mañana.getDate() + 1);
-        if (fechaPedido < hoy || fechaPedido >= mañana) {
+        
+        // Restar los días seleccionados (diasRetiroSeleccionado)
+        const fechaFiltro = new Date(hoy);
+        fechaFiltro.setDate(fechaFiltro.getDate() - this.diasRetiroSeleccionado);
+        
+        const mañanaFiltro = new Date(fechaFiltro);
+        mañanaFiltro.setDate(mañanaFiltro.getDate() + 1);
+        
+        if (fechaPedido < fechaFiltro || fechaPedido >= mañanaFiltro) {
           return false;
         }
       } else if (this.filtroEstado !== 'todos' && p.estado !== this.filtroEstado) {
@@ -407,6 +466,51 @@ export class PedidosComponent implements OnInit, OnDestroy {
         const tiempoB = horaB * 60 + minutoB;
         
         return tiempoA - tiempoB;
+      }
+      
+      // Para 'sin-finalizar', agrupar por estado primero, luego por encomendista, luego por fecha
+      if (this.filtroEstado === 'sin-finalizar') {
+        // Orden de prioridad de estados: urgentes > pendientes > empacados > enviados > retirado > remunerado > cancelado > retirado-local
+        const ordenEstados = {
+          'pendiente': 1,     // Se incluyen los urgentes (que tienen estado pendiente)
+          'empacada': 2,
+          'enviado': 3,
+          'retirado': 4,
+          'remunero': 5,
+          'cancelado': 6,
+          'no-retirado': 99,  // No debería aparecer (filtrado arriba)
+          'retirado-local': 99, // No debería aparecer (filtrado arriba)
+          'liberado': 7
+        };
+
+        // Si alguno es urgente, priorizarlos
+        const aEsUrgente = this.esUrgente(a);
+        const bEsUrgente = this.esUrgente(b);
+        
+        if (aEsUrgente && !bEsUrgente) return -1;
+        if (!aEsUrgente && bEsUrgente) return 1;
+        
+        // Ordenar por estado
+        const prioridadA = ordenEstados[a.estado as keyof typeof ordenEstados] || 99;
+        const prioridadB = ordenEstados[b.estado as keyof typeof ordenEstados] || 99;
+        
+        if (prioridadA !== prioridadB) {
+          return prioridadA - prioridadB;
+        }
+        
+        // Mismo estado: ordenar por encomendista
+        const encA = (a.encomendista_id ? this.obtenerNombreEncomendista(a.encomendista_id) : 'Personalizado').toLowerCase();
+        const encB = (b.encomendista_id ? this.obtenerNombreEncomendista(b.encomendista_id) : 'Personalizado').toLowerCase();
+        const comparacionEnc = encA.localeCompare(encB);
+        
+        if (comparacionEnc !== 0) {
+          return comparacionEnc;
+        }
+        
+        // Mismo encomendista: ordenar por fecha (más próxima primero)
+        const fechaA = this.obtenerFechaEntrega(a.fecha_entrega_programada);
+        const fechaB = this.obtenerFechaEntrega(b.fecha_entrega_programada);
+        return fechaA.getTime() - fechaB.getTime();
       }
       
       // Criterio primario: Si es urgente (va para próximo envío), mostrar primero
@@ -471,6 +575,14 @@ export class PedidosComponent implements OnInit, OnDestroy {
    */
   obtenerFechaEntrega(fecha: any): Date {
     if (!fecha) return new Date();
+    
+    // ✅ SI es string YYYY-MM-DD, parsearlo correctamente sin timezone issues
+    if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      // Crear fecha en zona horaria LOCAL (no UTC)
+      return new Date(year, month - 1, day);
+    }
+    
     if (fecha instanceof Date) return fecha;
     if (typeof fecha === 'string') return new Date(fecha);
     if (fecha.toDate && typeof fecha.toDate === 'function') return fecha.toDate(); // Timestamp de Firestore
@@ -561,13 +673,13 @@ export class PedidosComponent implements OnInit, OnDestroy {
       
       // Validar que sea una imagen
       if (!file.type.startsWith('image/')) {
-        alert('Por favor selecciona una imagen válida (JPG, PNG, etc.)');
+        this.notificacionService.mostrarError('Por favor selecciona una imagen válida (JPG, PNG, etc.)');
         return;
       }
 
       // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('La imagen es muy grande. Máximo 5MB');
+        this.notificacionService.mostrarError('La imagen es muy grande. Máximo 5MB');
         return;
       }
 
@@ -598,7 +710,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
         await this.pedidosService.liberarPedido(this.pedidoSeleccionado.id);
         this.cerrarModalEstado();
-        alert('✅ Pedido liberado correctamente. Los productos están disponibles de nuevo.');
+        this.notificacionService.mostrarExito('Pedido liberado correctamente. Los productos están disponibles de nuevo.');
         // Recargar pedidos para reflejar cambios
         this.cargarPedidos();
       } else {
@@ -617,7 +729,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
             console.log('✅ Foto subida correctamente a Storage:', urlFoto);
           } catch (error) {
             console.error('❌ Error subiendo foto:', error);
-            alert('Error al subir la foto. El estado se actualizará sin foto.');
+            this.notificacionService.mostrarError('Error al subir la foto. El estado se actualizará sin foto.');
           }
         }
 
@@ -630,7 +742,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
         }
         
         this.cerrarModalEstado();
-        alert('Estado actualizado correctamente');
+        this.notificacionService.mostrarExito('Guardado con éxito');
         
         // Recargar pedidos después de 1 segundo para sincronizar con Firebase
         setTimeout(() => {
@@ -639,7 +751,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error al actualizar estado:', error);
-      alert('Error al actualizar el estado');
+      this.notificacionService.mostrarError('Error al actualizar el estado');
     }
   }
 
@@ -658,10 +770,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
     try {
       await this.pedidosService.eliminarPedido(pedido.id);
-      alert('Pedido eliminado correctamente');
+      this.notificacionService.mostrarExito('Pedido eliminado correctamente');
     } catch (error) {
       console.error('Error al eliminar pedido:', error);
-      alert('Error al eliminar el pedido');
+      this.notificacionService.mostrarError('Error al eliminar el pedido');
     }
   }
 
@@ -677,7 +789,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'no-retirado': { borderColor: 'border-orange-700', bgColor: 'bg-orange-50', headerColor: 'bg-orange-600' },
       'cancelado': { borderColor: 'border-red-900', bgColor: 'bg-red-50', headerColor: 'bg-red-800' },
       'retirado-local': { borderColor: 'border-gray-900', bgColor: 'bg-gray-50', headerColor: 'bg-gray-900' },
-      'liberado': { borderColor: 'border-amber-900', bgColor: 'bg-amber-50', headerColor: 'bg-amber-800' }
+      'liberado': { borderColor: 'border-amber-900', bgColor: 'bg-amber-50', headerColor: 'bg-amber-800' },
+      'remunero': { borderColor: 'border-teal-700', bgColor: 'bg-teal-50', headerColor: 'bg-teal-600' }
     };
     return colores[estado] || { borderColor: 'border-gray-700', bgColor: 'bg-gray-50', headerColor: 'bg-gray-700' };
   }
@@ -715,7 +828,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'no-retirado': 'from-orange-600 to-orange-700',
       'cancelado': 'from-red-600 to-red-700',
       'retirado-local': 'from-indigo-600 to-indigo-700',
-      'liberado': 'from-pink-600 to-pink-700'
+      'liberado': 'from-pink-600 to-pink-700',
+      'remunero': 'from-teal-600 to-teal-700'
     };
     return gradientes[estado] || 'from-gray-600 to-gray-700';
   }
@@ -729,7 +843,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'no-retirado': 'bg-orange-100 text-orange-800',
       'cancelado': 'bg-red-100 text-red-800',
       'retirado-local': 'bg-indigo-100 text-indigo-800',
-      'liberado': 'bg-pink-100 text-pink-800'
+      'liberado': 'bg-pink-100 text-pink-800',
+      'remunero': 'bg-teal-100 text-teal-800'
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   }
@@ -743,7 +858,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'no-retirado': 'bg-orange-500 text-white',
       'cancelado': 'bg-red-500 text-white',
       'retirado-local': 'bg-indigo-500 text-white',
-      'liberado': 'bg-pink-500 text-white'
+      'liberado': 'bg-pink-500 text-white',
+      'remunero': 'bg-teal-500 text-white'
     };
     return colors[estado] || 'bg-gray-500 text-white';
   }
@@ -760,9 +876,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'enviado': 'Enviado',
       'retirado': 'Retirado',
       'no-retirado': 'No Retirado',
-      'cancelado': 'Cancelado',
+      'cancelado': 'Cancelado (Pagado)',
       'retirado-local': 'Retirado del Local',
-      'liberado': 'Liberado'
+      'liberado': 'Liberado',
+      'remunero': 'Remunerado'
     };
     return estados[estado] || estado;
   }
@@ -815,11 +932,35 @@ export class PedidosComponent implements OnInit, OnDestroy {
       'enviado': '✈️',
       'retirado': '✅',
       'no-retirado': '❌',
-      'cancelado': '🚫',
+      'cancelado': '💸',
       'retirado-local': '📍',
-      'liberado': '🔓'
+      'liberado': '🔓',
+      'remunero': '💵'
     };
     return emojis[estado] || '•';
+  }
+
+  /**
+   * Obtiene la etiqueta del día para el filtro de retiro (Hoy, Ayer, Anteayer, etc)
+   */
+  obtenerEtiquetaDia(diasAtras: number): string {
+    switch(diasAtras) {
+      case 0: return 'Hoy';
+      case 1: return 'Ayer';
+      case 2: return 'Anteayer';
+      case 3: return 'Hace 3 días';
+      case 4: return 'Hace 4 días';
+      default: return `Hace ${diasAtras} días`;
+    }
+  }
+
+  /**
+   * Obtiene la fecha formateada para el filtro de retiro
+   */
+  obtenerFechaFiltroRetiro(diasAtras: number): string {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() - diasAtras);
+    return fecha.toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   /**
@@ -918,10 +1059,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
     try {
       console.log(`📥 Descargando ${evento.pedidos.length} stickers desde preview`);
       this.descargarStickersPdf(evento.pedidos);
-      alert(`✅ PDF generado con ${evento.pedidos.length} stickers`);
+      this.notificacionService.mostrarExito(`PDF generado con ${evento.pedidos.length} stickers`);
     } catch (error) {
       console.error('Error descargando PDF:', error);
-      alert('Error al generar el PDF');
+      this.notificacionService.mostrarError('Error al generar el PDF');
     }
   }
 
@@ -969,7 +1110,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       }
 
       if (pendientes.length === 0) {
-        alert('No hay pedidos pendientes para descargar');
+        this.notificacionService.mostrarError('No hay pedidos pendientes para descargar');
         return;
       }
 
@@ -978,7 +1119,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       this.abrirSelectorFechaEnvio();
     } catch (error) {
       console.error('Error abriendo preview:', error);
-      alert('Error al abrir preview');
+      this.notificacionService.mostrarError('Error al abrir preview');
     }
   }
 
@@ -1053,7 +1194,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
    */
   confirmarFechaEnvio(): void {
     if (!this.fechaTemporal) {
-      alert('Por favor selecciona una fecha');
+      this.notificacionService.mostrarError('Por favor selecciona una fecha');
       return;
     }
 
@@ -1071,7 +1212,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       // Si no hay pedidos pre-cargados, obtener los filtrados
       const pedidosFiltrados = this.getPedidosFiltrados();
       if (pedidosFiltrados.length === 0) {
-        alert('No hay pedidos para mostrar');
+        this.notificacionService.mostrarError('No hay pedidos para mostrar');
         return;
       }
       this.pedidosParaPreview = pedidosFiltrados;
@@ -1098,7 +1239,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       const pedidosFiltrados = this.getPedidosFiltrados();
       
       if (pedidosFiltrados.length === 0) {
-        alert('No hay pedidos para descargar');
+        this.notificacionService.mostrarError('No hay pedidos para descargar');
         return;
       }
 
@@ -1107,7 +1248,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       this.mostrarModalPreview = true;
     } catch (error) {
       console.error('Error abriendo preview:', error);
-      alert('Error al abrir preview');
+      this.notificacionService.mostrarError('Error al abrir preview');
     }
   }
 
@@ -1122,7 +1263,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       if (this.pedidosSeleccionados.size < 8) {
         this.pedidosSeleccionados.add(pedidoId);
       } else {
-        alert('⚠️ Máximo permitido: 8 stickers\n\nDeselecciona algunos pedidos para agregar nuevos.');
+        this.notificacionService.mostrarError('Máximo permitido: 8 stickers. Deselecciona algunos pedidos para agregar nuevos.');
       }
     }
   }
@@ -1480,7 +1621,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
    */
   abrirGeneradorStickers(): void {
     if (this.pedidosSeleccionados.size === 0) {
-      alert('Selecciona al menos 1 pedido');
+      this.notificacionService.mostrarError('Selecciona al menos 1 pedido');
       return;
     }
 
@@ -1506,6 +1647,36 @@ export class PedidosComponent implements OnInit, OnDestroy {
    */
   limpiarSeleccion(): void {
     this.pedidosSeleccionados.clear();
+  }
+
+  /**
+   * Selecciona el lote de urgentes especificado (primeros 8, segundos 8, etc)
+   */
+  seleccionarLoteUrgentes(numeroLote: number): void {
+    const urgentes = this.obtenerPedidosUrgencia();
+    const inicio = (numeroLote - 1) * 8;
+    const fin = inicio + 8;
+    const lotePedidos = urgentes.slice(inicio, fin);
+
+    // Limpiar selección anterior
+    this.pedidosSeleccionados.clear();
+
+    // Seleccionar los pedidos del lote
+    lotePedidos.forEach(pedido => {
+      if (pedido.id) {
+        this.pedidosSeleccionados.add(pedido.id);
+      }
+    });
+
+    console.log(`✅ Seleccionados ${lotePedidos.length} pedidos del lote ${numeroLote}`);
+  }
+
+  /**
+   * Obtiene los lotes disponibles de urgentes (divide en grupos de 8)
+   */
+  obtenerLotesDisponibles(): number {
+    const urgentes = this.obtenerPedidosUrgencia();
+    return Math.ceil(urgentes.length / 8);
   }
 
   /**
@@ -1656,7 +1827,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
    */
   async guardarImagenPaquete(): Promise<void> {
     if (!this.pedidoParaCargarImagen || !this.imagenPaqueteBase64) {
-      alert('Por favor selecciona una imagen');
+      this.notificacionService.mostrarError('Por favor selecciona una imagen');
       return;
     }
 
@@ -1668,13 +1839,13 @@ export class PedidosComponent implements OnInit, OnDestroy {
       };
 
       await this.pedidosService.actualizarPedido(pedidoActualizado);
-      alert('✅ Imagen guardada exitosamente');
+      this.notificacionService.mostrarExito('Guardado con éxito');
       this.cerrarModalCargarImagen();
       // Recargar pedidos
       this.cargarPedidos();
     } catch (error) {
       console.error('Error al guardar imagen:', error);
-      alert('Error al guardar la imagen');
+      this.notificacionService.mostrarError('Error al guardar la imagen');
     }
   }
 
@@ -1701,7 +1872,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
       if (datos.tipo === 'limpiar') {
         console.log('🗑️ Limpiando toda la base de datos...');
         await this.limpiarDatos();
-        alert('✅ Base de datos limpiada exitosamente');
+        this.notificacionService.mostrarExito('Guardado con éxito');
         return;
       }
 
@@ -1779,10 +1950,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
                       datos.tipo === 'pedidos' ? `✅ Importación de pedidos completada!\n📦 Pedidos: ${datos.pedidos.length}` :
                       `✅ Importación completada!\n👤 Clientes: ${datos.clientes.length}\n👥 Encomendistas: ${datos.encomendistas.length}\n📍 Destinos: ${datos.destinos.length}\n📦 Pedidos: ${datos.pedidos.length}`;
       
-      alert(mensaje);
+      this.notificacionService.mostrarExito(mensaje);
     } catch (error) {
       console.error('Error importando datos:', error);
-      alert('❌ Error al importar los datos. Revisa la consola para más detalles.');
+      this.notificacionService.mostrarError('Error al importar los datos. Revisa la consola para más detalles.');
     }
   }
 
@@ -1805,10 +1976,10 @@ Recuerde que el horario para retirar su paquete es de ${hora12Inicio} a ${hora12
     // Copiar al portapapeles
     navigator.clipboard.writeText(recordatorio).then(() => {
       // Mostrar notificación de éxito
-      alert('✅ Recordatorio copiado al portapapeles\n\n' + recordatorio);
+      this.notificacionService.mostrarExito('Recordatorio copiado al portapapeles');
     }).catch(err => {
       console.error('Error al copiar:', err);
-      alert('❌ Error al copiar el recordatorio');
+      this.notificacionService.mostrarError('Error al copiar el recordatorio');
     });
   }
 
@@ -1822,6 +1993,594 @@ Recuerde que el horario para retirar su paquete es de ${hora12Inicio} a ${hora12
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /**
+   * Abre el modal de edición puntual
+   */
+  abrirModalEdicionPuntual(pedido: PedidoCompleto) {
+    this.pedidoEnEdicion = pedido;
+    
+    // Determinar tipo de envío según el modo del pedido
+    const tipoEnvio = pedido.modo === 'personalizado' ? 'personalizado' : 'normal';
+    
+    // Cargar fecha de entrega en formato correcto
+    let fechaFormato = '';
+    if (pedido.fecha_entrega_programada) {
+      const fecha = new Date(pedido.fecha_entrega_programada);
+      fechaFormato = fecha.toISOString().split('T')[0]; // Formato: YYYY-MM-DD
+    }
+    
+    this.edicionForm = {
+      tienda_id: pedido.tienda_id || '', // NUEVO: Cargar tienda guardada
+      encomendista_id: pedido.encomendista_id || '',
+      destino_id: pedido.destino_id || '',
+      dia_entrega: pedido.dia_entrega || '',
+      hora_inicio: pedido.hora_inicio || '',
+      hora_fin: pedido.hora_fin || '',
+      costo_prendas: pedido.costo_prendas || 0,
+      monto_envio: pedido.monto_envio || 0,
+      notas: pedido.notas || '',
+      tipo_envio: tipoEnvio,
+      direccion_personalizada: pedido.direccion_personalizada || ''
+    };
+    
+    // Cargar la fecha de entrega seleccionada
+    this.fechaSeleccionadaEdicion = fechaFormato;
+
+    // Limpiar búsquedas
+    this.nombreEncomendistaBusquedaEdicion = '';
+    this.nombreDestinoBusquedaEdicion = '';
+    this.encomendistaBuscadasEdicion = [];
+    this.destinosBuscadosEdicion = [];
+    this.diasProximosEdicion = [];
+    this.fechasDisponiblesEdicion = [];
+    this.fechasOffsetEdicion = 0;
+
+    // Cargar destinos y días según el tipo de envío
+    if (tipoEnvio === 'normal') {
+      // En modo normal: cargar destinos si hay encomendista
+      if (this.edicionForm.encomendista_id) {
+        this.actualizarDestinosDisponiblesEdicion();
+        this.cargarDiasDisponiblesEdicion();
+      }
+    } else {
+      // En modo personalizado: cargar días genéricos (solo próximos 7 días)
+      this.cargarDiasDisponiblesEdicion();
+    }
+
+    this.mostrarModalEdicionPuntual = true;
+  }
+
+  /**
+   * Normaliza texto removiendo acentos para búsqueda
+   */
+  normalizarTexto(texto: string): string {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  /**
+   * Obtiene el nombre de la encomendista seleccionada para edición
+   */
+  obtenerNombreEncomendistaBuscadaEdicion(): string {
+    if (this.nombreEncomendistaBusquedaEdicion) {
+      return this.nombreEncomendistaBusquedaEdicion;
+    }
+    const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+    return encomendista ? encomendista.nombre : '';
+  }
+
+  /**
+   * Obtiene el nombre del destino seleccionado para edición
+   */
+  obtenerNombreDestinoBuscadoEdicion(): string {
+    if (this.nombreDestinoBusquedaEdicion) {
+      return this.nombreDestinoBusquedaEdicion;
+    }
+    return this.edicionForm.destino_id || '';
+  }
+
+  /**
+   * Obtiene el nombre de la tienda seleccionada para edición
+   */
+  obtenerNombreTiendaEdicion(): string {
+    if (!this.edicionForm.tienda_id) {
+      return 'Tienda seleccionada';
+    }
+    const tienda = this.tiendas.find(t => t.id === this.edicionForm.tienda_id);
+    return tienda ? tienda.nombre_pagina : 'Tienda seleccionada';
+  }
+
+  /**
+   * Cambia la tienda seleccionada en edición (actualiza tienda_id)
+   */
+  seleccionarTiendaEdicion() {
+    // La tienda se actualiza automáticamente desde el select [(ngModel)]
+    // Este método existe por simetría con crear-pedido.component.ts
+    console.log('Tienda seleccionada en edición:', this.edicionForm.tienda_id);
+  }
+
+  /**
+   * Cambia el tipo de envío (normal o personalizado)
+   */
+  cambiarTipoEnvioEdicion(tipoNuevo: 'normal' | 'personalizado') {
+    this.edicionForm.tipo_envio = tipoNuevo;
+    
+    // Siempre limpiar día, fecha y horarios
+    this.edicionForm.dia_entrega = '';
+    this.fechaSeleccionadaEdicion = '';
+    this.diasProximosEdicion = [];
+    this.fechasDisponiblesEdicion = [];
+    this.edicionForm.hora_inicio = '';
+    this.edicionForm.hora_fin = '';
+    
+    if (tipoNuevo === 'personalizado') {
+      // En personalizado, limpiar destino pero MANTENER encomendista como opcional
+      this.edicionForm.destino_id = '';
+      this.nombreDestinoBusquedaEdicion = '';
+      this.destinosBuscadosEdicion = [];
+      // NO limpiar encomendista ni dirección
+    } else {
+      // En normal, limpiar dirección
+      this.edicionForm.direccion_personalizada = '';
+    }
+  }
+
+  /**
+   * Busca encomendistas por nombre en modal de edición
+   */
+  buscarEncomendistasEdicion(nombre: string) {
+    this.nombreEncomendistaBusquedaEdicion = nombre;
+    if (nombre.trim() === '') {
+      this.encomendistaBuscadasEdicion = [];
+      return;
+    }
+
+    const busquedaNormalizada = this.normalizarTexto(nombre);
+    this.encomendistaBuscadasEdicion = this.encomendistas
+      .filter(e => this.normalizarTexto(e.nombre).includes(busquedaNormalizada))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  /**
+   * Selecciona una encomendista en el modal de edición
+   */
+  seleccionarEncomendistaBuscadaEdicion(encomendista: Encomendista) {
+    this.edicionForm.encomendista_id = encomendista.id;
+    this.nombreEncomendistaBusquedaEdicion = encomendista.nombre;
+    this.encomendistaBuscadasEdicion = [];
+    
+    // SOLO en modo NORMAL: limpiar destino, días y horarios
+    // En PERSONALIZADO: mantener todos los campos (dirección, fechas, horarios ya están guardados)
+    if (this.edicionForm.tipo_envio === 'normal') {
+      this.edicionForm.destino_id = '';
+      this.nombreDestinoBusquedaEdicion = '';
+      this.destinosBuscadosEdicion = [];
+      this.edicionForm.dia_entrega = '';
+      this.fechaSeleccionadaEdicion = '';
+      this.diasProximosEdicion = [];
+      this.fechasDisponiblesEdicion = [];
+      this.edicionForm.hora_inicio = '';
+      this.edicionForm.hora_fin = '';
+      this.actualizarDestinosDisponiblesEdicion();
+    }
+    // En personalizado, NO limpiar nada - todo ya está guardado
+  }
+
+  /**
+   * Actualiza destinos disponibles según encomendista en edición
+   */
+  actualizarDestinosDisponiblesEdicion() {
+    const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+    if (encomendista && encomendista.destinos) {
+      this.destinosDisponiblesEdicion = encomendista.destinos.sort((a, b) =>
+        a.nombre.localeCompare(b.nombre)
+      );
+    } else {
+      this.destinosDisponiblesEdicion = [];
+    }
+  }
+
+  /**
+   * Busca destinos por nombre en modal de edición
+   */
+  buscarDestinosEdicion(nombre: string) {
+    this.nombreDestinoBusquedaEdicion = nombre;
+    if (nombre.trim() === '') {
+      this.destinosBuscadosEdicion = [];
+      return;
+    }
+
+    const busquedaNormalizada = this.normalizarTexto(nombre);
+    this.destinosBuscadosEdicion = this.destinosDisponiblesEdicion
+      .filter(d => this.normalizarTexto(d.nombre).includes(busquedaNormalizada))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  /**
+   * Selecciona un destino en el modal de edición
+   */
+  seleccionarDestinoBuscadoEdicion(destino: DestinoEncomendista) {
+    this.edicionForm.destino_id = destino.nombre;
+    this.nombreDestinoBusquedaEdicion = destino.nombre;
+    this.destinosBuscadosEdicion = [];
+    
+    // Limpiar día, fecha y horario cuando cambia de destino
+    this.edicionForm.dia_entrega = '';
+    this.fechaSeleccionadaEdicion = '';
+    this.fechasDisponiblesEdicion = [];
+    this.edicionForm.hora_inicio = '';
+    this.edicionForm.hora_fin = '';
+    
+    // Cargar días disponibles para este destino
+    this.cargarDiasDisponiblesEdicion();
+  }
+
+  /**
+   * Carga los días disponibles para el destino seleccionado en edición
+   */
+  cargarDiasDisponiblesEdicion() {
+    // Si es modo NORMAL: requiere encomendista Y destino
+    if (this.edicionForm.tipo_envio === 'normal') {
+      if (!this.edicionForm.encomendista_id || !this.edicionForm.destino_id) {
+        this.diasProximosEdicion = [];
+        this.edicionForm.dia_entrega = ''; // Limpiar día seleccionado
+        this.edicionForm.hora_inicio = '';
+        this.edicionForm.hora_fin = '';
+        this.fechasDisponiblesEdicion = [];
+        return;
+      }
+
+      const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+      if (!encomendista || !encomendista.destinos) return;
+
+      const destino = encomendista.destinos.find(d => d.nombre === this.edicionForm.destino_id);
+      if (!destino || !destino.horarios) {
+        this.diasProximosEdicion = [];
+        this.edicionForm.dia_entrega = '';
+        this.edicionForm.hora_inicio = '';
+        this.edicionForm.hora_fin = '';
+        this.fechasDisponiblesEdicion = [];
+        return;
+      }
+
+      // Obtener todos los días únicos del destino
+      const diasUnicos = new Set<string>();
+      destino.horarios.forEach(h => {
+        if (h.dias) {
+          h.dias.forEach(dia => diasUnicos.add(dia));
+        }
+      });
+
+      // Mapear días a sus horarios
+      this.diasProximosEdicion = Array.from(diasUnicos).map(dia => ({
+        dia,
+        proximoHorario: destino.horarios?.find(h => h.dias?.includes(dia))
+      }));
+
+      // NO seleccionar automáticamente, limpiar todo
+      this.edicionForm.dia_entrega = '';
+      this.edicionForm.hora_inicio = '';
+      this.edicionForm.hora_fin = '';
+      this.fechasDisponiblesEdicion = [];
+    } else {
+      // Si es modo PERSONALIZADO: cargar los próximos 7 días genéricos (lunes a domingo)
+      const diasGenerico = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      this.diasProximosEdicion = diasGenerico.map(dia => ({
+        dia,
+        proximoHorario: undefined
+      }));
+      
+      // NO seleccionar automáticamente si el pedido ya tiene día guardado, mantenerlo
+      if (!this.edicionForm.dia_entrega) {
+        this.edicionForm.hora_inicio = '';
+        this.edicionForm.hora_fin = '';
+        this.fechasDisponiblesEdicion = [];
+      }
+    }
+  }
+
+  /**
+   * Selecciona un día en la edición y carga las fechas próximas + horas
+   */
+  seleccionarDiaEdicion(dia: string) {
+    this.edicionForm.dia_entrega = dia;
+    
+    // Cargar automáticamente las horas del día seleccionado
+    const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+    if (encomendista && encomendista.destinos) {
+      const destino = encomendista.destinos.find(d => d.nombre === this.edicionForm.destino_id);
+      if (destino && destino.horarios) {
+        const horario = destino.horarios.find(h => h.dias?.includes(dia));
+        if (horario) {
+          this.edicionForm.hora_inicio = horario.hora_inicio || '';
+          this.edicionForm.hora_fin = horario.hora_fin || '';
+        }
+      }
+    }
+    
+    // Resetear offset y calcular fechas próximas del día seleccionado
+    this.fechasOffsetEdicion = 0;
+    this.calcularProximasFechasEdicion(dia);
+  }
+
+  /**
+   * Calcula las próximas fechas para un día específico (INCLUYENDO PASADAS en edición)
+   */
+  calcularProximasFechasEdicion(nombreDia: string) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const fechas: { fecha: Date; fechaFormato: string }[] = [];
+    let fechaActual = new Date(hoy);
+    const cantidad = 6;
+    const offset = this.fechasOffsetEdicion;
+
+    // EN EDICIÓN: permitir ir hacia atrás también
+    // offset negativo = fechas pasadas, offset positivo = fechas futuras
+    fechaActual.setDate(fechaActual.getDate() + offset);
+
+    while (fechas.length < cantidad) {
+      const diaSemanaNombre = this.diasSemana[fechaActual.getDay()];
+      if (diaSemanaNombre === nombreDia) {
+        const mes = fechaActual.getMonth();
+        const año = fechaActual.getFullYear();
+        const dia = fechaActual.getDate();
+        const nombreMes = [
+          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ][mes];
+        
+        fechas.push({
+          fecha: new Date(fechaActual),
+          fechaFormato: `${diaSemanaNombre} ${dia} de ${nombreMes} ${año}`
+        });
+      }
+      fechaActual.setDate(fechaActual.getDate() + 1);
+    }
+
+    this.fechasDisponiblesEdicion = fechas;
+  }
+
+  /**
+   * Selecciona una fecha específica en edición
+   */
+  seleccionarFechaEdicion(fechaObj: { fecha: Date; fechaFormato: string }) {
+    // Guardar la fecha seleccionada para mostrar en UI
+    this.fechaSeleccionadaEdicion = fechaObj.fechaFormato;
+    
+    // Guardar la fecha en formato YYYY-MM-DD para guardar en BD
+    const anio = fechaObj.fecha.getFullYear();
+    const mes = String(fechaObj.fecha.getMonth() + 1).padStart(2, '0');
+    const diaNum = String(fechaObj.fecha.getDate()).padStart(2, '0');
+    const fechaFormato = `${anio}-${mes}-${diaNum}`;
+    
+    // NO sobrescribir dia_entrega, usarlo como campo temporal para guardar la fecha
+    // En guardarEdicionPuntual() se usará este valor
+    this.edicionForm.dia_entrega = fechaFormato;
+  }
+
+  /**
+   * Obtiene el nombre del día a partir de una fecha en formato YYYY-MM-DD
+   */
+  obtenerNombreDiaEdicion(fechaYYYYMMDD: string): string {
+    if (!fechaYYYYMMDD) return 'Seleccionado';
+    try {
+      const [anio, mes, dia] = fechaYYYYMMDD.split('-');
+      const fecha = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+      return this.diasSemana[fecha.getDay()];
+    } catch (error) {
+      return 'Seleccionado';
+    }
+  }
+
+  /**
+   * Navega adelante en las fechas
+   */
+  irAdelanteEdicion() {
+    this.fechasOffsetEdicion += 6;
+    if (this.edicionForm.dia_entrega) {
+      this.calcularProximasFechasEdicion(this.edicionForm.dia_entrega);
+    }
+  }
+
+  /**
+   * Navega atrás en las fechas
+   */
+  irAtrasEdicion() {
+    // EN EDICIÓN: permitir ir hacia atrás sin límite (para seleccionar fechas pasadas)
+    this.fechasOffsetEdicion -= 6;
+    if (this.edicionForm.dia_entrega) {
+      this.calcularProximasFechasEdicion(this.edicionForm.dia_entrega);
+    }
+  }
+
+  /**
+   * Actualiza los destinos disponibles según la encomendista seleccionada
+   */
+  actualizarDestinosDisponibles() {
+    const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+    if (encomendista && encomendista.destinos) {
+      this.destinosDisponiblesEdicion = encomendista.destinos.sort((a, b) =>
+        a.nombre.localeCompare(b.nombre)
+      );
+      // Resetear destino si la encomendista cambió
+      if (this.edicionForm.destino_id && !this.destinosDisponiblesEdicion.find(d => d.nombre === this.edicionForm.destino_id)) {
+        this.edicionForm.destino_id = '';
+      }
+    } else {
+      this.destinosDisponiblesEdicion = [];
+      this.edicionForm.destino_id = '';
+    }
+  }
+
+  /**
+   * Cierra el modal de edición puntual
+   */
+  cerrarModalEdicionPuntual() {
+    this.mostrarModalEdicionPuntual = false;
+    this.pedidoEnEdicion = null;
+    this.destinosDisponiblesEdicion = [];
+    this.nombreEncomendistaBusquedaEdicion = '';
+    this.nombreDestinoBusquedaEdicion = '';
+    this.encomendistaBuscadasEdicion = [];
+    this.destinosBuscadosEdicion = [];
+    this.diasProximosEdicion = [];
+    this.fechasDisponiblesEdicion = [];
+    this.fechasOffsetEdicion = 0;
+  }
+
+  /**
+   * Guarda los cambios en la edición puntual del pedido
+   */
+  async guardarEdicionPuntual() {
+    if (!this.pedidoEnEdicion) return;
+
+    // Validar según el tipo de envío
+    if (this.edicionForm.tipo_envio === 'normal') {
+      // Validaciones para envío normal
+      if (!this.edicionForm.encomendista_id || this.edicionForm.encomendista_id.trim() === '') {
+        this.notificacionService.mostrarError('Debe seleccionar una encomendista');
+        return;
+      }
+
+      if (!this.edicionForm.destino_id || this.edicionForm.destino_id.trim() === '') {
+        this.notificacionService.mostrarError('Debe seleccionar un destino');
+        return;
+      }
+    } else {
+      // Validaciones para envío personalizado
+      if (!this.edicionForm.direccion_personalizada || this.edicionForm.direccion_personalizada.trim() === '') {
+        this.notificacionService.mostrarError('Debe ingresar la dirección de entrega');
+        return;
+      }
+    }
+
+    // Validaciones comunes a ambos tipos
+    if (!this.edicionForm.dia_entrega || this.edicionForm.dia_entrega.trim() === '') {
+      this.notificacionService.mostrarError('Debe seleccionar un día de entrega');
+      return;
+    }
+
+    if (!this.fechaSeleccionadaEdicion || this.fechaSeleccionadaEdicion.trim() === '') {
+      this.notificacionService.mostrarError('Debe seleccionar una fecha específica');
+      return;
+    }
+
+    // Para envío normal, validar horarios (deben ser requeridos desde el destino)
+    if (this.edicionForm.tipo_envio === 'normal') {
+      if (!this.edicionForm.hora_inicio || this.edicionForm.hora_inicio.trim() === '') {
+        this.notificacionService.mostrarError('La hora de inicio no se ha cargado correctamente');
+        return;
+      }
+
+      if (!this.edicionForm.hora_fin || this.edicionForm.hora_fin.trim() === '') {
+        this.notificacionService.mostrarError('La hora de fin no se ha cargado correctamente');
+        return;
+      }
+    }
+
+    try {
+      // Convertir la fecha YYYY-MM-DD al nombre del día (Lunes, Martes, etc.)
+      const nombreDia = this.obtenerNombreDiaEdicion(this.edicionForm.dia_entrega);
+      
+      // ✅ CONVERTIR FECHA A STRING (YYYY-MM-DD) ANTES DE GUARDAR
+      // extraemos el formato YYYY-MM-DD de fechaSeleccionadaEdicion
+      let fechaEntregaString = '';
+      if (this.fechaSeleccionadaEdicion) {
+        // fechaSeleccionadaEdicion es una fecha en formato legible (ej: "Lunes 24 de Enero 2025")
+        // Necesitamos extraer las fechas disponibles que calculamos
+        const fechaObj = this.fechasDisponiblesEdicion.find(f => f.fechaFormato === this.fechaSeleccionadaEdicion);
+        if (fechaObj) {
+          const year = fechaObj.fecha.getFullYear();
+          const month = String(fechaObj.fecha.getMonth() + 1).padStart(2, '0');
+          const day = String(fechaObj.fecha.getDate()).padStart(2, '0');
+          fechaEntregaString = `${year}-${month}-${day}`;
+        }
+      }
+      
+      const pedidoActualizado: Pedido = {
+        ...this.pedidoEnEdicion,
+        tienda_id: this.edicionForm.tienda_id, // NUEVO: Actualizar tienda_id si cambió
+        dia_entrega: nombreDia, // Guardar solo el nombre del día, no la fecha
+        fecha_entrega_programada: fechaEntregaString as any, // ✅ STRING YYYY-MM-DD, NO Date object
+        costo_prendas: this.edicionForm.costo_prendas,
+        monto_envio: this.edicionForm.monto_envio,
+        total: this.edicionForm.costo_prendas + this.edicionForm.monto_envio,
+        notas: this.edicionForm.notas
+      };
+
+
+
+      // Obtener encomendista seleccionada para extraer su nombre
+      const encomendista = this.encomendistas.find(e => e.id === this.edicionForm.encomendista_id);
+      const encomendistaNombre = encomendista?.nombre || '';
+      
+      // Obtener destino seleccionado para extraer su nombre (en modo normal)
+      let destinoNombre = '';
+      if (this.edicionForm.tipo_envio === 'normal' && this.edicionForm.destino_id && encomendista) {
+        const destino = encomendista.destinos?.find(d => d.nombre === this.edicionForm.destino_id);
+        destinoNombre = destino?.nombre || '';
+      }
+
+      // Obtener tienda para extraer color_sticker y logo (USAR this.edicionForm.tienda_id)
+      const tienda = this.tiendas.find(t => t.id === this.edicionForm.tienda_id);
+      const colorSticker = tienda?.color_sticker || '#ec4899';
+      const logoTienda = tienda?.imagen_url || 'assets/images/logoeligomez.jpg';
+      const nombreTienda = tienda?.nombre_tienda || tienda?.nombre_pagina || 'Eli Gomez';
+      const nombrePerfil = tienda?.nombre_perfil || tienda?.nombre_perfil_reserva || '';
+
+      console.log('%c📝 GUARDANDO PEDIDO CON ACTUALIZACIÓN COMPLETA:', 'color: blue; font-weight: bold');
+      console.log('%cTipo:', this.edicionForm.tipo_envio);
+      console.log('%cEncomendista ID:', pedidoActualizado.encomendista_id);
+      console.log('%cEncomendista NOMBRE:', encomendistaNombre);
+      console.log('%cDestino ID:', pedidoActualizado.destino_id);
+      console.log('%cDestino NOMBRE:', destinoNombre);
+      console.log('%cDirección:', pedidoActualizado.direccion_personalizada);
+      console.log('%cColor Sticker:', colorSticker);
+
+      // Guardar campos específicos según tipo de envío
+      if (this.edicionForm.tipo_envio === 'normal') {
+        // Envío normal: guardar encomendista_id y destino_id CON SUS NOMBRES
+        pedidoActualizado.encomendista_id = this.edicionForm.encomendista_id;
+        pedidoActualizado.encomendista_nombre = encomendistaNombre;
+        pedidoActualizado.destino_id = this.edicionForm.destino_id;
+        pedidoActualizado.destino_nombre = destinoNombre;
+        pedidoActualizado.direccion_personalizada = ''; // NO guardar dirección en normal
+        pedidoActualizado.hora_inicio = this.edicionForm.hora_inicio;
+        pedidoActualizado.hora_fin = this.edicionForm.hora_fin;
+      } else {
+        // Envío personalizado: guardar dirección (y encomendista si está seleccionado)
+        pedidoActualizado.encomendista_id = this.edicionForm.encomendista_id || '';
+        pedidoActualizado.encomendista_nombre = encomendistaNombre;
+        pedidoActualizado.destino_id = ''; // NO guardar destino en personalizado
+        pedidoActualizado.destino_nombre = ''; // NO guardar nombre destino en personalizado
+        pedidoActualizado.direccion_personalizada = this.edicionForm.direccion_personalizada;
+        pedidoActualizado.hora_inicio = '';
+        pedidoActualizado.hora_fin = '';
+      }
+
+      // Actualizar también los campos derivados de tienda (para coherencia visual)
+      pedidoActualizado.color_sticker = colorSticker;
+      pedidoActualizado.logo_tienda = logoTienda;
+      pedidoActualizado.nombre_tienda = nombreTienda;
+      pedidoActualizado.nombre_perfil = nombrePerfil;
+
+      // Guardar en Firebase
+      await this.pedidosService.actualizarPedido(pedidoActualizado);
+
+      // Mostrar notificación
+      this.notificacionService.mostrarExito('Pedido actualizado correctamente');
+
+      // Cerrar modal y recargar
+      this.cerrarModalEdicionPuntual();
+      setTimeout(() => {
+        this.cargarPedidos();
+      }, 500);
+    } catch (error) {
+      console.error('Error al actualizar pedido:', error);
+      this.notificacionService.mostrarError('Error al actualizar el pedido');
+    }
   }
 
   async limpiarDatos() {

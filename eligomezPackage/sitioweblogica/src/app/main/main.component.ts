@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink } from '@angular/router';
 import { AuthService } from '../service/auth/auth.service';
 import { ResponsiveService } from '../service/responsive/responsive.service';
+import { ThemeService } from '../service/theme.service';
 import { UsuarioFirebase } from '../service/auth/auth.service';
 import { Subscription } from 'rxjs';
 
@@ -15,9 +16,11 @@ import { Subscription } from 'rxjs';
 })
 export class MainComponent implements OnInit, OnDestroy {
   isSidebarOpen: boolean = true;
+  isSidebarCompact: boolean = false;
   isMobile: boolean = false;
   currentRoute: string = '';
   usuarioActual: UsuarioFirebase | null = null;
+  isDarkMode: boolean = false;
   private subscriptions: Subscription[] = [];
 
   menuItems = [
@@ -28,6 +31,7 @@ export class MainComponent implements OnInit, OnDestroy {
     { label: 'Clientes', icon: '👥', route: '/main/clientes' },
     { label: 'Encomendistas', icon: '🚚', route: '/main/encomendistas' },
     { label: 'Pedidos', icon: '📋', route: '/main/pedidos' },
+    { label: 'Pedidos por Fecha', icon: '📅', route: '/main/pedidos-por-fecha' },
     { label: 'Envios por Encomienda', icon: '📮', route: '/main/envios-por-encomienda' },
     { label: 'Reporte Canvas', icon: '📸', route: '/main/reporte-imagenes' },
     { label: 'Favoritos', icon: '⭐', route: '/main/favoritos' },
@@ -37,7 +41,8 @@ export class MainComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private responsiveService: ResponsiveService
+    private responsiveService: ResponsiveService,
+    private themeService: ThemeService
   ) {
     this.router.events.subscribe(() => {
       this.currentRoute = this.router.url;
@@ -58,6 +63,12 @@ export class MainComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(mobileSub);
 
+    // Cargar tema
+    const themeSub = this.themeService.darkMode$.subscribe(isDark => {
+      this.isDarkMode = isDark;
+    });
+    this.subscriptions.push(themeSub);
+
     // Obtener usuario actual
     const userSub = this.authService.obtenerUsuarioActual$().subscribe(usuario => {
       this.usuarioActual = usuario;
@@ -77,6 +88,10 @@ export class MainComponent implements OnInit, OnDestroy {
     this.isSidebarOpen = !this.isSidebarOpen;
   }
 
+  toggleCompactSidebar() {
+    this.isSidebarCompact = !this.isSidebarCompact;
+  }
+
   cerrarSidebarAlNavegar() {
     if (this.isMobile) {
       this.isSidebarOpen = false;
@@ -90,5 +105,9 @@ export class MainComponent implements OnInit, OnDestroy {
   async logout() {
     await this.authService.logout();
     this.router.navigate(['/']);
+  }
+
+  toggleDarkMode() {
+    this.themeService.toggleDarkMode();
   }
 }

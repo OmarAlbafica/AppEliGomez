@@ -1,0 +1,499 @@
+Starting a Gradle Daemon, 1 incompatible and 2 stopped Daemons could not be reused, use --status for details
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+> Task :gradle-plugin:shared:jar UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:jar UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors
+> Task :gradle-plugin:react-native-gradle-plugin:processResources
+> Task :gradle-plugin:react-native-gradle-plugin:compileKotlin
+> Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:react-native-gradle-plugin:classes
+> Task :gradle-plugin:react-native-gradle-plugin:jar
+
+> Configure project :react-native-vision-camera
+[VisionCamera] Thank you for using VisionCamera ❤️
+[VisionCamera] If you enjoy using VisionCamera, please consider sponsoring this project: https://github.com/sponsors/mrousavy
+[VisionCamera] node_modules found at /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules
+[VisionCamera] VisionCamera_enableFrameProcessors is set to true!
+[VisionCamera] react-native-worklets-core not found, Frame Processors are disabled!
+[VisionCamera] VisionCamera_enableCodeScanner is set to true!
+
+> Task :app:generateAutolinkingNewArchitectureFiles UP-TO-DATE
+> Task :app:generateAutolinkingPackageList UP-TO-DATE
+> Task :app:generateCodegenSchemaFromJavaScript SKIPPED
+> Task :app:generateCodegenArtifactsFromSchema SKIPPED
+> Task :app:generateReactNativeEntryPoint UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateCodegenSchemaFromJavaScript
+> Task :react-native-async-storage_async-storage:generateCodegenArtifactsFromSchema
+> Task :react-native-async-storage_async-storage:preBuild
+> Task :react-native-image-picker:generateCodegenSchemaFromJavaScript
+> Task :react-native-image-picker:generateCodegenArtifactsFromSchema
+> Task :react-native-image-picker:preBuild
+> Task :react-native-picker_picker:generateCodegenSchemaFromJavaScript
+> Task :react-native-picker_picker:generateCodegenArtifactsFromSchema
+> Task :react-native-picker_picker:preBuild
+> Task :react-native-safe-area-context:generateCodegenSchemaFromJavaScript
+> Task :react-native-safe-area-context:generateCodegenArtifactsFromSchema
+> Task :react-native-safe-area-context:preBuild
+> Task :react-native-svg:generateCodegenSchemaFromJavaScript
+> Task :react-native-svg:generateCodegenArtifactsFromSchema
+> Task :react-native-svg:preBuild
+
+> Task :react-native-vision-camera:generateCodegenSchemaFromJavaScript
+No modules to process in combine-js-to-schema-cli. If this is unexpected, please check if you set up your NativeComponent correctly. See combine-js-to-schema.js for how codegen finds modules.
+
+> Task :react-native-vision-camera:generateCodegenArtifactsFromSchema
+> Task :react-native-vision-camera:prepareHeaders
+> Task :react-native-vision-camera:preBuild
+> Task :app:preBuild
+> Task :app:preReleaseBuild
+> Task :react-native-vision-camera:preReleaseBuild
+
+> Task :react-native-vision-camera:configureCMakeRelWithDebInfo[arm64-v8a]
+C/C++: VisionCamera: Frame Processors: OFF!
+
+> Task :react-native-vision-camera:configureCMakeRelWithDebInfo[armeabi-v7a]
+C/C++: VisionCamera: Frame Processors: OFF!
+
+> Task :react-native-vision-camera:configureCMakeRelWithDebInfo[x86]
+C/C++: VisionCamera: Frame Processors: OFF!
+
+> Task :react-native-vision-camera:configureCMakeRelWithDebInfo[x86_64]
+C/C++: VisionCamera: Frame Processors: OFF!
+
+> Task :react-native-vision-camera:generateJsonModelRelease
+> Task :react-native-vision-camera:prefabReleaseConfigurePackage UP-TO-DATE
+> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :react-native-vision-camera:buildCMakeRelWithDebInfo[arm64-v8a]
+> Task :react-native-vision-camera:buildCMakeRelWithDebInfo[armeabi-v7a]
+> Task :react-native-vision-camera:buildCMakeRelWithDebInfo[x86]
+> Task :react-native-vision-camera:buildCMakeRelWithDebInfo[x86_64]
+> Task :react-native-vision-camera:externalNativeBuildRelease
+> Task :react-native-vision-camera:prefabReleasePackage
+> Task :app:buildCMakeRelWithDebInfo[arm64-v8a]
+> Task :app:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :app:buildCMakeRelWithDebInfo[armeabi-v7a]
+> Task :app:configureCMakeRelWithDebInfo[x86]
+> Task :app:buildCMakeRelWithDebInfo[x86]
+> Task :app:configureCMakeRelWithDebInfo[x86_64]
+> Task :app:buildCMakeRelWithDebInfo[x86_64]
+> Task :app:mergeReleaseJniLibFolders
+> Task :react-native-async-storage_async-storage:preReleaseBuild
+> Task :react-native-async-storage_async-storage:mergeReleaseJniLibFolders
+> Task :react-native-async-storage_async-storage:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-image-picker:preReleaseBuild
+> Task :react-native-async-storage_async-storage:copyReleaseJniLibsProjectOnly
+> Task :react-native-image-picker:mergeReleaseJniLibFolders
+> Task :react-native-image-picker:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-image-picker:copyReleaseJniLibsProjectOnly
+> Task :react-native-picker_picker:preReleaseBuild
+> Task :react-native-picker_picker:mergeReleaseJniLibFolders
+> Task :react-native-picker_picker:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-picker_picker:copyReleaseJniLibsProjectOnly
+> Task :react-native-safe-area-context:preReleaseBuild
+> Task :react-native-safe-area-context:mergeReleaseJniLibFolders
+> Task :react-native-safe-area-context:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-svg:preReleaseBuild
+> Task :react-native-safe-area-context:copyReleaseJniLibsProjectOnly
+> Task :react-native-svg:mergeReleaseJniLibFolders
+> Task :react-native-svg:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-svg:copyReleaseJniLibsProjectOnly
+> Task :react-native-vision-camera:mergeReleaseJniLibFolders
+> Task :react-native-safe-area-context:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-safe-area-context:generateReleaseBuildConfig
+> Task :react-native-safe-area-context:generateReleaseResValues
+> Task :react-native-safe-area-context:generateReleaseResources
+> Task :react-native-vision-camera:mergeReleaseNativeLibs
+> Task :react-native-safe-area-context:packageReleaseResources
+> Task :react-native-vision-camera:copyReleaseJniLibsProjectOnly
+> Task :react-native-safe-area-context:parseReleaseLocalResources
+> Task :react-native-vision-camera:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-vision-camera:generateReleaseBuildConfig
+> Task :react-native-vision-camera:generateReleaseResValues
+> Task :react-native-safe-area-context:javaPreCompileRelease
+> Task :react-native-vision-camera:generateReleaseResources
+> Task :react-native-vision-camera:packageReleaseResources
+> Task :react-native-vision-camera:javaPreCompileRelease
+> Task :react-native-async-storage_async-storage:generateReleaseBuildConfig
+> Task :react-native-safe-area-context:generateReleaseRFile
+> Task :react-native-async-storage_async-storage:generateReleaseResValues
+> Task :react-native-vision-camera:parseReleaseLocalResources
+> Task :app:mergeReleaseNativeLibs
+> Task :react-native-async-storage_async-storage:generateReleaseResources
+> Task :react-native-async-storage_async-storage:packageReleaseResources
+> Task :react-native-async-storage_async-storage:parseReleaseLocalResources
+> Task :react-native-vision-camera:generateReleaseRFile
+> Task :react-native-async-storage_async-storage:generateReleaseRFile
+> Task :app:stripReleaseDebugSymbols
+> Task :react-native-async-storage_async-storage:javaPreCompileRelease
+> Task :react-native-picker_picker:generateReleaseBuildConfig
+> Task :app:extractReleaseNativeSymbolTables
+
+> Task :react-native-async-storage_async-storage:compileReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/@react-native-async-storage/async-storage/android/src/javaPackage/java/com/reactnativecommunity/asyncstorage/AsyncStoragePackage.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :react-native-safe-area-context:compileReleaseKotlin
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/java/com/th3rdwave/safeareacontext/SafeAreaView.kt:9:8 'class UIManagerModule : ReactContextBaseJavaModule, OnBatchCompleteListener, LifecycleEventListener, UIManager' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/java/com/th3rdwave/safeareacontext/SafeAreaView.kt:50:54 'class UIManagerModule : ReactContextBaseJavaModule, OnBatchCompleteListener, LifecycleEventListener, UIManager' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/java/com/th3rdwave/safeareacontext/SafeAreaView.kt:59:23 'val uiImplementation: UIImplementation!' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/java/com/th3rdwave/safeareacontext/SafeAreaViewShadowNode.kt:9:32 'class LayoutShadowNode : ReactShadowNodeImpl' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/java/com/th3rdwave/safeareacontext/SafeAreaViewShadowNode.kt:110:61 'class NativeViewHierarchyOptimizer : Any' is deprecated. Deprecated in Java.
+
+> Task :react-native-safe-area-context:compileReleaseJavaWithJavac
+> Task :react-native-picker_picker:generateReleaseResValues
+> Task :react-native-picker_picker:generateReleaseResources
+> Task :react-native-async-storage_async-storage:bundleLibRuntimeToDirRelease
+> Task :react-native-safe-area-context:bundleLibRuntimeToDirRelease
+> Task :react-native-picker_picker:packageReleaseResources
+> Task :react-native-picker_picker:javaPreCompileRelease
+> Task :react-native-image-picker:generateReleaseBuildConfig
+> Task :react-native-image-picker:generateReleaseResValues
+> Task :react-native-picker_picker:parseReleaseLocalResources
+> Task :react-native-image-picker:generateReleaseResources
+> Task :react-native-picker_picker:generateReleaseRFile
+> Task :react-native-image-picker:packageReleaseResources
+
+> Task :react-native-picker_picker:compileReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :react-native-picker_picker:bundleLibRuntimeToDirRelease
+> Task :react-native-image-picker:javaPreCompileRelease
+> Task :react-native-image-picker:parseReleaseLocalResources
+> Task :react-native-svg:generateReleaseBuildConfig
+> Task :react-native-svg:generateReleaseResValues
+> Task :react-native-image-picker:generateReleaseRFile
+> Task :react-native-svg:generateReleaseResources
+> Task :app:mergeReleaseNativeDebugMetadata
+
+> Task :react-native-image-picker:compileReleaseJavaWithJavac
+Note: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-image-picker/android/src/main/java/com/imagepicker/ImagePickerPackage.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :react-native-vision-camera:compileReleaseKotlin
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/MetadataProvider.kt:44:25 'fun requestSingleUpdate(p0: String, p1: LocationListener, p2: Looper?): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/CamcorderProfileUtils.kt:71:42 'static fun get(p0: Int, p1: Int): CamcorderProfile!' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/CamcorderProfileUtils.kt:96:42 'static fun get(p0: Int, p1: Int): CamcorderProfile!' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/CamcorderProfileUtils.kt:121:42 'static fun get(p0: Int, p1: Int): CamcorderProfile!' is deprecated. Deprecated in Java.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/frameprocessors/VisionCameraProxy.kt:33:56 'val jsCallInvokerHolder: CallInvokerHolder' is deprecated. Use ReactContext.getJSCallInvokerHolder instead.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraPackage.kt:9:16 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:4:8 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:31:5 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:32:45 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:33:47 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:34:43 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:35:43 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:36:43 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:37:41 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:38:47 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:39:50 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:40:50 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:41:60 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:42:61 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewManager.kt:43:47 'object MapBuilder : Any' is deprecated. Use Kotlin's built-in collections extensions.
+w: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewModule.kt:72:112 'val DEFAULT: Int' is deprecated. UIManagerType.DEFAULT will be deleted in the next release of React Native. Use [LEGACY] instead.
+
+> Task :react-native-vision-camera:compileReleaseJavaWithJavac
+> Task :react-native-image-picker:bundleLibRuntimeToDirRelease
+> Task :react-native-svg:packageReleaseResources
+> Task :react-native-svg:parseReleaseLocalResources
+> Task :react-native-svg:javaPreCompileRelease
+> Task :react-native-vision-camera:bundleLibRuntimeToDirRelease
+> Task :react-native-svg:generateReleaseRFile
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:buildKotlinToolingMetadata
+
+> Task :react-native-svg:compileReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateReleaseBuildConfig
+> Task :react-native-async-storage_async-storage:writeReleaseAarMetadata
+> Task :react-native-image-picker:writeReleaseAarMetadata
+> Task :react-native-picker_picker:writeReleaseAarMetadata
+> Task :react-native-safe-area-context:writeReleaseAarMetadata
+> Task :react-native-svg:writeReleaseAarMetadata
+> Task :react-native-vision-camera:writeReleaseAarMetadata
+> Task :react-native-svg:bundleLibRuntimeToDirRelease
+
+> Task :app:createBundleReleaseJsAndAssets
+
+                        ▒▒▓▓▓▓▒▒
+                     ▒▓▓▓▒▒░░▒▒▓▓▓▒
+                  ▒▓▓▓▓░░░▒▒▒▒░░░▓▓▓▓▒
+                 ▓▓▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▓▓
+                 ▓▓░░░░░▒▓▓▓▓▓▓▒░░░░░▓▓
+                 ▓▓░░▓▓▒░░░▒▒░░░▒▓▒░░▓▓
+                 ▓▓░░▓▓▓▓▓▒▒▒▒▓▓▓▓▒░░▓▓
+                 ▓▓░░▓▓▓▓▓▓▓▓▓▓▓▓▓▒░░▓▓
+                 ▓▓▒░░▒▒▓▓▓▓▓▓▓▓▒░░░▒▓▓
+                  ▒▓▓▓▒░░░▒▓▓▒░░░▒▓▓▓▒
+                     ▒▓▓▓▒░░░░▒▓▓▓▒
+                        ▒▒▓▓▓▓▒▒
+
+
+ WARN  the transform cache was reset.
+                Welcome to Metro v0.83.3
+              Fast - Scalable - Integrated
+
+
+LOG:Writing bundle output to: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/android/app/build/generated/assets/react/release/index.android.bundle
+LOG:Writing sourcemap output to: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/android/app/build/intermediates/sourcemaps/react/release/index.android.bundle.packager.map
+LOG:Done writing bundle output
+LOG:Done writing sourcemap output
+Copying 1 asset files
+Done copying assets
+
+> Task :app:generateReleaseResValues
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :react-native-async-storage_async-storage:extractDeepLinksRelease
+> Task :react-native-image-picker:extractDeepLinksRelease
+> Task :react-native-picker_picker:extractDeepLinksRelease
+> Task :react-native-safe-area-context:extractDeepLinksRelease
+> Task :react-native-svg:extractDeepLinksRelease
+> Task :react-native-svg:processReleaseManifest
+> Task :react-native-vision-camera:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+
+> Task :react-native-image-picker:processReleaseManifest
+package="com.imagepicker" found in source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-image-picker/android/src/main/AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.imagepicker" from the source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-image-picker/android/src/main/AndroidManifest.xml.
+
+> Task :react-native-async-storage_async-storage:processReleaseManifest
+package="com.reactnativecommunity.asyncstorage" found in source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.reactnativecommunity.asyncstorage" from the source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/@react-native-async-storage/async-storage/android/src/main/AndroidManifest.xml.
+
+> Task :react-native-safe-area-context:processReleaseManifest
+package="com.th3rdwave.safeareacontext" found in source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.th3rdwave.safeareacontext" from the source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/react-native-safe-area-context/android/src/main/AndroidManifest.xml.
+
+> Task :react-native-picker_picker:processReleaseManifest
+package="com.reactnativecommunity.picker" found in source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/@react-native-picker/picker/android/src/main/AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.reactnativecommunity.picker" from the source AndroidManifest.xml: /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/node_modules/@react-native-picker/picker/android/src/main/AndroidManifest.xml.
+
+> Task :react-native-vision-camera:processReleaseManifest
+> Task :react-native-async-storage_async-storage:compileReleaseLibraryResources
+> Task :react-native-picker_picker:compileReleaseLibraryResources
+> Task :react-native-svg:compileReleaseLibraryResources
+> Task :react-native-safe-area-context:compileReleaseLibraryResources
+> Task :react-native-image-picker:compileReleaseLibraryResources
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :react-native-vision-camera:compileReleaseLibraryResources
+> Task :app:processReleaseManifestForPackage
+> Task :app:javaPreCompileRelease
+> Task :react-native-image-picker:bundleLibCompileToJarRelease
+> Task :react-native-picker_picker:bundleLibCompileToJarRelease
+> Task :react-native-async-storage_async-storage:bundleLibCompileToJarRelease
+> Task :app:desugarReleaseFileDependencies
+> Task :react-native-safe-area-context:bundleLibCompileToJarRelease
+> Task :app:mergeReleaseResources
+> Task :app:mergeReleaseStartupProfile UP-TO-DATE
+> Task :react-native-svg:bundleLibCompileToJarRelease
+> Task :react-native-vision-camera:bundleLibCompileToJarRelease
+> Task :app:processReleaseResources
+> Task :react-native-async-storage_async-storage:prepareReleaseArtProfile UP-TO-DATE
+> Task :react-native-image-picker:prepareReleaseArtProfile UP-TO-DATE
+> Task :react-native-picker_picker:prepareReleaseArtProfile UP-TO-DATE
+> Task :react-native-safe-area-context:prepareReleaseArtProfile UP-TO-DATE
+> Task :react-native-svg:prepareReleaseArtProfile UP-TO-DATE
+> Task :react-native-vision-camera:prepareReleaseArtProfile UP-TO-DATE
+> Task :app:mergeReleaseArtProfile
+> Task :react-native-safe-area-context:bundleLibRuntimeToJarRelease
+> Task :react-native-async-storage_async-storage:bundleLibRuntimeToJarRelease
+> Task :react-native-vision-camera:bundleLibRuntimeToJarRelease
+> Task :react-native-picker_picker:bundleLibRuntimeToJarRelease
+> Task :react-native-image-picker:bundleLibRuntimeToJarRelease
+> Task :react-native-svg:bundleLibRuntimeToJarRelease
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeReleaseShaders
+> Task :react-native-async-storage_async-storage:compileReleaseShaders NO-SOURCE
+> Task :react-native-async-storage_async-storage:generateReleaseAssets UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeReleaseAssets
+> Task :react-native-image-picker:mergeReleaseShaders
+> Task :react-native-image-picker:compileReleaseShaders NO-SOURCE
+> Task :react-native-image-picker:generateReleaseAssets UP-TO-DATE
+> Task :react-native-image-picker:mergeReleaseAssets
+> Task :react-native-picker_picker:mergeReleaseShaders
+> Task :react-native-picker_picker:compileReleaseShaders NO-SOURCE
+> Task :react-native-picker_picker:generateReleaseAssets UP-TO-DATE
+> Task :react-native-picker_picker:mergeReleaseAssets
+> Task :react-native-safe-area-context:mergeReleaseShaders
+> Task :react-native-safe-area-context:compileReleaseShaders NO-SOURCE
+> Task :react-native-safe-area-context:generateReleaseAssets UP-TO-DATE
+> Task :react-native-safe-area-context:mergeReleaseAssets
+> Task :react-native-svg:mergeReleaseShaders
+> Task :react-native-svg:compileReleaseShaders NO-SOURCE
+> Task :react-native-svg:generateReleaseAssets UP-TO-DATE
+> Task :react-native-svg:mergeReleaseAssets
+> Task :react-native-vision-camera:mergeReleaseShaders
+> Task :react-native-vision-camera:compileReleaseShaders NO-SOURCE
+> Task :react-native-vision-camera:generateReleaseAssets UP-TO-DATE
+> Task :react-native-vision-camera:mergeReleaseAssets
+> Task :app:mergeReleaseAssets
+> Task :app:mergeExtDexRelease
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:extractProguardFiles
+> Task :react-native-async-storage_async-storage:processReleaseJavaRes NO-SOURCE
+> Task :react-native-async-storage_async-storage:createFullJarRelease
+> Task :react-native-async-storage_async-storage:extractProguardFiles
+> Task :react-native-async-storage_async-storage:generateReleaseLintModel
+> Task :react-native-async-storage_async-storage:prepareLintJarForPublish UP-TO-DATE
+> Task :react-native-image-picker:processReleaseJavaRes NO-SOURCE
+> Task :react-native-image-picker:createFullJarRelease
+> Task :react-native-image-picker:extractProguardFiles
+> Task :react-native-image-picker:generateReleaseLintModel
+> Task :react-native-image-picker:prepareLintJarForPublish UP-TO-DATE
+> Task :react-native-picker_picker:processReleaseJavaRes NO-SOURCE
+> Task :react-native-picker_picker:createFullJarRelease
+> Task :react-native-picker_picker:extractProguardFiles
+> Task :react-native-picker_picker:generateReleaseLintModel
+> Task :react-native-picker_picker:prepareLintJarForPublish UP-TO-DATE
+> Task :react-native-safe-area-context:processReleaseJavaRes
+> Task :react-native-safe-area-context:createFullJarRelease
+> Task :react-native-safe-area-context:extractProguardFiles
+> Task :react-native-safe-area-context:generateReleaseLintModel
+> Task :react-native-safe-area-context:prepareLintJarForPublish UP-TO-DATE
+> Task :react-native-svg:processReleaseJavaRes NO-SOURCE
+> Task :react-native-svg:createFullJarRelease
+> Task :react-native-svg:extractProguardFiles
+> Task :react-native-svg:generateReleaseLintModel
+> Task :react-native-svg:prepareLintJarForPublish UP-TO-DATE
+> Task :react-native-vision-camera:processReleaseJavaRes
+> Task :react-native-vision-camera:createFullJarRelease
+> Task :react-native-vision-camera:extractProguardFiles
+> Task :app:compileReleaseKotlin
+> Task :react-native-vision-camera:generateReleaseLintModel
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:dexBuilderRelease
+> Task :react-native-vision-camera:prepareLintJarForPublish UP-TO-DATE
+> Task :app:mergeReleaseGlobalSynthetics
+> Task :app:generateReleaseLintVitalReportModel
+> Task :react-native-safe-area-context:stripReleaseDebugSymbols NO-SOURCE
+> Task :react-native-safe-area-context:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-safe-area-context:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-safe-area-context:extractReleaseAnnotations
+> Task :react-native-safe-area-context:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-safe-area-context:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :react-native-vision-camera:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-vision-camera:extractReleaseAnnotations
+> Task :react-native-vision-camera:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-vision-camera:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :react-native-async-storage_async-storage:stripReleaseDebugSymbols NO-SOURCE
+> Task :react-native-async-storage_async-storage:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-async-storage_async-storage:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-vision-camera:stripReleaseDebugSymbols
+> Task :react-native-async-storage_async-storage:extractReleaseAnnotations
+> Task :react-native-async-storage_async-storage:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :react-native-vision-camera:mergeReleaseJavaResource
+> Task :react-native-vision-camera:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-async-storage_async-storage:mergeReleaseJavaResource
+> Task :react-native-safe-area-context:mergeReleaseJavaResource
+> Task :react-native-vision-camera:syncReleaseLibJars
+> Task :react-native-safe-area-context:syncReleaseLibJars
+> Task :react-native-safe-area-context:bundleReleaseLocalLintAar
+> Task :react-native-vision-camera:bundleReleaseLocalLintAar
+> Task :react-native-async-storage_async-storage:syncReleaseLibJars
+> Task :react-native-async-storage_async-storage:bundleReleaseLocalLintAar
+> Task :react-native-picker_picker:stripReleaseDebugSymbols NO-SOURCE
+> Task :react-native-picker_picker:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-picker_picker:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-picker_picker:extractReleaseAnnotations
+> Task :react-native-picker_picker:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-picker_picker:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :react-native-image-picker:stripReleaseDebugSymbols NO-SOURCE
+> Task :react-native-image-picker:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-picker_picker:mergeReleaseJavaResource
+> Task :react-native-image-picker:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-picker_picker:syncReleaseLibJars
+> Task :react-native-picker_picker:bundleReleaseLocalLintAar
+> Task :react-native-image-picker:extractReleaseAnnotations
+> Task :react-native-image-picker:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-image-picker:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :react-native-svg:stripReleaseDebugSymbols NO-SOURCE
+> Task :react-native-image-picker:mergeReleaseJavaResource
+> Task :react-native-svg:copyReleaseJniLibsProjectAndLocalJars
+> Task :react-native-image-picker:syncReleaseLibJars
+> Task :react-native-image-picker:bundleReleaseLocalLintAar
+> Task :react-native-svg:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :react-native-svg:extractReleaseAnnotations
+> Task :react-native-svg:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :react-native-svg:mergeReleaseConsumerProguardFiles
+> Task :react-native-svg:mergeReleaseJavaResource
+> Task :react-native-svg:syncReleaseLibJars
+> Task :react-native-svg:bundleReleaseLocalLintAar
+> Task :react-native-async-storage_async-storage:writeReleaseLintModelMetadata
+> Task :react-native-image-picker:writeReleaseLintModelMetadata
+> Task :react-native-picker_picker:writeReleaseLintModelMetadata
+> Task :react-native-safe-area-context:writeReleaseLintModelMetadata
+> Task :react-native-svg:writeReleaseLintModelMetadata
+> Task :react-native-vision-camera:writeReleaseLintModelMetadata
+> Task :react-native-async-storage_async-storage:generateReleaseLintVitalModel
+> Task :react-native-image-picker:generateReleaseLintVitalModel
+> Task :react-native-picker_picker:generateReleaseLintVitalModel
+> Task :react-native-safe-area-context:generateReleaseLintVitalModel
+> Task :react-native-svg:generateReleaseLintVitalModel
+> Task :react-native-vision-camera:generateReleaseLintVitalModel
+> Task :app:processReleaseJavaRes
+> Task :app:mergeReleaseJavaResource
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :app:optimizeReleaseResources
+> Task :app:mergeDexRelease
+> Task :app:compileReleaseArtProfile
+> Task :react-native-image-picker:lintVitalAnalyzeRelease
+> Task :react-native-picker_picker:lintVitalAnalyzeRelease
+> Task :react-native-async-storage_async-storage:lintVitalAnalyzeRelease
+> Task :react-native-svg:lintVitalAnalyzeRelease
+> Task :react-native-safe-area-context:lintVitalAnalyzeRelease
+> Task :react-native-vision-camera:lintVitalAnalyzeRelease
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:lintVitalReportRelease
+> Task :app:lintVitalRelease
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+[Incubating] Problems report is available at: file:///Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.0.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 7m 20s
+313 actionable tasks: 273 executed, 40 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.0.0/userguide/configuration_cache_enabling.html

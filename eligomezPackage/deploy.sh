@@ -9,7 +9,7 @@ PROJECT_DIR="/Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage"
 APK_PATH="$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk"
 FIREBASE_APP_ID="1:1030711833270:android:f95121a96dc5242c9e2c17"
 FIREBASE_PROJECT="eli-gomez-web"
-RELEASE_NOTES="🎉 Versión 1.0.2 - Headers Colapsables, Fechas Mejoradas, Auditoría de Estados. Cambios: ✅ Headers animados 280→100px en 6 pantallas ✅ Fechas en español (Jueves 20 de enero 2026) ✅ Cálculo de fecha estimada de envío (Mié/Sáb) ✅ Información completa de pedidos con emojis ✅ Modo personalizado (direcciones) ✅ Auditoría de cambios de estado (usuario_email) ✅ Settings modernizado ✅ Optimización: 1 petición en vez de 3 (estados múltiples)"
+RELEASE_NOTES="📦 v1.0.18 - Marcar pedidos como retirado en RetiredToday + Corrección de fechas. Cambios: ✅ Botón 'Marcar como Retirado' en cada pedido de hoy ✅ Cambio de estado sin foto ni notas requeridas ✅ Corrección: RetiredToday mostraba pedidos de días incorrectos (issue timezone) ✅ Ahora filtra solo el día actual (21 miércoles 2026) ✅ Comparación de fechas sin timezone issues"
 TESTERS="sr.vmago@gmail.com"
 
 # Colores para output

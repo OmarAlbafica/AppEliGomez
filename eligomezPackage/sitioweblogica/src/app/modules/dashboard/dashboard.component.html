@@ -1,117 +1,117 @@
-<div *ngIf="!isMobile" class="space-y-6">
+﻿<div *ngIf="!isMobile" class="space-y-6">
   <!-- Header -->
   <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-    <p class="text-gray-500 mt-2">Bienvenido al sistema de gestion de encomiendas</p>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Dashboard</h1>
+    <p class="text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">Bienvenido al sistema de gestion de encomiendas</p>
   </div>
 
   <!-- Statistics Cards -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Pedidos Hoy -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-blue-500 dark:border-blue-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Pedidos Hoy</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.pedidosHoy }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Pedidos Hoy</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.pedidosHoy }}</p>
         </div>
         <div class="text-4xl">📦</div>
       </div>
     </div>
 
     <!-- Pedidos Mañana -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-yellow-500 dark:border-yellow-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Pedidos Mañana</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.pedidosTomorrow }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Pedidos Mañana</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.pedidosTomorrow }}</p>
         </div>
         <div class="text-4xl">📅</div>
       </div>
     </div>
 
     <!-- Pedidos Miércoles -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-purple-500 dark:border-purple-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Pedidos Miércoles</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.pedidosMiercoles }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Pedidos Miércoles</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.pedidosMiercoles }}</p>
         </div>
         <div class="text-4xl">📋</div>
       </div>
     </div>
 
     <!-- Pedidos Sábado -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-green-500 dark:border-green-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Pedidos Sábado</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.pedidosSabado }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Pedidos Sábado</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.pedidosSabado }}</p>
         </div>
         <div class="text-4xl">📅</div>
       </div>
     </div>
 
     <!-- Ingresos Hoy -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-green-500 dark:border-green-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Ingresos Hoy</p>
-          <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(stats.ingresoHoy) }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Ingresos Hoy</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ formatCurrency(stats.ingresoHoy) }}</p>
         </div>
         <div class="text-4xl">💰</div>
       </div>
     </div>
 
     <!-- Ingresos Mes -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-purple-500 dark:border-purple-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Ingresos Mes</p>
-          <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(stats.ingresoMes) }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Ingresos Mes</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ formatCurrency(stats.ingresoMes) }}</p>
         </div>
         <div class="text-4xl">📈</div>
       </div>
     </div>
 
     <!-- Ingresos Miércoles -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-indigo-500 dark:border-indigo-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Ingresos Miércoles</p>
-          <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(stats.ingresoMiercoles) }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Ingresos Miércoles</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ formatCurrency(stats.ingresoMiercoles) }}</p>
         </div>
         <div class="text-4xl">💵</div>
       </div>
     </div>
 
     <!-- Ingresos Sábado -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-orange-500 dark:border-orange-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Ingresos Sábado</p>
-          <p class="text-2xl font-bold text-gray-900 mt-2">{{ formatCurrency(stats.ingresoSabado) }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Ingresos Sábado</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ formatCurrency(stats.ingresoSabado) }}</p>
         </div>
         <div class="text-4xl">💵</div>
       </div>
     </div>
 
     <!-- Pendientes de Retirar -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-red-500 dark:border-red-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Pendientes</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.pedidosNoRetirados }}</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Pendientes</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.pedidosNoRetirados }}</p>
         </div>
         <div class="text-4xl">⚠️</div>
       </div>
     </div>
 
     <!-- Tasa Entrega -->
-    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-indigo-500 dark:border-indigo-600 transition-colors duration-300">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Tasa Entrega</p>
-          <p class="text-3xl font-bold text-gray-900 mt-2">{{ stats.tasaEntrega }}%</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">Tasa Entrega</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2 transition-colors duration-300">{{ stats.tasaEntrega }}%</p>
         </div>
         <div class="text-4xl">✅</div>
       </div>
@@ -119,34 +119,34 @@
   </div>
 
   <!-- Retiros de Hoy -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-6 border-b border-gray-200">
-      <h2 class="text-xl font-bold text-gray-900">Retiros de Hoy</h2>
-      <p class="text-sm text-gray-500 mt-1">{{ retiroHoy.length }} rutas programadas</p>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-300">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Retiros de Hoy</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">{{ retiroHoy.length }} rutas programadas</p>
     </div>
-    <div class="divide-y">
+    <div class="divide-y dark:divide-gray-700">
       <div *ngFor="let retiro of retiroHoy; let i = index" class="p-4">
-        <div (click)="toggleRetiroHoy(i)" class="cursor-pointer flex items-center justify-between hover:bg-gray-50 p-2 rounded">
+        <div (click)="retiro.expanded = !retiro.expanded" class="cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors duration-300">
           <div class="flex items-center gap-4 flex-1">
             <span class="text-2xl">📍</span>
             <div class="flex-1">
-              <p class="font-semibold text-gray-900">{{ retiro.destino }}</p>
-              <p class="text-sm text-gray-500">🚚 {{ retiro.encomendista }} • 🕐 {{ retiro.hora }}</p>
+              <p class="font-semibold text-gray-900 dark:text-white transition-colors duration-300">{{ retiro.destino }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">🚚 {{ retiro.encomendista }} • 🕐 {{ retiro.hora }}</p>
             </div>
-            <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{{ retiro.cantidad }} paq</span>
+            <span class="bg-blue-100 dark:bg-blue-900 dark:bg-opacity-50 text-blue-800 dark:text-blue-300 text-sm font-medium px-3 py-1 rounded-full transition-colors duration-300">{{ retiro.cantidad }} paq</span>
           </div>
-          <svg class="w-5 h-5 transition" [ngClass]="{'rotate-180': retiro.expanded}">
+          <svg class="w-5 h-5 transition dark:text-gray-400" [ngClass]="{'rotate-180': retiro.expanded}">
             <path stroke="currentColor" stroke-width="2" fill="none" d="M19 9l-7 7-7-7"/>
           </svg>
         </div>
         <div *ngIf="retiro.expanded" class="ml-12 mt-4 space-y-2">
-          <div *ngFor="let pedido of retiro.pedidos" class="bg-gray-50 p-3 rounded text-sm">
-            <p class="font-medium text-gray-900">{{ pedido.id }}</p>
-            <p class="text-gray-600">👤 {{ pedido.cliente }}</p>
-            <p class="text-gray-600">📦 {{ pedido.items }}</p>
+          <div *ngFor="let pedido of retiro.pedidos" class="bg-gray-50 dark:bg-gray-700 p-3 rounded text-sm transition-colors duration-300">
+            <p class="font-medium text-gray-900 dark:text-white transition-colors duration-300">{{ pedido.id }}</p>
+            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">👤 {{ pedido.cliente }}</p>
+            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">📦 {{ pedido.items }}</p>
             <div class="mt-2 flex items-center justify-between">
-              <span>{{ formatCurrency(pedido.monto) }}</span>
-              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="text-xs px-2 py-1 rounded">
+              <span class="text-gray-900 dark:text-white transition-colors duration-300">{{ formatCurrency(pedido.monto) }}</span>
+              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="text-xs px-2 py-1 rounded transition-colors duration-300">
                 {{ pedido.estado }}
               </span>
             </div>
@@ -156,82 +156,83 @@
     </div>
   </div>
 
-  <!-- Retiros de Manana -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-6 border-b border-gray-200">
-      <h2 class="text-xl font-bold text-gray-900">Retiros de Manana</h2>
-      <p class="text-sm text-gray-500 mt-1">{{ retiroTomorrow.length }} rutas programadas</p>
+  <!-- Retirado Mañana -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-300">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Retirado Mañana</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">{{ retiroTomorrow.length }} rutas programadas</p>
     </div>
-    <div class="divide-y">
+    <div class="divide-y dark:divide-gray-700">
       <div *ngFor="let retiro of retiroTomorrow; let i = index" class="p-4">
-        <div (click)="toggleRetiroTomorrow(i)" class="cursor-pointer flex items-center justify-between hover:bg-gray-50 p-2 rounded">
+        <div (click)="retiro.expanded = !retiro.expanded" class="cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors duration-300">
           <div class="flex items-center gap-4 flex-1">
             <span class="text-2xl">📍</span>
             <div class="flex-1">
-              <p class="font-semibold text-gray-900">{{ retiro.destino }}</p>
-              <p class="text-sm text-gray-500">🚚 {{ retiro.encomendista }} • 🕐 {{ retiro.hora }}</p>
+              <p class="font-semibold text-gray-900 dark:text-white transition-colors duration-300">{{ retiro.destino }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">🚚 {{ retiro.encomendista }} • 🕐 {{ retiro.hora }}</p>
             </div>
-            <span class="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">{{ retiro.cantidad }} paq</span>
+            <span class="bg-yellow-100 dark:bg-yellow-900 dark:bg-opacity-50 text-yellow-800 dark:text-yellow-300 text-sm font-medium px-3 py-1 rounded-full transition-colors duration-300">{{ retiro.cantidad }} paq</span>
           </div>
-          <svg class="w-5 h-5 transition" [ngClass]="{'rotate-180': retiro.expanded}">
+          <svg class="w-5 h-5 transition dark:text-gray-400" [ngClass]="{'rotate-180': retiro.expanded}">
             <path stroke="currentColor" stroke-width="2" fill="none" d="M19 9l-7 7-7-7"/>
           </svg>
         </div>
         <div *ngIf="retiro.expanded" class="ml-12 mt-4 space-y-2">
-          <div *ngFor="let pedido of retiro.pedidos" class="bg-gray-50 p-3 rounded text-sm">
-            <p class="font-medium text-gray-900">{{ pedido.id }}</p>
-            <p class="text-gray-600">👤 {{ pedido.cliente }}</p>
-            <p class="text-gray-600">📦 {{ pedido.items }}</p>
+          <div *ngFor="let pedido of retiro.pedidos" class="bg-gray-50 dark:bg-gray-700 p-3 rounded text-sm transition-colors duration-300">
+            <p class="font-medium text-gray-900 dark:text-white transition-colors duration-300">{{ pedido.id }}</p>
+            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">👤 {{ pedido.cliente }}</p>
+            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">📦 {{ pedido.items }}</p>
             <div class="mt-2 flex items-center justify-between">
-              <span class="text-green-600 font-semibold">${{ (pedido.monto || 0).toLocaleString('es-CL') }}</span>
-              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="px-2 py-0.5 rounded text-xs font-medium">
+              <span class="text-green-600 dark:text-green-400 font-semibold transition-colors duration-300">${{ (pedido.monto || 0).toLocaleString('es-CL') }}</span>
+              <span [ngClass]="getEstadoBadgeColor(pedido.estado)" class="px-2 py-0.5 rounded text-xs font-medium transition-colors duration-300">
                 {{ pedido.estado }}
               </span>
             </div>
           </div>
         </div>
+      </div>
     </div>
   </div>
 
   <!-- Pedidos Pendientes -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-6 border-b border-gray-200">
-      <h2 class="text-xl font-bold text-gray-900">Pedidos Pendientes de Retirar</h2>
-      <p class="text-sm text-gray-500 mt-1">Órdenes enviadas que se entregan hoy</p>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-300">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Pedidos Pendientes de Retirar</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">Órdenes enviadas que se entregan hoy</p>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full">
-        <thead class="bg-gray-50 border-b">
+        <thead class="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 transition-colors duration-300">
           <tr>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">ID Pedido</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Cliente</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Destino</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Horario</th>
-            <th class="px-6 py-3 text-center text-sm font-semibold text-gray-900">Estado</th>
-            <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">Monto</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">ID Pedido</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">Cliente</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">Destino</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">Horario</th>
+            <th class="px-6 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">Estado</th>
+            <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white transition-colors duration-300">Monto</th>
           </tr>
         </thead>
-        <tbody class="divide-y">
-          <tr *ngFor="let pedido of pedidosNoRetirados" class="hover:bg-gray-50">
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ pedido.id }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.cliente }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.destino }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ pedido.horaInicio }} - {{ pedido.horaFin }}</td>
+        <tbody class="divide-y dark:divide-gray-700">
+          <tr *ngFor="let pedido of pedidosNoRetirados" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">{{ pedido.id }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">{{ pedido.cliente }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">{{ pedido.destino }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">{{ pedido.horaInicio }} - {{ pedido.horaFin }}</td>
             <td class="px-6 py-4 text-sm text-center">
-              <span *ngIf="pedido.estado === 'pasado'" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold">
+              <span *ngIf="pedido.estado === 'pasado'" class="bg-red-100 dark:bg-red-900 dark:bg-opacity-30 text-red-800 dark:text-red-400 px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300">
                 ❌ Pasado
               </span>
-              <span *ngIf="pedido.estado === 'en-progreso'" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
+              <span *ngIf="pedido.estado === 'en-progreso'" class="bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-800 dark:text-green-400 px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300">
                 ✅ En Progreso
               </span>
-              <span *ngIf="pedido.estado === 'pendiente'" class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold">
+              <span *ngIf="pedido.estado === 'pendiente'" class="bg-yellow-100 dark:bg-yellow-900 dark:bg-opacity-30 text-yellow-800 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300">
                 ⏳ Pendiente
               </span>
             </td>
-            <td class="px-6 py-4 text-sm text-right font-medium text-gray-900">{{ formatCurrency(pedido.monto) }}</td>
+            <td class="px-6 py-4 text-sm text-right font-medium text-gray-900 dark:text-white transition-colors duration-300">{{ formatCurrency(pedido.monto) }}</td>
           </tr>
-          <tr *ngIf="pedidosNoRetirados.length === 0" class="hover:bg-gray-50">
-            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
+          <tr *ngIf="pedidosNoRetirados.length === 0" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
+            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
               No hay pedidos enviados para entregar hoy
             </td>
           </tr>
@@ -239,15 +240,214 @@
       </table>
     </div>
   </div>
-</div>
+
+  <!-- Reporte de Remuneraciones -->
+  <div *ngIf="remuneraciones.length > 0">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">💰 Reporte de Remuneraciones</h2>
+      
+      <!-- Toggle Sábado/Miércoles -->
+      <div class="flex gap-2">
+        <button 
+          (click)="toggleReporte('miercoles')"
+          [class.bg-blue-600]="reporteActual === 'miercoles'"
+          [class.bg-gray-400]="reporteActual !== 'miercoles'"
+          class="px-4 py-2 rounded-lg text-white font-semibold transition-colors duration-200 hover:shadow-lg">
+          📅 Miércoles
+        </button>
+        <button 
+          (click)="toggleReporte('sabado')"
+          [class.bg-blue-600]="reporteActual === 'sabado'"
+          [class.bg-gray-400]="reporteActual !== 'sabado'"
+          class="px-4 py-2 rounded-lg text-white font-semibold transition-colors duration-200 hover:shadow-lg">
+          📅 Sábado
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="obtenerReporteActual() as remuneracion" class="space-y-6">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20 rounded-lg p-4 border-l-4 border-teal-500 mb-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ remuneracion.tipo === 'miercoles' ? '📅 Reporte Miércoles' : '📅 Reporte Sábado' }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Período: {{ remuneracion.fechasIncluidas }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ remuneracion.fecha | date:'short' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 1: REMUNERADOS -->
+      <div *ngIf="remuneracion.remunerados.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-teal-500 mb-6">
+        <h4 class="text-lg font-bold text-teal-700 dark:text-teal-400 mb-4">💵 Remunerados ({{ remuneracion.remunerados.length }})</h4>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b-2 border-gray-300 dark:border-gray-700">
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Cliente</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Destino</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Encomendista</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Día que retiro</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Sin Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pedido of remuneracion.remunerados" class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="p-2 text-gray-900 dark:text-white">{{ pedido.cliente }}</td>
+                <td class="p-2 text-gray-900 dark:text-white text-sm">{{ pedido.destino }}</td>
+                <td class="p-2 text-gray-600 dark:text-gray-400 text-xs">{{ pedido.encomendista || '—' }}</td>
+                <td class="p-2 text-xs text-gray-700 dark:text-gray-300 font-medium">{{ pedido.fechaEntregaFormato }}</td>
+                <td class="p-2 text-right text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-green-700 dark:text-green-400">{{ formatCurrency(pedido.montoSinEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoTotal) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid grid-cols-3 gap-4 p-3 bg-teal-50 dark:bg-teal-900/20 rounded">
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Envíos</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesRemunerado.totalEnvios) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Sin Envío</p>
+            <p class="text-lg font-bold text-green-700 dark:text-green-400">{{ formatCurrency(remuneracion.subtotalesRemunerado.totalSinEnvio) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Total</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesRemunerado.totalGeneral) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2: ENVIADOS -->
+      <div *ngIf="remuneracion.enviados.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-blue-500 mb-6">
+        <h4 class="text-lg font-bold text-blue-700 dark:text-blue-400 mb-4">📦 Enviados ({{ remuneracion.enviados.length }})</h4>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b-2 border-gray-300 dark:border-gray-700">
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Cliente</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Destino</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Encomendista</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Día que retiro</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Sin Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pedido of remuneracion.enviados" class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="p-2 text-gray-900 dark:text-white">{{ pedido.cliente }}</td>
+                <td class="p-2 text-gray-900 dark:text-white text-sm">{{ pedido.destino }}</td>
+                <td class="p-2 text-gray-600 dark:text-gray-400 text-xs">{{ pedido.encomendista || '—' }}</td>
+                <td class="p-2 text-xs text-gray-700 dark:text-gray-300 font-medium">{{ pedido.fechaEntregaFormato }}</td>
+                <td class="p-2 text-right text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-green-700 dark:text-green-400">{{ formatCurrency(pedido.montoSinEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoTotal) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid grid-cols-3 gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Envíos</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesEnviado.totalEnvios) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Sin Envío</p>
+            <p class="text-lg font-bold text-green-700 dark:text-green-400">{{ formatCurrency(remuneracion.subtotalesEnviado.totalSinEnvio) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Total</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesEnviado.totalGeneral) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: CANCELADOS -->
+      <div *ngIf="remuneracion.cancelados.length > 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-red-500 mb-6">
+        <h4 class="text-lg font-bold text-red-700 dark:text-red-400 mb-4">❌ Cancelados ({{ remuneracion.cancelados.length }})</h4>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b-2 border-gray-300 dark:border-gray-700">
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Cliente</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Destino</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Encomendista</th>
+                <th class="text-left p-2 text-gray-700 dark:text-gray-300 font-semibold">Día que retiro</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Sin Envío</th>
+                <th class="text-right p-2 text-gray-700 dark:text-gray-300 font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pedido of remuneracion.cancelados" class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="p-2 text-gray-900 dark:text-white">{{ pedido.cliente }}</td>
+                <td class="p-2 text-gray-900 dark:text-white text-sm">{{ pedido.destino }}</td>
+                <td class="p-2 text-gray-600 dark:text-gray-400 text-xs">{{ pedido.encomendista || '—' }}</td>
+                <td class="p-2 text-xs text-gray-700 dark:text-gray-300 font-medium">{{ pedido.fechaEntregaFormato }}</td>
+                <td class="p-2 text-right text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-green-700 dark:text-green-400">{{ formatCurrency(pedido.montoSinEnvio) }}</td>
+                <td class="p-2 text-right font-semibold text-gray-900 dark:text-white">{{ formatCurrency(pedido.montoTotal) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid grid-cols-3 gap-4 p-3 bg-red-50 dark:bg-red-900/20 rounded">
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Envíos</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesCancelado.totalEnvios) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Sin Envío</p>
+            <p class="text-lg font-bold text-green-700 dark:text-green-400">{{ formatCurrency(remuneracion.subtotalesCancelado.totalSinEnvio) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs text-gray-600 dark:text-gray-400">Total</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.subtotalesCancelado.totalGeneral) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESUMEN TOTAL DEL REPORTE -->
+      <div class="bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg p-6 border-2 border-gray-300 dark:border-gray-600">
+        <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-4">📊 TOTAL GENERAL DEL REPORTE</h4>
+        <div class="grid grid-cols-4 gap-4">
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400 font-semibold">Envíos</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.totalEnvios) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400 font-semibold">Sin Envío</p>
+            <p class="text-2xl font-bold text-green-700 dark:text-green-400">{{ formatCurrency(remuneracion.totalSinEnvio) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400 font-semibold">Total</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(remuneracion.totalGeneral) }}</p>
+          </div>
+          <div class="text-center border-l-2 border-gray-300 dark:border-gray-600 pl-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400 font-semibold">Pedidos</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ remuneracion.pedidos.length }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- VISTA MOBILE -->
 <div *ngIf="isMobile" class="space-y-4 p-3">
   <!-- Header Mobile -->
   <div class="mb-4">
-    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-    <p class="text-xs text-gray-500 mt-1">Estado del sistema</p>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Estado del sistema</p>
   </div>
 
   <!-- Estadísticas Compactas (2x5 grid) -->
@@ -296,63 +496,63 @@
   </div>
 
   <!-- Retiros de Hoy (Comprimido) -->
-  <div class="bg-white rounded-lg shadow border-l-4 border-blue-500">
-    <div class="p-3 border-b border-gray-200">
-      <h3 class="font-bold text-gray-900 text-sm">Retiros Hoy</h3>
-      <p class="text-xs text-gray-500 mt-0.5">{{ retiroHoy.length }} rutas</p>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 border-blue-500">
+    <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="font-bold text-gray-900 dark:text-white text-sm">Retiros Hoy</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ retiroHoy.length }} rutas</p>
     </div>
     <div class="divide-y text-sm max-h-40 overflow-y-auto">
       <div *ngFor="let retiro of retiroHoy.slice(0, 3)" class="p-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1">
-            <p class="font-semibold text-gray-900">{{ retiro.destino }}</p>
-            <p class="text-xs text-gray-600">{{ retiro.encomendista }}</p>
+            <p class="font-semibold text-gray-900 dark:text-white">{{ retiro.destino }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">{{ retiro.encomendista }}</p>
           </div>
           <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">{{ retiro.cantidad }}</span>
         </div>
       </div>
-      <div *ngIf="retiroHoy.length > 3" class="p-3 text-center text-xs text-gray-500">
+      <div *ngIf="retiroHoy.length > 3" class="p-3 text-center text-xs text-gray-500 dark:text-gray-400">
         +{{ retiroHoy.length - 3 }} más...
       </div>
     </div>
   </div>
 
-  <!-- Retiros de Mañana (Comprimido) -->
-  <div class="bg-white rounded-lg shadow border-l-4 border-yellow-500">
-    <div class="p-3 border-b border-gray-200">
-      <h3 class="font-bold text-gray-900 text-sm">Retiros Mañana</h3>
-      <p class="text-xs text-gray-500 mt-0.5">{{ retiroTomorrow.length }} rutas</p>
+  <!-- Retirado Mañana (Comprimido) -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow border-l-4 border-yellow-500">
+    <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="font-bold text-gray-900 dark:text-white text-sm">Retirado Mañana</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ retiroTomorrow.length }} rutas</p>
     </div>
     <div class="divide-y text-sm max-h-40 overflow-y-auto">
       <div *ngFor="let retiro of retiroTomorrow.slice(0, 3)" class="p-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1">
-            <p class="font-semibold text-gray-900">{{ retiro.destino }}</p>
-            <p class="text-xs text-gray-600">{{ retiro.encomendista }}</p>
+            <p class="font-semibold text-gray-900 dark:text-white">{{ retiro.destino }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">{{ retiro.encomendista }}</p>
           </div>
           <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">{{ retiro.cantidad }}</span>
         </div>
       </div>
-      <div *ngIf="retiroTomorrow.length > 3" class="p-3 text-center text-xs text-gray-500">
+      <div *ngIf="retiroTomorrow.length > 3" class="p-3 text-center text-xs text-gray-500 dark:text-gray-400">
         +{{ retiroTomorrow.length - 3 }} más...
       </div>
     </div>
   </div>
 
   <!-- Pendientes (Tabla Simplificada) -->
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-3 border-b border-gray-200">
-      <h3 class="font-bold text-gray-900 text-sm">Pendientes Retirar</h3>
-      <p class="text-xs text-gray-500 mt-0.5">{{ pedidosNoRetirados.length }} pedidos hoy</p>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="font-bold text-gray-900 dark:text-white text-sm">Pendientes Retirar</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ pedidosNoRetirados.length }} pedidos hoy</p>
     </div>
     <div class="divide-y text-sm max-h-48 overflow-y-auto">
       <div *ngFor="let pedido of pedidosNoRetirados.slice(0, 5)" class="p-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1">
-            <p class="font-semibold text-gray-900 text-xs">{{ pedido.id }}</p>
-            <p class="text-xs text-gray-600">👤 {{ pedido.cliente }}</p>
-            <p class="text-xs text-gray-500">📍 {{ pedido.destino }}</p>
-            <p class="text-xs text-gray-500">🕐 {{ pedido.horaInicio }} - {{ pedido.horaFin }}</p>
+            <p class="font-semibold text-gray-900 dark:text-white text-xs">{{ pedido.id }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">👤 {{ pedido.cliente }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">📍 {{ pedido.destino }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">🕐 {{ pedido.horaInicio }} - {{ pedido.horaFin }}</p>
           </div>
           <div class="text-right">
             <span *ngIf="pedido.estado === 'pasado'" class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded block mb-1">❌ Pasado</span>
@@ -360,13 +560,115 @@
             <span *ngIf="pedido.estado === 'pendiente'" class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded block mb-1">⏳ Pendiente</span>
           </div>
         </div>
-        <p class="text-xs text-gray-700 font-medium mt-1">{{ formatCurrency(pedido.monto) }}</p>
+        <p class="text-xs text-gray-700 dark:text-gray-300 font-medium mt-1">{{ formatCurrency(pedido.monto) }}</p>
       </div>
-      <div *ngIf="pedidosNoRetirados.length === 0" class="p-3 text-center text-xs text-gray-500">
+      <div *ngIf="pedidosNoRetirados.length === 0" class="p-3 text-center text-xs text-gray-500 dark:text-gray-400">
         No hay pedidos hoy
       </div>
-      <div *ngIf="pedidosNoRetirados.length > 5" class="p-3 text-center text-xs text-gray-500">
+      <div *ngIf="pedidosNoRetirados.length > 5" class="p-3 text-center text-xs text-gray-500 dark:text-gray-400">
         +{{ pedidosNoRetirados.length - 5 }} más...
+      </div>
+    </div>
+  </div>
+
+  <!-- Reporte de Remuneraciones -->
+  <div *ngIf="remuneraciones.length > 0" class="mt-6">
+    <div class="flex items-center justify-between mb-4 gap-2">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white">💰 Remuneraciones</h2>
+      
+      <!-- Toggle Miércoles/Sábado Mobile -->
+      <div class="flex gap-1">
+        <button 
+          (click)="toggleReporte('miercoles')"
+          [class.bg-blue-600]="reporteActual === 'miercoles'"
+          [class.bg-gray-400]="reporteActual !== 'miercoles'"
+          class="px-2 py-1 rounded text-white text-xs font-semibold transition-colors duration-200">
+          Mié
+        </button>
+        <button 
+          (click)="toggleReporte('sabado')"
+          [class.bg-blue-600]="reporteActual === 'sabado'"
+          [class.bg-gray-400]="reporteActual !== 'sabado'"
+          class="px-2 py-1 rounded text-white text-xs font-semibold transition-colors duration-200">
+          Sab
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="obtenerReporteActual() as remuneracion" class="space-y-3">
+      <!-- Período -->
+      <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+        {{ remuneracion.tipo === 'miercoles' ? '📅 Reporte Miércoles' : '📅 Reporte Sábado' }} - {{ remuneracion.fechasIncluidas }}
+      </div>
+
+      <!-- SECCIÓN 1: REMUNERADOS -->
+      <div *ngIf="remuneracion.remunerados.length > 0" class="bg-teal-50 dark:bg-teal-900/20 rounded-lg border-l-4 border-teal-500 p-3">
+        <h3 class="font-bold text-teal-900 dark:text-teal-300 text-xs mb-2">✅ Remunerados ({{ remuneracion.remunerados.length }})</h3>
+        <div class="space-y-1 text-xs">
+          <div *ngFor="let pedido of remuneracion.remunerados" class="flex justify-between text-gray-700 dark:text-gray-300">
+            <span>{{ pedido.cliente }}</span>
+            <span class="font-semibold">${{ formatCurrency(pedido.montoTotal) }}</span>
+          </div>
+        </div>
+        <div class="border-t border-teal-300 dark:border-teal-700 mt-2 pt-2 text-xs font-bold text-teal-900 dark:text-teal-300">
+          <div class="flex justify-between">
+            <span>Subtotal:</span>
+            <span>${{ formatCurrency(remuneracion.subtotalesRemunerado.totalGeneral) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2: ENVIADOS -->
+      <div *ngIf="remuneracion.enviados.length > 0" class="bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500 p-3">
+        <h3 class="font-bold text-blue-900 dark:text-blue-300 text-xs mb-2">📤 Enviados ({{ remuneracion.enviados.length }})</h3>
+        <div class="space-y-1 text-xs">
+          <div *ngFor="let pedido of remuneracion.enviados" class="flex justify-between text-gray-700 dark:text-gray-300">
+            <span>{{ pedido.cliente }}</span>
+            <span class="font-semibold">${{ formatCurrency(pedido.montoTotal) }}</span>
+          </div>
+        </div>
+        <div class="border-t border-blue-300 dark:border-blue-700 mt-2 pt-2 text-xs font-bold text-blue-900 dark:text-blue-300">
+          <div class="flex justify-between">
+            <span>Subtotal:</span>
+            <span>${{ formatCurrency(remuneracion.subtotalesEnviado.totalGeneral) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: CANCELADOS -->
+      <div *ngIf="remuneracion.cancelados.length > 0" class="bg-red-50 dark:bg-red-900/20 rounded-lg border-l-4 border-red-500 p-3">
+        <h3 class="font-bold text-red-900 dark:text-red-300 text-xs mb-2">❌ Cancelados ({{ remuneracion.cancelados.length }})</h3>
+        <div class="space-y-1 text-xs">
+          <div *ngFor="let pedido of remuneracion.cancelados" class="flex justify-between text-gray-700 dark:text-gray-300">
+            <span>{{ pedido.cliente }}</span>
+            <span class="font-semibold">${{ formatCurrency(pedido.montoTotal) }}</span>
+          </div>
+        </div>
+        <div class="border-t border-red-300 dark:border-red-700 mt-2 pt-2 text-xs font-bold text-red-900 dark:text-red-300">
+          <div class="flex justify-between">
+            <span>Subtotal:</span>
+            <span>${{ formatCurrency(remuneracion.subtotalesCancelado.totalGeneral) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESUMEN TOTAL -->
+      <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 border-2 border-gray-300 dark:border-gray-600">
+        <h3 class="font-bold text-gray-900 dark:text-white text-xs mb-2">📊 TOTAL PERÍODO</h3>
+        <div class="space-y-1 text-xs">
+          <div class="flex justify-between text-gray-700 dark:text-gray-300">
+            <span>Con Envío:</span>
+            <span class="font-semibold">${{ formatCurrency(remuneracion.subtotalesRemunerado.totalEnvios + remuneracion.subtotalesEnviado.totalEnvios + remuneracion.subtotalesCancelado.totalEnvios) }}</span>
+          </div>
+          <div class="flex justify-between text-gray-700 dark:text-gray-300">
+            <span>Sin Envío:</span>
+            <span class="font-semibold">${{ formatCurrency(remuneracion.subtotalesRemunerado.totalSinEnvio + remuneracion.subtotalesEnviado.totalSinEnvio + remuneracion.subtotalesCancelado.totalSinEnvio) }}</span>
+          </div>
+          <div class="border-t border-gray-300 dark:border-gray-600 mt-1 pt-1 flex justify-between text-gray-900 dark:text-white font-bold">
+            <span>TOTAL:</span>
+            <span>${{ formatCurrency(remuneracion.subtotalesRemunerado.totalGeneral + remuneracion.subtotalesEnviado.totalGeneral + remuneracion.subtotalesCancelado.totalGeneral) }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

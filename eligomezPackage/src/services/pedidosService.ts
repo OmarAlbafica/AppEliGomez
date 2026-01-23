@@ -556,13 +556,9 @@ class PedidosService {
 
       const pedidosRef = collection(db, 'pedidos');
 
-      // Convertir Date a Timestamp si es necesario
+      // fecha_entrega_programada ya viene como STRING en formato YYYY-MM-DD
+      // No se requiere conversión
       const datosGuardar: any = { ...pedido };
-      if (datosGuardar.fecha_entrega_programada instanceof Date) {
-        datosGuardar.fecha_entrega_programada = Timestamp.fromDate(
-          datosGuardar.fecha_entrega_programada
-        );
-      }
 
       const docRef = await addDoc(pedidosRef, {
         ...datosGuardar,

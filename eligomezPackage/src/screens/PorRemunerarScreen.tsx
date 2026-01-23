@@ -2,25 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  ScrollView,
-  FlatList,
-  Modal,
   ActivityIndicator,
-  Alert,
   StyleSheet,
-  Image,
   Animated,
+  Image,
+  useColorScheme,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
+import { auth, db } from '../services/firebase';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { BackButton } from '../components/BackButton';
-import { useAppTheme, useTheme } from '../context/ThemeContext';
-import { formatDate12Hours, formatDateOnly } from '../utils/dateUtils';
-import { formatearFecha } from '../utils/pedidoUtils';
-import { MoneyIcon, PackageIcon, TruckIcon } from '../components/icons';
+import { useTheme } from '../context/ThemeContext';
 import { ImageViewer } from '../components/ImageViewer';
+import { CustomAlert } from '../components/CustomAlert';
+
+interface EncomendaAgrupada {
+  encomendista_nombre: string;
+  pedidos: PedidoCompleto[];
+  conteo: number;
+  total: number;
+}
 
 interface PorRemunerarScreenProps {
   onNavigate?: (screen: string) => void;
@@ -30,94 +33,38 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
   const { theme } = useTheme();
   const scale = (size: number) => theme.scale(size);
   const styles = createStyles(scale, theme);
-  const detailStyles = createDetailStyles(scale, theme);
 
-  // Convertir hora de 24h (HH:MM) a 12h (hh:mm AM/PM)
-  const convertirHora12 = (hora: string | undefined): string => {
-    if (!hora) return '';
-    const [h, m] = hora.split(':');
-    const hours = parseInt(h, 10);
-    const minutes = m || '00';
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const horas12 = hours % 12 || 12;
-    return `${horas12}:${minutes} ${ampm}`;
-  };
-
-  // Formatear fecha completa en español (ej: Jueves 20 de enero 2026)
-  const formatearFechaCompleta = (fecha: string | Date | undefined): string => {
-    if (!fecha) return 'No programada';
-    const date = new Date(fecha);
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    
-    const diaSemana = diasSemana[date.getDay()];
-    const dia = date.getDate();
-    const mes = meses[date.getMonth()];
-    const año = date.getFullYear();
-    
-    return `${diaSemana} ${dia} de ${mes} ${año}`;
-  };
-
-  // Calcular fecha estimada de envío
-  // Envíos: Miércoles y Sábados
-  // Si la entrega es Miércoles/Jueves/Viernes → se envió el Miércoles anterior
-  // Si la entrega es Sábado/Domingo/Lunes/Martes → se envió el Sábado anterior
-  const calcularFechaEnvio = (fechaEntrega: string | Date | undefined): string => {
-    if (!fechaEntrega) return 'No programada';
-    
-    const date = new Date(fechaEntrega);
-    const diaSemana = date.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
-    
-    let fechaEnvio = new Date(date);
-    
-    // Si es Miércoles (3), Jueves (4) o Viernes (5) → envío fue el Miércoles
-    if (diaSemana === 3 || diaSemana === 4 || diaSemana === 5) {
-      // Retroceder al miércoles anterior
-      const diasHastaMiercoles = diaSemana - 3;
-      fechaEnvio.setDate(date.getDate() - diasHastaMiercoles);
-    }
-    // Si es Sábado (6), Domingo (0), Lunes (1) o Martes (2) → envío fue el Sábado
-    else {
-      if (diaSemana === 6) {
-        // Ya es sábado, no retroceder
-        fechaEnvio = new Date(date);
-      } else if (diaSemana === 0) {
-        // Domingo → retroceder 1 día al sábado
-        fechaEnvio.setDate(date.getDate() - 1);
-      } else if (diaSemana === 1) {
-        // Lunes → retroceder 2 días al sábado
-        fechaEnvio.setDate(date.getDate() - 2);
-      } else if (diaSemana === 2) {
-        // Martes → retroceder 3 días al sábado
-        fechaEnvio.setDate(date.getDate() - 3);
-      }
-    }
-    
-    return formatearFechaCompleta(fechaEnvio);
-  };
-
-  const [pedidos, setPedidos] = useState<PedidoCompleto[]>([]);
-  const [busqueda, setBusqueda] = useState('');
+  const [encomiendas, setEncomiendas] = useState<EncomendaAgrupada[]>([]);
   const [loading, setLoading] = useState(true);
-  const [guardando, setGuardando] = useState(false);
-  const [modalDetalle, setModalDetalle] = useState(false);
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoCompleto | null>(null);
-  
-  // Visor de imágenes con zoom
+  const [totalPedidos, setTotalPedidos] = useState(0);
+  const [totalRemuneracion, setTotalRemuneracion] = useState(0);
+  const [totalRemunerado, setTotalRemunerado] = useState(0);
+  const [totalNoRetirado, setTotalNoRetirado] = useState(0);
+  const [pedidosFinalizados, setPedidosFinalizados] = useState<Map<string, 'remunerado' | 'no-retirado'>>(new Map());
+  const [quienMarco, setQuienMarco] = useState<Map<string, string>>(new Map()); // Almacenar quién marcó cada pedido
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImages, setCurrentImages] = useState<string[]>([]);
   const [imageTitle, setImageTitle] = useState('');
-  
-  // Vista compacta - Se carga desde AsyncStorage
   const [vistaCompacta, setVistaCompacta] = useState(true);
-  
-  // Pedidos encontrados (guardados localmente)
-  const [pedidosEncontrados, setPedidosEncontrados] = useState<Set<string>>(new Set());
 
-  // Pedidos marcados como "No Retiro" (guardados localmente)
-  const [pedidosNoRetiro, setPedidosNoRetiro] = useState<Set<string>>(new Set());
+  // 📊 Remuneraciones en tiempo real
+  const [remuneracionesHoy, setRemuneracionesHoy] = useState<any[]>([]);
+  const [usuarioActual, setUsuarioActual] = useState<string>('Usuario');
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Animated header - efecto snap sin interpolación gradual
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertButtons, setAlertButtons] = useState<any[]>([]);
+
+  const showAlert = (title: string, message: string, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertButtons(buttons || [{ text: 'OK', style: 'default' }]);
+    setAlertVisible(true);
+  };
+
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerHeight = useRef(new Animated.Value(280)).current;
   const headerOpacity = useRef(new Animated.Value(1)).current;
@@ -128,111 +75,129 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
       useNativeDriver: false,
       listener: (event: any) => {
         const offsetY = event.nativeEvent.contentOffset.y;
-        
-        // Snap rápido: si scroll > 50px minimizar, si no expandir
         if (offsetY > 50) {
           Animated.parallel([
-            Animated.timing(headerHeight, {
-              toValue: 100,
-              duration: 200,
-              useNativeDriver: false,
-            }),
-            Animated.timing(headerOpacity, {
-              toValue: 0,
-              duration: 150,
-              useNativeDriver: false,
-            }),
+            Animated.timing(headerHeight, { toValue: 100, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
           ]).start();
         } else {
           Animated.parallel([
-            Animated.timing(headerHeight, {
-              toValue: 280,
-              duration: 200,
-              useNativeDriver: false,
-            }),
-            Animated.timing(headerOpacity, {
-              toValue: 1,
-              duration: 150,
-              useNativeDriver: false,
-            }),
+            Animated.timing(headerHeight, { toValue: 280, duration: 200, useNativeDriver: false }),
+            Animated.timing(headerOpacity, { toValue: 1, duration: 150, useNativeDriver: false }),
           ]).start();
         }
       },
     }
   );
 
-  // Agrupar por encomendista
-  const [agrupadosPorEncomendista, setAgrupadosPorEncomendista] = useState<
-    { encomendista: string; pedidos: PedidoCompleto[] }[]
-  >([]);
-  const [agrupadosFiltrados, setAgrupadosFiltrados] = useState<
-    { encomendista: string; pedidos: PedidoCompleto[] }[]
-  >([]);
-
   useEffect(() => {
     cargarPedidos();
-    cargarEncontrados();
-    cargarNoRetiro();
     cargarVistaCompactaPreferencia();
-  }, []);
+    cargarNombreUsuario();
 
-  const cargarEncontrados = async () => {
-    try {
-      const encontradosJson = await AsyncStorage.getItem('pedidosEncontrados_PorRemunerar');
-      if (encontradosJson) {
-        const encontrados = JSON.parse(encontradosJson);
-        setPedidosEncontrados(new Set(encontrados));
+    // Escuchar remuneraciones en tiempo real
+    const unsubscribe = pedidosServiceOptimizado.escucharRemuneracionesDiarias(
+      (remuneraciones) => {
+        // Obtener UID del usuario actual
+        const currentUser = auth.currentUser;
+        const currentUserId = currentUser?.uid || '';
+        
+        // Ordenar por timestamp descendente (más recientes primero)
+        const ordenadas = remuneraciones.sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime();
+          const timeB = new Date(b.timestamp).getTime();
+          return timeB - timeA;
+        });
+        
+        // Crear mapas: quién marcó y estado de cada pedido
+        const quienMarcoMap = new Map<string, string>();
+        const estadoPedidosMap = new Map<string, 'remunerado' | 'no-retirado'>();
+        
+        // Sumar TODAS las remuneraciones (independientemente de quién las marcó)
+        let totalRemuneradoTodos = 0;
+        let totalNoRetiradoTodos = 0;
+        
+        // Procesar TODAS las remuneraciones
+        ordenadas.forEach((rem) => {
+          // Mapear quién marcó y estado (para TODOS los usuarios)
+          quienMarcoMap.set(rem.pedido_id, rem.usuario_nombre);
+          estadoPedidosMap.set(rem.pedido_id, rem.tipo === 'retirado' ? 'remunerado' : rem.tipo);
+          
+          // Contar TODAS las remuneraciones
+          if (rem.tipo === 'retirado') {
+            totalRemuneradoTodos += rem.monto || 0;
+          } else if (rem.tipo === 'no-retirado') {
+            totalNoRetiradoTodos += rem.monto || 0;
+          }
+        });
+        
+        // Actualizar estado
+        setRemuneracionesHoy(ordenadas);
+        setQuienMarco(quienMarcoMap);
+        setPedidosFinalizados(estadoPedidosMap);
+        setTotalRemunerado(totalRemuneradoTodos);
+        setTotalNoRetirado(totalNoRetiradoTodos);
       }
-    } catch (error) {
-      console.error('Error cargando encontrados:', error);
-    }
-  };
+    );
 
-  const guardarEncontrados = async (nuevosEncontrados: Set<string>) => {
-    try {
-      const encontradosArray = Array.from(nuevosEncontrados);
-      await AsyncStorage.setItem('pedidosEncontrados_PorRemunerar', JSON.stringify(encontradosArray));
-    } catch (error) {
-      console.error('Error guardando encontrados:', error);
-    }
-  };
+    unsubscribeRef.current = unsubscribe;
 
-  const marcarComoEncontrado = async (pedidoId: string) => {
-    const nuevosEncontrados = new Set(pedidosEncontrados);
-    if (nuevosEncontrados.has(pedidoId)) {
-      nuevosEncontrados.delete(pedidoId);
-    } else {
-      nuevosEncontrados.add(pedidoId);
-      // Limpiar No Retiro cuando se marca como encontrado (remunerado)
-      const nuevosNoRetiro = new Set(pedidosNoRetiro);
-      if (nuevosNoRetiro.has(pedidoId)) {
-        nuevosNoRetiro.delete(pedidoId);
-        setPedidosNoRetiro(nuevosNoRetiro);
-        await guardarNoRetiro(nuevosNoRetiro);
+    // Cleanup
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
       }
-    }
-    setPedidosEncontrados(nuevosEncontrados);
-    await guardarEncontrados(nuevosEncontrados);
-  };
+    };
+  }, []); // ✅ DEPENDENCIAS VACÍAS - Solo ejecutar UNA VEZ al montar
 
-  const guardarNoRetiro = async (nuevosNoRetiro: Set<string>) => {
+  const cargarPedidos = async () => {
     try {
-      const noRetiroArray = Array.from(nuevosNoRetiro);
-      await AsyncStorage.setItem('pedidosNoRetiro_PorRemunerar', JSON.stringify(noRetiroArray));
-    } catch (error) {
-      console.error('Error guardando no retiro:', error);
-    }
-  };
-
-  const cargarNoRetiro = async () => {
-    try {
-      const noRetiroJson = await AsyncStorage.getItem('pedidosNoRetiro_PorRemunerar');
-      if (noRetiroJson) {
-        const noRetiro = JSON.parse(noRetiroJson);
-        setPedidosNoRetiro(new Set(noRetiro));
+      setLoading(true);
+      const pedidosPorRemunerar = await pedidosServiceOptimizado.obtenerPedidosPorRemunerar();
+      
+      if (pedidosPorRemunerar && pedidosPorRemunerar.length > 0) {
+        // Ordenar por fecha_entrega_programada ascendente
+        pedidosPorRemunerar.sort((a, b) => {
+          const fechaA = new Date(a.fecha_entrega_programada || '').getTime();
+          const fechaB = new Date(b.fecha_entrega_programada || '').getTime();
+          return fechaA - fechaB;
+        });
+        const grupos = new Map<string, PedidoCompleto[]>();
+        pedidosPorRemunerar.forEach(p => {
+          const encomienda = p.encomendista_nombre || 'Sin Encomienda';
+          if (!grupos.has(encomienda)) {
+            grupos.set(encomienda, []);
+          }
+          grupos.get(encomienda)!.push(p);
+        });
+        const resultado = Array.from(grupos.entries()).map(([nombre, pedidosGrupo]) => ({
+          encomendista_nombre: nombre,
+          pedidos: pedidosGrupo,
+          conteo: pedidosGrupo.length,
+          total: pedidosGrupo.reduce((sum, p) => sum + (p.total || 0), 0)
+        }));
+        resultado.sort((a, b) => a.encomendista_nombre.localeCompare(b.encomendista_nombre));
+        setEncomiendas(resultado);
+        // 📌 EXPANDIR TODAS LAS ENCOMIENDAS POR DEFECTO
+        setExpandedIds(resultado.map(enc => enc.encomendista_nombre));
+        setTotalPedidos(pedidosPorRemunerar.length);
+        setTotalRemuneracion(pedidosPorRemunerar.reduce((sum, p) => sum + (p.total || 0), 0));
+      } else {
+        setEncomiendas([]);
+        setExpandedIds([]);
+        setTotalPedidos(0);
+        setTotalRemuneracion(0);
       }
+      
+      console.log(`[PorRemunerar] Cargados ${pedidosPorRemunerar?.length || 0} pedidos por remunerar`);
     } catch (error) {
-      console.error('Error cargando no retiro:', error);
+      console.error('Error cargando pedidos:', error);
+      setEncomiendas([]);
+      setExpandedIds([]);
+      setTotalPedidos(0);
+      setTotalRemuneracion(0);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -247,180 +212,377 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
     }
   };
 
-  const marcarComoNoRetiro = async (pedidoId: string) => {
-    const nuevosNoRetiro = new Set(pedidosNoRetiro);
-    if (nuevosNoRetiro.has(pedidoId)) {
-      nuevosNoRetiro.delete(pedidoId);
-    } else {
-      nuevosNoRetiro.add(pedidoId);
+  const cargarNombreUsuario = async () => {
+    try {
+      // Obtener UID del usuario autenticado
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        console.log(`[👤 Buscando usuario UID: ${currentUser.uid}]`);
+        
+        // Buscar documento del usuario en Firestore (colección: usuarios)
+        const docRef = doc(db, 'usuarios', currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          console.log(`[📄 Datos usuario encontrados:`, userData);
+          
+          const nombre = userData.nombre || '';
+          const apellido = userData.apellido || '';
+          const nombreCompleto = `${nombre} ${apellido}`.trim().toUpperCase();
+          
+          setUsuarioActual(nombreCompleto);
+          console.log(`[✅ Usuario actual]: ${nombreCompleto}`);
+          return;
+        } else {
+          console.log(`[⚠️ Documento del usuario no existe en Firestore]`);
+        }
+      } else {
+        console.log(`[⚠️ No hay usuario autenticado]`);
+      }
+      
+      // Fallback: intentar obtener del email si no hay en Firestore
+      const email = await AsyncStorage.getItem('@eli_gomez_current_user');
+      if (email) {
+        const nombre = email.split('@')[0].toUpperCase();
+        setUsuarioActual(nombre);
+        console.log(`[✅ Usuario actual (fallback email)]: ${nombre}`);
+        return;
+      }
+      
+      // Fallback final
+      setUsuarioActual('Usuario');
+      console.log(`[⚠️ Usuario actual (fallback)]: Usuario`);
+    } catch (error) {
+      console.error('❌ Error cargando nombre usuario:', error);
+      setUsuarioActual('Usuario');
     }
-    setPedidosNoRetiro(nuevosNoRetiro);
-    await guardarNoRetiro(nuevosNoRetiro);
   };
 
-  const marcarEncomendista = async (encomendista: string, pedidos: PedidoCompleto[]) => {
-    const nuevosEncontrados = new Set(pedidosEncontrados);
-    const todosMarcados = pedidos.every(p => nuevosEncontrados.has(p.id));
+  const toggleExpand = (nombre: string) => {
+    if (expandedIds.includes(nombre)) {
+      setExpandedIds(expandedIds.filter(id => id !== nombre));
+    } else {
+      setExpandedIds([...expandedIds, nombre]);
+    }
+  };
+
+  const obtenerColorEstado = (estado: string) => {
+    const colores: { [key: string]: { bg: string; border: string; badge: string } } = {
+      'enviado': { bg: '#F3E5FF', border: '#9C27B0', badge: '#9C27B0' },
+      'retirado': { bg: '#E8F5E9', border: '#4CAF50', badge: '#4CAF50' },
+      'no-retirado': { bg: '#FFF3E0', border: '#FF9800', badge: '#FF9800' },
+    };
+    return colores[estado] || { bg: '#F5F5F5', border: '#9E9E9E', badge: '#9E9E9E' };
+  };
+
+  const obtenerEmojiEstado = (estado: string) => {
+    const emojis: { [key: string]: string } = {
+      'enviado': '✈️',
+      'retirado': '🎯',
+      'no-retirado': '❌',
+    };
+    return emojis[estado] || '📦';
+  };
+
+  const formatearFecha = (fecha: string | Date | undefined): string => {
+    if (!fecha) return 'Sin fecha';
     
-    pedidos.forEach(p => {
-      if (todosMarcados) {
-        nuevosEncontrados.delete(p.id);
-      } else {
-        nuevosEncontrados.add(p.id);
+    // Si es un STRING tipo YYYY-MM-DD, no convertir a Date (evita problemas de zona horaria)
+    if (typeof fecha === 'string') {
+      const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+        return `${diasSemana[dateObj.getDay()]} ${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+      }
+    }
+    
+    // Si es Date o ISO string, convertir normalmente
+    const date = new Date(fecha);
+    const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    return `${diasSemana[date.getDay()]} ${date.getDate()}/${date.getMonth() + 1}`;
+  };
+
+  const verFotoPaquete = (encomienda: EncomendaAgrupada) => {
+    const fotos: string[] = [];
+    encomienda.pedidos.forEach((pedido: PedidoCompleto) => {
+      if (pedido.foto_paquete && !fotos.includes(pedido.foto_paquete)) {
+        fotos.push(pedido.foto_paquete);
       }
     });
     
-    setPedidosEncontrados(nuevosEncontrados);
-    await guardarEncontrados(nuevosEncontrados);
+    if (fotos.length > 0) {
+      setCurrentImages(fotos);
+      setImageTitle('📦 Paquetes');
+      setImageViewerVisible(true);
+    } else {
+      showAlert('Sin fotos', 'Esta encomienda no tiene fotos de paquetes');
+    }
   };
 
-  const cargarPedidos = async () => {
-    try {
-      setLoading(true);
-      // 🔥 UNA SOLA PETICIÓN en lugar de 3 separadas
-      const todosLosPedidos = await pedidosServiceOptimizado.obtenerPedidosPorEstados(
-        ['enviado', 'no-retirado', 'retirado'],
-        300
-      );
-      
-      // 🔴 VALIDACIÓN CORRECTA: Filtrar por fecha_entrega_programada (NO por created_at)
-      // Solo mostrar pedidos cuya fecha de entrega YA PASÓ (antes de hoy)
-      const hoy = new Date();
-      const hoyFecha = hoy.toISOString().split('T')[0];  // Solo fecha: YYYY-MM-DD
-      
-      const pedidosFiltrados = todosLosPedidos.filter(pedido => {
-        if (!pedido.fecha_entrega_programada) return false;
-        const fechaEntrega = new Date(pedido.fecha_entrega_programada).toISOString().split('T')[0];  // Solo fecha
-        // Mostrar solo si la fecha de entrega PASÓ (antes de hoy)
-        return fechaEntrega < hoyFecha;
-      });
-      
-      setPedidos(pedidosFiltrados);
-
-      // Agrupar por encomendista
-      const agrupados: { [key: string]: PedidoCompleto[] } = {};
-      pedidosFiltrados.forEach((pedido: PedidoCompleto) => {
-        const encomendista = pedido.encomendista_datos?.nombre || 'Sin Encomendista';
-        if (!agrupados[encomendista]) {
-          agrupados[encomendista] = [];
+  const verFotosProductos = (encomienda: EncomendaAgrupada) => {
+    const fotos: string[] = [];
+    encomienda.pedidos.forEach((pedido: PedidoCompleto) => {
+      pedido.productos_datos?.forEach((producto: any) => {
+        const foto = producto.url_imagen || producto.imagen_url;
+        if (foto) {
+          const fotoUrl = foto.startsWith('http') ? foto : `https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2/api/obtenerProducto${foto}`;
+          if (!fotos.includes(fotoUrl)) {
+            fotos.push(fotoUrl);
+          }
         }
-        agrupados[encomendista].push(pedido);
       });
-
-      const resultado = Object.entries(agrupados)
-        .map(([encomendista, pedidosList]) => ({
-          encomendista,
-          pedidos: pedidosList.sort((a, b) => {
-            const fechaB = new Date(b.fecha_creacion || '').getTime() || 0;
-            const fechaA = new Date(a.fecha_creacion || '').getTime() || 0;
-            return fechaB - fechaA;
-          }),
-        }))
-        .sort((a, b) => a.encomendista.localeCompare(b.encomendista));
-
-      setAgrupadosPorEncomendista(resultado);
-      setAgrupadosFiltrados(resultado);
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'No se pudieron cargar los pedidos');
-    } finally {
-      setLoading(false);
+    });
+    
+    if (fotos.length > 0) {
+      setCurrentImages(fotos);
+      setImageTitle('📸 Productos');
+      setImageViewerVisible(true);
+    } else {
+      showAlert('Sin fotos', 'Esta encomienda no tiene fotos de productos');
     }
   };
 
-  const filtrarPedidos = (texto: string) => {
-    setBusqueda(texto);
-    
-    let gruposProcesados = agrupadosPorEncomendista;
-    
-    if (texto.trim()) {
-      const textoLower = texto.toLowerCase();
-      gruposProcesados = agrupadosPorEncomendista
-        .map((grupo) => ({
-          encomendista: grupo.encomendista,
-          pedidos: grupo.pedidos.filter(
-            (p) =>
-              p.codigo_pedido?.toLowerCase().includes(textoLower) ||
-              p.cliente_datos?.nombre?.toLowerCase().includes(textoLower) ||
-              p.encomendista_datos?.nombre?.toLowerCase().includes(textoLower) ||
-              p.destino_datos?.nombre?.toLowerCase().includes(textoLower)
-          ),
-        }))
-        .filter((grupo) => grupo.pedidos.length > 0);
+  const marcarRemunerado = async (pedido: PedidoCompleto) => {
+    const nuevoMapa = new Map(pedidosFinalizados);
+    if (nuevoMapa.get(pedido.id) === 'remunerado') {
+      nuevoMapa.delete(pedido.id);
+      setTotalRemunerado(totalRemunerado - (pedido.total || 0));
+    } else {
+      // Si ya estaba como no-retirado, restar de ese total
+      if (nuevoMapa.get(pedido.id) === 'no-retirado') {
+        setTotalNoRetirado(totalNoRetirado - (pedido.total || 0));
+      }
+      nuevoMapa.set(pedido.id, 'remunerado');
+      setTotalRemunerado(totalRemunerado + (pedido.total || 0));
+
+      // 📊 Grabar en remuneraciones_diarias
+      await pedidosServiceOptimizado.grabarRemuneracionDiaria(
+        pedido.id,
+        'retirado',
+        pedido.total || 0,
+        usuarioActual,
+        pedido.encomendista_nombre || 'Sin Encomienda'
+      );
     }
-
-    // Ordenar: encontrados al final
-    const gruposOrdenados = gruposProcesados.map((grupo) => ({
-      encomendista: grupo.encomendista,
-      pedidos: [
-        ...grupo.pedidos.filter((p) => !pedidosEncontrados.has(p.id)),
-        ...grupo.pedidos.filter((p) => pedidosEncontrados.has(p.id)),
-      ],
-    }));
-
-    setAgrupadosFiltrados(gruposOrdenados);
+    setPedidosFinalizados(nuevoMapa);
   };
 
-  const handleMarcarRemunerado = async () => {
-    if (!pedidoSeleccionado) return;
-
+  const marcarRemuneradoPedido = async (pedido: PedidoCompleto) => {
     try {
-      setGuardando(true);
-      // Cambiar estado de "retirado" a "remunero"
-      const exito = await pedidosServiceOptimizado.cambiarEstadoPedido(
-        pedidoSeleccionado.id,
-        'remunero',
-        undefined,
-        'Marcado como remunerado'
+      console.log(`\n[👆 marcarRemuneradoPedido iniciado para pedido: ${pedido.id}]`);
+      
+      const result = await pedidosServiceOptimizado.toggleRemuneracionDiaria(
+        pedido.id,
+        'retirado',
+        pedido.total || 0,
+        usuarioActual,
+        pedido.encomendista_nombre || 'Sin Encomienda'
       );
 
-      if (exito) {
-        setModalDetalle(false);
-        await cargarPedidos();
-        Alert.alert('Éxito', 'Pedido marcado como remunerado');
+      console.log(`[📊 Resultado del toggle:`, result);
+
+      if (result.resultado) {
+        console.log(`[✅ Toggle ejecutado exitosamente]`);
+        console.log(`[📋 Acción realizada: ${result.accion}]`);
+        console.log(`[⏳ Esperando actualización desde listener de Firestore...]`);
       } else {
-        Alert.alert('Error', 'No se pudo marcar como remunerado');
+        console.log(`[❌ Toggle falló]`);
+        showAlert('Error', 'No se pudo actualizar el estado');
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo marcar como remunerado');
-    } finally {
-      setGuardando(false);
+      console.error('[❌ Error en marcarRemuneradoPedido]:', error);
+      showAlert('Error', 'Ocurrió un error al procesar');
     }
   };
 
-  const handleAbrirDetalle = (pedido: PedidoCompleto) => {
-    setPedidoSeleccionado(pedido);
-    setModalDetalle(true);
-  };
+  const marcarNoRetirado = async (pedido: PedidoCompleto) => {
+    try {
+      console.log(`\n[👆 marcarNoRetirado iniciado para pedido: ${pedido.id}]`);
+      
+      const result = await pedidosServiceOptimizado.toggleRemuneracionDiaria(
+        pedido.id,
+        'no-retirado',
+        pedido.total || 0,
+        usuarioActual,
+        pedido.encomendista_nombre || 'Sin Encomienda'
+      );
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'enviado':
-        return '#2196F3'; // Azul - Enviado
-      case 'retirado':
-        return '#00BCD4'; // Cyan - Retirado
-      case 'no-retirado':
-        return '#FF6F00'; // Naranja intenso - No Retirado
-      case 'remunero':
-        return '#4CAF50'; // Verde - Remunerado
-      default:
-        return '#999';
+      console.log(`[📊 Resultado del toggle:`, result);
+
+      if (result.resultado) {
+        console.log(`[✅ Toggle ejecutado exitosamente]`);
+        console.log(`[📋 Acción realizada: ${result.accion}]`);
+        
+        // No necesitamos actualizar el estado local porque
+        // el listener de onSnapshot() lo hará automáticamente
+        // cuando Firestore cambios se detecten
+        console.log(`[⏳ Esperando actualización desde listener de Firestore...]`);
+      } else {
+        console.log(`[❌ Toggle falló]`);
+        showAlert('Error', 'No se pudo actualizar el estado');
+      }
+    } catch (error) {
+      console.error('[❌ Error en marcarNoRetirado]:', error);
+      showAlert('Error', 'Ocurrió un error al procesar');
     }
   };
 
-  const getEstadoLabel = (estado: string) => {
-    const labels: { [key: string]: string } = {
-      enviado: '📮 Enviado',
-      retirado: '✓ Retirado',
-      'no-retirado': '✗ No Retirado',
-      remunero: '💰 Remunerado',
+  const marcarComoRemunerado = (encomienda: EncomendaAgrupada) => {
+    // Detectar si ya están marcados
+    const todosYaMarcados = encomienda.pedidos.every(p => pedidosFinalizados.has(p.id));
+    const textoAccion = todosYaMarcados ? 'Desmarcar' : 'Marcar';
+    const textoConfirmacion = todosYaMarcados 
+      ? `Desmarcar ${encomienda.conteo} pedido(s) de ${encomienda.encomendista_nombre}?`
+      : `Marcar ${encomienda.conteo} pedido(s) de ${encomienda.encomendista_nombre} como remunerados? Total: $${encomienda.total.toLocaleString()}`;
+
+    showAlert(
+      `${textoAccion} como Remunerado`,
+      textoConfirmacion,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: `Sí, ${textoAccion.toLowerCase()}`,
+          onPress: async () => {
+            try {
+              console.log(`\n[👆 marcarRemunerado iniciado: ${textoAccion}]`);
+              let contadosExitosos = 0;
+              
+              for (const pedido of encomienda.pedidos) {
+                console.log(`[📌 Procesando pedido: ${pedido.id}]`);
+                const result = await pedidosServiceOptimizado.toggleRemuneracionDiaria(
+                  pedido.id,
+                  'retirado',
+                  pedido.monto,
+                  usuarioActual,
+                  encomienda.encomendista_nombre
+                );
+                
+                if (result.resultado) {
+                  contadosExitosos++;
+                  console.log(`[✅ Toggle completado: ${result.accion}]`);
+                } else {
+                  console.log(`[❌ Toggle falló para pedido ${pedido.id}]`);
+                }
+              }
+              
+              console.log(`[📊 Resumen: ${contadosExitosos}/${encomienda.conteo} exitosos]`);
+              
+              if (contadosExitosos === encomienda.conteo) {
+                const mensajeAccion = todosYaMarcados ? 'desmarcados' : 'marcados como remunerados';
+                showAlert('Éxito', `${encomienda.conteo} pedido(s) ${mensajeAccion}`);
+              } else {
+                showAlert('Parcial', `Solo ${contadosExitosos} de ${encomienda.conteo} se actualizaron`);
+              }
+              
+              console.log(`[⏳ Esperando actualización desde listener de Firestore...]`);
+            } catch (error) {
+              console.error('[❌ Error en marcarRemunerado]:', error);
+              showAlert('Error', 'No se pudieron actualizar los pedidos');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Componentes de botones con scale animations
+  const BotonRemunerado = ({ estaFinalizado, estadoFinal, onPress }: any) => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+    const textColor = '#fff';
+
+    const handlePressIn = () => {
+      Animated.spring(scaleValue, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
     };
-    return labels[estado] || estado;
+
+    const handlePressOut = () => {
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <TouchableOpacity 
+        style={{ flex: 1 }} 
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={{
+          transform: [{ scale: scaleValue }],
+          backgroundColor: estaFinalizado && estadoFinal === 'remunerado' ? '#1565C0' : '#2196F3',
+          borderRadius: scale(6),
+          paddingVertical: scale(10),
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <Text 
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: textColor, fontWeight: 'bold', fontSize: scale(12) }}>
+            {estaFinalizado && estadoFinal === 'remunerado' ? '↩' : '✅ Remunerado'}
+          </Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
+  const BotonNoRetirado = ({ estaFinalizado, estadoFinal, onPress }: any) => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+    const textColor = '#fff';
+
+    const handlePressIn = () => {
+      Animated.spring(scaleValue, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <TouchableOpacity 
+        style={{ flex: 1 }} 
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={{
+          transform: [{ scale: scaleValue }],
+          backgroundColor: estaFinalizado && estadoFinal === 'no-retirado' ? '#E65100' : '#FF9800',
+          borderRadius: scale(6),
+          paddingVertical: scale(10),
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <Text 
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: textColor, fontWeight: 'bold', fontSize: scale(12) }}>
+            {estaFinalizado && estadoFinal === 'no-retirado' ? '↩' : '❌ No retirado'}
+          </Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
   };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -428,12 +590,11 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header animado colapsable */}
       <Animated.View 
         style={[
           styles.header, 
           { 
-            backgroundColor: theme.colors.primary,
+            backgroundColor: '#D946EF',
             height: headerHeight,
             overflow: 'hidden',
           }
@@ -441,73 +602,16 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
       >
         <View style={styles.headerTop}>
           <BackButton onPress={() => onNavigate?.('home')} />
-          <TouchableOpacity
-            onPress={async () => {
-              const nuevaVista = !vistaCompacta;
-              setVistaCompacta(nuevaVista);
-              try {
-                await AsyncStorage.setItem('vistaCompactaDefecto', nuevaVista.toString());
-              } catch (error) {
-                console.error('Error guardando vista compacta:', error);
-              }
-            }}
-            style={{
-              backgroundColor: vistaCompacta ? '#FCD34D' : 'rgba(255,255,255,0.3)',
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              borderRadius: 8,
-              marginRight: 12,
-            }}
-          >
-            <Text style={{ color: vistaCompacta ? '#000' : '#fff', fontSize: 12, fontWeight: '700' }}>
-              {vistaCompacta ? '⊞ Normal' : '⊟ Compacta'}
-            </Text>
-          </TouchableOpacity>
         </View>
         
-        <Animated.View 
-          style={[
-            styles.headerContent,
-            { 
-              opacity: headerOpacity,
-            }
-          ]}
-        >
+        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
           <View style={styles.iconCircle}>
-            <MoneyIcon size={48} color="#fff" />
+            <Text style={{ fontSize: 48 }}>💰</Text>
           </View>
-          <Text style={styles.headerTitle}>
-            Por Remunerar
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'} • {agrupadosPorEncomendista.length} {agrupadosPorEncomendista.length === 1 ? 'encomendista' : 'encomendistas'}
-          </Text>
+          <Text style={styles.headerTitle}>Por Remunerar</Text>
+          <Text style={styles.headerSubtitle}>Paquetes enviados y retirados</Text>
         </Animated.View>
       </Animated.View>
-
-      {/* Buscador */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, {
-            backgroundColor: theme.colors.background,
-            color: theme.colors.text,
-            borderColor: theme.colors.border,
-          }]}
-          placeholder="🔍 Buscar por código, cliente, encomendista..."
-          placeholderTextColor={theme.colors.textSecondary}
-          value={busqueda}
-          onChangeText={filtrarPedidos}
-        />
-      </View>
-
-      {/* Total Cobrado */}
-      {pedidos.some(p => pedidosEncontrados.has(p.id)) && (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.colors.surface }}>
-          <Text style={{ color: '#4CAF50', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-            💰 Total Cobrado: ${pedidos.reduce((sum, p) => pedidosEncontrados.has(p.id) ? sum + (p.total || 0) : sum, 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          </Text>
-        </View>
-      )}
 
       <Animated.ScrollView 
         style={{ flex: 1 }}
@@ -515,532 +619,343 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-
-      {agrupadosFiltrados.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <MoneyIcon size={64} color={theme.colors.textSecondary} />
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-            {busqueda ? 'No se encontraron resultados' : '¡Todos los pedidos han sido remunerados!'}
-          </Text>
+        <View style={[styles.statsBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: '#66BB6A' }]}>
+              ${totalRemunerado.toLocaleString()}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Retirado</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: '#F44336' }]}>
+              ${totalNoRetirado.toLocaleString()}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>No Retirado</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: '#F59E0B' }]}>
+              ${(totalRemuneracion - totalRemunerado - totalNoRetirado).toLocaleString()}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Pendiente</Text>
+          </View>
         </View>
-      ) : vistaCompacta ? (
-        // VISTA COMPACTA
-        agrupadosFiltrados.map((grupo) => {
-          const totalGrupo = grupo.pedidos.reduce((sum, p) => sum + (p.total || 0), 0);
-          const totalRemunerado = grupo.pedidos.reduce((sum, p) => pedidosEncontrados.has(p.id) ? sum + (p.total || 0) : sum, 0);
-          return (
-            <View key={grupo.encomendista}>
-              {/* Header de encomendista con total */}
-              <View style={{ 
-                paddingHorizontal: 16, 
-                paddingVertical: 12, 
-                backgroundColor: theme.colors.primary,
-                borderBottomWidth: 2,
-                borderBottomColor: theme.colors.border,
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800', flex: 1 }}>
-                    🚚 {grupo.encomendista}
-                  </Text>
+
+        {encomiendas.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 64 }}>💸</Text>
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              No hay paquetes por remunerar en este momento
+            </Text>
+          </View>
+        ) : (
+          <View style={{ padding: 16 }}>
+            {encomiendas.sort((a, b) => {
+              // Primero: incompletos alfabéticamente, luego: completos alfabéticamente
+              const aCompleta = a.pedidos.every(p => pedidosFinalizados.has(p.id));
+              const bCompleta = b.pedidos.every(p => pedidosFinalizados.has(p.id));
+              
+              // Si uno está completo y el otro no, el incompleto va primero
+              if (aCompleta !== bCompleta) {
+                return aCompleta ? 1 : -1; // Incompleto primero (1 = después, -1 = antes)
+              }
+              
+              // Si ambos están en el mismo estado (completo o incompleto), ordenar alfabéticamente
+              return a.encomendista_nombre.localeCompare(b.encomendista_nombre);
+            }).map((encomienda) => {
+              const encomiendaCompleta = encomienda.pedidos.every(p => pedidosFinalizados.has(p.id));
+              const isExpanded = expandedIds.includes(encomienda.encomendista_nombre);
+              
+              return (
+                <View
+                  key={encomienda.encomendista_nombre}
+                  style={[styles.encomiendaCard, { 
+                    backgroundColor: encomiendaCompleta ? '#F5F5F5' : theme.colors.surface, 
+                    borderColor: encomiendaCompleta ? '#BDBDBD' : theme.colors.border,
+                  }]}
+                >
                   <TouchableOpacity
-                    onPress={() => marcarEncomendista(grupo.encomendista, grupo.pedidos)}
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                    }}
+                    style={styles.encomiendaHeader}
+                    onPress={() => toggleExpand(encomienda.encomendista_nombre)}
+                    activeOpacity={0.7}
                   >
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
-                      {grupo.pedidos.every(p => pedidosEncontrados.has(p.id)) ? '✅ Marcar' : '☐ Marcar'}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.encomiendaTitle, { color: encomiendaCompleta ? '#9E9E9E' : theme.colors.text }]}>
+                          🚚 {encomienda.encomendista_nombre}
+                        </Text>
+                        {encomiendaCompleta && (
+                          <Text style={{ fontSize: 32, color: '#4CAF50', fontWeight: '900', marginLeft: 8 }}>✓</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.encomiendaSubtitle, { color: encomiendaCompleta ? 'rgba(0, 0, 0, 0.4)' : '#000', fontSize: 18, fontWeight: '700', backgroundColor: encomiendaCompleta ? 'rgba(252, 211, 77, 0.4)' : '#FCD34D', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 8 }]}>
+                        {encomienda.conteo} {encomienda.conteo === 1 ? 'paquete' : 'paquetes'} · ${encomienda.total.toFixed(2)}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 24, color: theme.colors.textSecondary }}>
+                      {isExpanded ? '▼' : '▶'}
                     </Text>
                   </TouchableOpacity>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
-                    {grupo.pedidos.length} {grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
-                  </Text>
-                  {grupo.pedidos.some(p => pedidosNoRetiro.has(p.id)) ? (
-                    <Text style={{ color: '#DC2626', fontSize: 16, fontWeight: '800' }}>
-                      No Retirado
-                    </Text>
-                  ) : (
-                    <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: '800' }}>
-                      ${totalGrupo.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    </Text>
+
+                  {isExpanded && (
+                    <View style={[styles.pedidosList, { marginTop: 4 }]}>
+                      {encomienda.pedidos.sort((a, b) => {
+                        const aFinalizado = pedidosFinalizados.has(a.id);
+                        const bFinalizado = pedidosFinalizados.has(b.id);
+                        if (aFinalizado === bFinalizado) return 0;
+                        return aFinalizado ? 1 : -1; // Los pendientes primero, finalizados al final
+                      }).map((pedido, index, sortedPedidos) => {
+                        const estaFinalizado = pedidosFinalizados.has(pedido.id);
+                        const estadoFinal = pedidosFinalizados.get(pedido.id);
+                        
+                        // Color del badge según estado (NO colorear todo el fondo)
+                        let badgeColor = '#FFC107';
+                        let badgeText = 'Pendiente';
+                        let badgeEmoji = '⏳';
+                        
+                        // Si está finalizado, mostrar estado final
+                        if (estaFinalizado) {
+                          if (estadoFinal === 'remunerado') {
+                            badgeColor = '#2E7D32'; // verde oscuro
+                            badgeText = 'Retirado';
+                            badgeEmoji = '✅';
+                          } else if (estadoFinal === 'no-retirado') {
+                            badgeColor = '#D32F2F'; // rojo
+                            badgeText = 'No Retirado';
+                            badgeEmoji = '❌';
+                          }
+                        } else if (pedido.estado === 'no-retirado') {
+                          badgeColor = '#D32F2F';
+                          badgeText = 'No Retirado';
+                          badgeEmoji = '❌';
+                        } else if (pedido.estado === 'retirado') {
+                          badgeColor = '#2E7D32';
+                          badgeText = 'Retirado';
+                          badgeEmoji = '✅';
+                        } else if (pedido.estado === 'enviado') {
+                          badgeColor = '#9C27B0';
+                          badgeText = 'Enviado';
+                          badgeEmoji = '✈️';
+                        } else if (pedido.estado === 'empacada') {
+                          badgeColor = '#FF6F00';
+                          badgeText = 'Empacada';
+                          badgeEmoji = '📦';
+                        }
+                        
+                        return (
+                          <View
+                            key={pedido.id}
+                            style={[
+                              styles.pedidoItem,
+                              {
+                                borderColor: theme.colors.border,
+                                borderWidth: scale(1),
+                                backgroundColor: estaFinalizado 
+                                  ? (estadoFinal === 'remunerado' ? 'rgba(46, 125, 50, 0.08)' : 'rgba(211, 47, 47, 0.08)')
+                                  : theme.colors.surface,
+                              },
+                              index < sortedPedidos.length - 1 && { marginBottom: scale(6) }
+                            ]}
+                          >
+                            {/* Badge de estado pequeño (opaco cuando está finalizado) */}
+                            <View style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              backgroundColor: estaFinalizado ? `${badgeColor}40` : badgeColor,
+                              paddingHorizontal: scale(10),
+                              paddingVertical: scale(6),
+                              borderRadius: scale(4),
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: scale(4),
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: estaFinalizado ? 0.1 : 0.3,
+                              shadowRadius: 4,
+                              elevation: estaFinalizado ? 2 : 5,
+                            }}>
+                              <Text style={{ fontSize: scale(13), fontWeight: '700' }}>{badgeEmoji}</Text>
+                              <Text style={{ color: estaFinalizado ? '#999' : '#fff', fontSize: scale(11), fontWeight: '700' }}>{badgeText}</Text>
+                            </View>
+
+                            {/* Checkmark enorme cuando está finalizado */}
+                            {estaFinalizado && (
+                              <View style={{
+                                position: 'absolute',
+                                top: 5,
+                                right: 10,
+                                zIndex: 10,
+                              }}>
+                                <Text style={{ fontSize: 40, fontWeight: 'bold', color: 'rgba(255,255,255,0.8)' }}>
+                                  ✓
+                                </Text>
+                              </View>
+                            )}
+
+                            {/* Contenedor VERTICAL: Info arriba, botones abajo */}
+                            <View style={{ flexDirection: 'column', gap: scale(8), opacity: estaFinalizado ? 0.5 : 1 }}>
+                              {/* SECCIÓN SUPERIOR: Código y Nombre con SOLO BORDE */}
+                              <View style={{
+                                borderColor: estaFinalizado ? `${badgeColor}60` : badgeColor,
+                                borderWidth: scale(2),
+                                borderRadius: scale(6),
+                                padding: scale(12),
+                                justifyContent: 'center',
+                              }}>
+                                {/* Línea 1: Código con emoji */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6), marginBottom: scale(6) }}>
+                                  <Text style={{ fontSize: scale(14) }}>📦</Text>
+                                  <Text 
+                                    numberOfLines={1} 
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      color: estaFinalizado ? '#1a1a1a' : badgeColor,
+                                      fontWeight: '700',
+                                      fontSize: scale(14),
+                                      flex: 1,
+                                      textDecorationLine: estaFinalizado ? 'line-through' : 'none'
+                                    }}>
+                                    {pedido.codigo_pedido}
+                                  </Text>
+                                </View>
+                                {/* Línea 2: Nombre + Precio */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: scale(8) }}>
+                                  <Text 
+                                    numberOfLines={1} 
+                                    ellipsizeMode="tail"
+                                    style={{
+                                      color: estaFinalizado ? '#1a1a1a' : theme.colors.text,
+                                      fontWeight: '600',
+                                      fontSize: scale(13),
+                                      flex: 1,
+                                      textDecorationLine: estaFinalizado ? 'line-through' : 'none'
+                                    }}>
+                                    {pedido.cliente_nombre || 'Cliente'}
+                                  </Text>
+                                  <Text style={{ color: estaFinalizado ? '#1a1a1a' : badgeColor, fontWeight: 'bold', fontSize: scale(13), minWidth: scale(50), textAlign: 'right' }}>
+                                    ${Number(pedido.total || 0).toFixed(2)}
+                                  </Text>
+                                </View>
+                                {/* Mostrar quién lo marcó */}
+                                {estaFinalizado && quienMarco.get(pedido.id) && (
+                                  <Text style={{ color: estaFinalizado ? '#1a1a1a' : badgeColor, fontSize: scale(11), fontWeight: '600', marginTop: scale(6), fontStyle: 'italic' }}>
+                                    💰 {quienMarco.get(pedido.id)}
+                                  </Text>
+                                )}
+                              </View>
+
+                              {/* SECCIÓN INFERIOR: Botones - en vertical */}
+                              <View style={{ gap: scale(6) }}>
+                                {/* Botón Ver Foto - si existe */}
+                                {pedido.foto_paquete && (
+                                  <TouchableOpacity onPress={() => verFotoPaquete(encomienda)}>
+                                    <View style={{
+                                      backgroundColor: '#536DFE',
+                                      borderRadius: scale(6),
+                                      paddingVertical: scale(8),
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                    }}>
+                                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: scale(12) }}>📸 FOTO</Text>
+                                    </View>
+                                  </TouchableOpacity>
+                                )}
+
+                                {/* Botones de estado RETIRADO / NO RETIRADO en un row */}
+                                <View style={{ flexDirection: 'row', gap: scale(6) }}>
+                                  {/* Botón REMUNERADO - Verde claro */}
+                                  {!estaFinalizado || estadoFinal === 'remunerado' ? (
+                                    <BotonRemunerado 
+                                      estaFinalizado={estaFinalizado} 
+                                      estadoFinal={estadoFinal}
+                                      onPress={() => marcarRemuneradoPedido(pedido)}
+                                    />
+                                  ) : null}
+                                  
+                                  {/* Botón NO RETIRADO - Rojo más claro */}
+                                  {!estaFinalizado || estadoFinal === 'no-retirado' ? (
+                                    <BotonNoRetirado 
+                                      estaFinalizado={estaFinalizado} 
+                                      estadoFinal={estadoFinal}
+                                      onPress={() => marcarNoRetirado(pedido)}
+                                    />
+                                  ) : null}
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
-                {totalRemunerado > 0 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
-                      💰 Cobrado:
-                    </Text>
-                    <Text style={{ color: '#4CAF50', fontSize: 16, fontWeight: '800' }}>
-                      ${totalRemunerado.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    </Text>
-                  </View>
-                )}
+              );
+            })}
+          </View>
+        )}
+
+        {/* 📊 SECCIÓN DE REMUNERACIONES EN TIEMPO REAL */}
+        {remuneracionesHoy.length > 0 && (
+          <View style={{ padding: 16, marginTop: 24 }}>
+            <View style={[styles.encomiendaCard, { backgroundColor: '#F0F9FF', borderColor: '#0EA5E9' }]}>
+              <View style={[styles.encomiendaHeader, { backgroundColor: '#0EA5E9' }]}>
+                <Text style={[styles.encomiendaTitle, { color: '#fff' }]}>
+                  📊 Remuneraciones de Hoy
+                </Text>
               </View>
-
-              {/* Lista compacta de pedidos */}
-              <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
-                {grupo.pedidos.map((pedido) => {
-                  const esEncontrado = pedidosEncontrados.has(pedido.id);
-                  const esNoRetiro = pedidosNoRetiro.has(pedido.id);
-                  return (
+              <View style={{ padding: 16, gap: 8 }}>
+                {remuneracionesHoy.map((rem, index) => (
                   <View
-                    key={pedido.id}
-                    style={{
-                      backgroundColor: esNoRetiro ? '#DC2626' : (esEncontrado ? '#D3D3D3' : theme.colors.background),
-                      borderRadius: 10,
-                      marginBottom: 8,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderColor: esNoRetiro ? '#991B1B' : (esEncontrado ? '#999' : theme.colors.border),
-                      borderLeftWidth: 4,
-                      borderLeftColor: esNoRetiro ? '#991B1B' : (esEncontrado ? '#999' : getEstadoColor(pedido.estado)),
-                      opacity: esEncontrado ? 0.7 : 1,
-                    }}
+                    key={index}
+                    style={[
+                      {
+                        backgroundColor: rem.tipo === 'retirado' ? '#E8F5E9' : '#FFF3E0',
+                        borderLeftColor: rem.tipo === 'retirado' ? '#66BB6A' : '#FF9800',
+                        borderLeftWidth: 4,
+                        padding: 12,
+                        borderRadius: 8,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }
+                    ]}
                   >
-                    {/* Fila 1: Badge + Código + Cliente + Total */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      {/* Badge estado */}
-                      <View style={{
-                        backgroundColor: esEncontrado ? '#999' : getEstadoColor(pedido.estado),
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        minWidth: 35,
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: '700', fontSize: 14, marginBottom: 4 }}>
+                        {rem.usuario_nombre}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                        {rem.encomiendista_nombre}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: theme.colors.textSecondary }}>
+                        {new Date(rem.timestamp).toLocaleTimeString('es-VE', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          second: '2-digit'
+                        })}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{
+                        fontWeight: '700',
+                        fontSize: 16,
+                        color: rem.tipo === 'retirado' ? '#66BB6A' : '#FF9800',
+                        marginBottom: 4
                       }}>
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', textAlign: 'center' }}>
-                          {esEncontrado ? '✓' : (pedido.estado === 'enviado' ? '📮' : pedido.estado === 'retirado' ? '✓' : pedido.estado === 'no-retirado' ? '✗' : '💰')}
-                        </Text>
-                      </View>
-
-                      {/* Código + Cliente */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: esEncontrado ? '#666' : theme.colors.text, fontWeight: '800', fontSize: 12, textDecorationLine: esEncontrado ? 'line-through' : 'none' }}>
-                          {pedido.codigo_pedido}
-                        </Text>
-                        <Text style={{ color: esEncontrado ? '#999' : theme.colors.textSecondary, fontSize: 10, marginTop: 2 }}>
-                          {pedido.cliente_datos?.nombre || 'N/A'}
-                        </Text>
-                      </View>
-
-                      {/* Total */}
-                      {!esNoRetiro && (
-                        <Text style={{ color: esEncontrado ? '#999' : theme.colors.success, fontWeight: '800', fontSize: 14 }}>
-                          ${(pedido.total || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                        </Text>
-                      )}
+                        {rem.tipo === 'retirado' ? '✅' : '❌'}
+                      </Text>
+                      <Text style={{ fontWeight: '700', fontSize: 14 }}>
+                        ${Number(rem.monto || 0).toFixed(2)}
+                      </Text>
                     </View>
-
-                    {/* Fila 2: Botones */}
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      {/* Botón No Retiro - Siempre visible pero con estilos diferentes */}
-                      {!esEncontrado && (
-                        <TouchableOpacity
-                          onPress={() => marcarComoNoRetiro(pedido.id)}
-                          style={{
-                            flex: 1,
-                            backgroundColor: esNoRetiro ? '#991B1B' : 'rgba(220, 38, 38, 0.2)',
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 6,
-                            borderWidth: 2,
-                            borderColor: '#DC2626',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                          }}
-                        >
-                          <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>
-                            ✕
-                          </Text>
-                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>
-                            No Retiro
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Botón Marcar Encontrado - Solo si no está marcado como No Retiro */}
-                      {!esNoRetiro && (
-                        <TouchableOpacity
-                          onPress={() => marcarComoEncontrado(pedido.id)}
-                          style={{
-                            flex: 1,
-                            backgroundColor: esEncontrado ? '#4CAF50' : theme.colors.primary,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 8,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                            borderWidth: 2,
-                            borderColor: esEncontrado ? '#2E7D32' : theme.colors.primary,
-                          }}
-                        >
-                          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-                            {esEncontrado ? '✅' : '$'}
-                          </Text>
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
-                            {esEncontrado ? 'Remunerado' : 'Remunerar'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* Fila 2: Imagen del paquete */}
-                    {!esEncontrado && pedido.foto_paquete && pedido.foto_paquete.trim() && (
-                      <View style={{ marginTop: 8 }}>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setCurrentImages([pedido.foto_paquete!]);
-                            setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
-                            setImageViewerVisible(true);
-                          }}
-                          style={{
-                            borderRadius: 8,
-                            overflow: 'hidden',
-                            borderWidth: 2,
-                            borderColor: theme.colors.primary,
-                            width: 70,
-                          }}
-                        >
-                          <Image
-                            source={{ uri: pedido.foto_paquete }}
-                            style={{
-                              width: 70,
-                              height: 70,
-                              backgroundColor: theme.colors.background,
-                            }}
-                            resizeMode="cover"
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    )}
                   </View>
-                  );
-                })}
+                ))}
               </View>
             </View>
-          );
-        })
-      ) : (
-        // VISTA NORMAL
-        agrupadosFiltrados.map((grupo) => (
-          <View key={grupo.encomendista} style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }] }>
-            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>🚚 {grupo.encomendista}</Text>
-            <Text style={{ fontSize: scale(12), color: theme.colors.textSecondary, marginBottom: 12 }}>
-              {grupo.pedidos.length} {grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
-            </Text>
-
-            {grupo.pedidos.map((pedido) => (
-              <TouchableOpacity
-                key={pedido.id}
-                style={[styles.card, { backgroundColor: theme.colors.background, borderLeftColor: getEstadoColor(pedido.estado) }]}
-                onPress={() => handleAbrirDetalle(pedido)}
-                activeOpacity={0.7}
-              >
-                {/* Badge de estado arriba */}
-                <View
-                  style={{
-                    backgroundColor: getEstadoColor(pedido.estado),
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
-                    alignSelf: 'flex-start',
-                    marginBottom: 12,
-                    shadowColor: getEstadoColor(pedido.estado),
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 4,
-                    elevation: 3,
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontSize: scale(11), fontWeight: '700', letterSpacing: 0.5 }}>
-                    {getEstadoLabel(pedido.estado)}
-                  </Text>
-                </View>
-
-                {/* Información del pedido */}
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={[styles.cardTitle, { color: theme.colors.text, marginBottom: 8 }]}>📦 Código: {pedido.codigo_pedido}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>👤 Cliente: {pedido.cliente_datos?.nombre || 'N/A'}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>🏪 Tienda: {pedido.nombre_tienda || 'N/A'}</Text>
-                  {pedido.nombre_perfil && (
-                    <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>📋 Perfil: {pedido.nombre_perfil}</Text>
-                  )}
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>🚚 Encomendista: {pedido.encomendista_datos?.nombre || 'Sin asignar'}</Text>
-                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={2}>
-                    📍 Destino: {pedido.modo === 'personalizado' && pedido.direccion_personalizada 
-                      ? pedido.direccion_personalizada 
-                      : (pedido.destino_id || pedido.destino_datos?.nombre || 'N/A')}
-                  </Text>
-                  
-                  {/* Fecha de entrega programada */}
-                  {pedido.fecha_entrega_programada && (
-                    <Text style={[styles.cardSubtitle, { color: theme.colors.primary, fontWeight: '700', marginTop: 6, backgroundColor: theme.colors.primary + '20', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 4 }]}>
-                      📅 Fecha de entrega: {formatearFechaCompleta(pedido.fecha_entrega_programada)}
-                    </Text>
-                  )}
-                  
-                  {/* Fecha estimada de envío */}
-                  {pedido.fecha_entrega_programada && (
-                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                      <Text style={[styles.cardSubtitle, { color: theme.colors.primary, fontWeight: '700', marginBottom: 4 }]}>
-                        📤 Fecha estimada de envío:
-                      </Text>
-                      <Text style={[styles.cardSubtitle, { color: theme.colors.primary, fontWeight: '600', fontSize: scale(13) }]}>
-                        {calcularFechaEnvio(pedido.fecha_entrega_programada)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Botones de imágenes */}
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  {pedido.foto_paquete && pedido.foto_paquete.trim() && (
-                    <TouchableOpacity
-                      style={{ 
-                        flex: 1,
-                        backgroundColor: theme.colors.primary, 
-                        borderRadius: 10, 
-                        paddingVertical: 10,
-                        alignItems: 'center',
-                        shadowColor: theme.colors.primary,
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
-                        elevation: 3,
-                      }}
-                      onPress={() => {
-                        setCurrentImages([pedido.foto_paquete!]);
-                        setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
-                        setImageViewerVisible(true);
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: scale(12), fontWeight: '700' }}>📦 Paquete</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {pedido.productos_datos && pedido.productos_datos.length > 0 && pedido.productos_datos[0].url_imagen && (
-                    <TouchableOpacity
-                      style={{ 
-                        flex: 1,
-                        backgroundColor: '#FF6F00', 
-                        borderRadius: 10, 
-                        paddingVertical: 10,
-                        alignItems: 'center',
-                        shadowColor: '#FF6F00',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
-                        elevation: 3,
-                      }}
-                      onPress={() => {
-                        const fotos: string[] = [];
-                        pedido.productos_datos?.forEach(p => {
-                          const foto = p.url_imagen || p.imagen_url;
-                          if (foto) {
-                            const fotoUrl = foto.startsWith('http') ? foto : `https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2/api/obtenerProducto${foto}`;
-                            if (!fotos.includes(fotoUrl)) fotos.push(fotoUrl);
-                          }
-                        });
-                        setCurrentImages(fotos);
-                        setImageTitle(`Productos - ${pedido.codigo_pedido}`);
-                        setImageViewerVisible(true);
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: scale(12), fontWeight: '700' }}>📸 Producto</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Total */}
-                {pedido.total && (
-                  <View style={{
-                    backgroundColor: theme.colors.success + '15',
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    borderLeftWidth: 4,
-                    borderLeftColor: theme.colors.success,
-                  }}>
-                    <Text style={{ fontSize: scale(16), fontWeight: '800', color: theme.colors.success, letterSpacing: -0.5 }}>
-                      💰 ${pedido.total.toLocaleString()}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
           </View>
-        ))
-      )}
+        )}
+      </Animated.ScrollView>
 
-      {/* Modal Detalle y Remunerar */}
-      <Modal visible={modalDetalle} animationType="slide" onRequestClose={() => setModalDetalle(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setModalDetalle(false)}>
-              <Text style={styles.closeButton}>✕ Cerrar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Detalles del Pedido</Text>
-            <View />
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {pedidoSeleccionado && (
-              <>
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Información General</Text>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Código:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.codigo_pedido}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Cliente:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.cliente_datos?.nombre || '-'}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Teléfono:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.telefono_cliente || pedidoSeleccionado.cliente_datos?.telefono || '-'}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Encomendista:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.encomendista_datos?.nombre || '-'}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Tienda:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.nombre_tienda}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Detalles del Envío</Text>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Destino:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.destino_id || pedidoSeleccionado.nombre_tienda}</Text>
-                  </View>
-                  {pedidoSeleccionado.direccion_personalizada && (
-                    <View style={detailStyles.row}>
-                      <Text style={detailStyles.label}>Dirección:</Text>
-                      <Text style={detailStyles.value}>{pedidoSeleccionado.direccion_personalizada}</Text>
-                    </View>
-                  )}
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Horario:</Text>
-                    <Text style={detailStyles.value}>
-                      {convertirHora12(pedidoSeleccionado.hora_inicio)} - {convertirHora12(pedidoSeleccionado.hora_fin)}
-                    </Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Día de Entrega:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.dia_entrega}</Text>
-                  </View>
-                </View>
-
-                {/* IMÁGENES DE PRODUCTOS */}
-                {pedidoSeleccionado.productos_datos && pedidoSeleccionado.productos_datos.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📦 Productos ({pedidoSeleccionado.cantidad_prendas})</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginVertical: 8 }}>
-                      {pedidoSeleccionado.productos_datos.map((producto, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={styles.productoDetailCard}
-                          onPress={() => {
-                            const fotos: string[] = [];
-                            pedidoSeleccionado.productos_datos?.forEach(p => {
-                              const foto = p.url_imagen || p.imagen_url;
-                              if (foto) {
-                                const fotoUrl = foto.startsWith('http') ? foto : `https://us-central1-eli-gomez-web.cloudfunctions.net/apiV2/api/obtenerProducto${foto}`;
-                                if (!fotos.includes(fotoUrl)) fotos.push(fotoUrl);
-                              }
-                            });
-                            setCurrentImages(fotos);
-                            setImageTitle(`Productos - ${pedidoSeleccionado.codigo_pedido}`);
-                            setImageViewerVisible(true);
-                          }}
-                        >
-                          {producto.url_imagen && (
-                            <Image
-                              source={{ uri: producto.url_imagen }}
-                              style={styles.productoDetailImage}
-                            />
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                    {pedidoSeleccionado.productos_datos.length > 0 && (
-                      <View style={{ marginTop: 8 }}>
-                        {pedidoSeleccionado.productos_datos.map((producto, idx) => (
-                          <View key={idx} style={{ marginBottom: 8 }}>
-                            <Text style={styles.productoDetailCodigo}>Código: {producto.codigo}</Text>
-                            <Text style={styles.productoDetailAlbum}>Álbum: {producto.album}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Valores</Text>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Prendas:</Text>
-                    <Text style={detailStyles.value}>{pedidoSeleccionado.cantidad_prendas}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Costo Prendas:</Text>
-                    <Text style={detailStyles.value}>${pedidoSeleccionado.costo_prendas.toLocaleString()}</Text>
-                  </View>
-                  <View style={detailStyles.row}>
-                    <Text style={detailStyles.label}>Monto Envío:</Text>
-                    <Text style={detailStyles.value}>${(pedidoSeleccionado.monto_envio || 0).toLocaleString()}</Text>
-                  </View>
-                  <View style={[detailStyles.row, { backgroundColor: '#f0f0f0', paddingVertical: 12 }]}>
-                    <Text style={[detailStyles.label, { fontWeight: 'bold' }]}>Total:</Text>
-                    <Text style={[detailStyles.value, { fontSize: scale(16), fontWeight: 'bold', color: '#2E7D32' }]}>
-                      ${pedidoSeleccionado.total.toLocaleString()}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Estado Actual</Text>
-                  <View
-                    style={{
-                      backgroundColor: getEstadoColor(pedidoSeleccionado.estado),
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text style={{ color: '#fff', fontSize: scale(16), fontWeight: '600' }}>
-                      {getEstadoLabel(pedidoSeleccionado.estado)}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.primaryButton, guardando && styles.disabledButton]}
-                  onPress={handleMarcarRemunerado}
-                  disabled={guardando}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {guardando ? '⏳ Guardando...' : '💰 Marcar como Remunerado'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Visor de Imágenes con Zoom */}
       <ImageViewer
         visible={imageViewerVisible}
         images={currentImages}
@@ -1048,275 +963,207 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         onClose={() => setImageViewerVisible(false)}
       />
 
-      {/* Botón Regresar */}
-      <View style={{ padding: 16, paddingBottom: 20 }}>
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: theme.colors.textSecondary }]}
-          onPress={() => onNavigate?.('home')}
-        >
-          <Text style={[styles.primaryButtonText, { color: theme.colors.background }]}>REGRESAR</Text>
-        </TouchableOpacity>
-      </View>
-      </Animated.ScrollView>
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        buttons={alertButtons}
+        onDismiss={() => setAlertVisible(false)}
+      />
     </View>
   );
 };
 
-const createDetailStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  label: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
-  },
-  value: {
-    fontSize: scale(13),
-    color: theme.colors.text,
-    fontWeight: '500',
-  },
-});
-
 const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
   header: {
-    backgroundColor: theme.colors.primary,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  headerTop: {
-    flexDirection: 'row',
+    paddingTop: scale(6),
+    paddingBottom: scale(8),
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 48,
-    marginBottom: 16,
+    paddingHorizontal: scale(8),
+  },
+  headerTop: {
+    width: '100%',
+    justifyContent: 'flex-start',
   },
   headerContent: {
     alignItems: 'center',
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    paddingVertical: scale(2),
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    height: scale(45),
+    borderRadius: scale(22),
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: scale(2),
   },
   headerTitle: {
-    fontSize: 28,
     fontWeight: '800',
     color: '#fff',
+    fontSize: scale(18),
     letterSpacing: -1,
-    marginBottom: 4,
+    marginBottom: scale(1),
   },
   headerSubtitle: {
-    fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
+    fontSize: scale(10),
     letterSpacing: -0.3,
   },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  searchInput: {
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: theme.colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    fontSize: scale(14),
-  },
-  title: {
-    fontSize: scale(18),
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginLeft: 12,
-  },
-  section: {
-    backgroundColor: theme.colors.surface,
-    marginHorizontal: 16,
-    marginVertical: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
+  statsBox: {
+    marginHorizontal: scale(8),
+    marginTop: scale(6),
+    borderRadius: scale(8),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(8),
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     borderWidth: 1,
-    borderColor: theme.colors.border + '40',
   },
-  sectionTitle: {
-    fontSize: scale(16),
-    fontWeight: '800',
-    color: theme.colors.text,
-    marginBottom: 12,
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: scale(14),
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
-  card: {
-    backgroundColor: theme.colors.background,
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 14,
-    borderLeftWidth: 6,
-    borderLeftColor: theme.colors.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.border + '30',
+  statLabel: {
+    fontSize: scale(9),
+    fontWeight: '500',
+    marginTop: scale(1),
   },
-  cardTitle: {
-    fontSize: scale(15),
-    fontWeight: '800',
-    color: theme.colors.text,
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    fontSize: scale(12),
-    color: theme.colors.textSecondary,
-    marginTop: 6,
-    lineHeight: scale(18),
-  },
-  miniImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignSelf: 'center',
-  },
-  miniImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    paddingVertical: scale(20),
   },
-  emptyStateText: {
-    fontSize: scale(16),
-    color: theme.colors.textSecondary,
-    marginTop: 16,
+  emptyText: {
+    fontSize: scale(12),
+    fontWeight: '600',
+    marginTop: scale(6),
+    textAlign: 'center',
+    paddingHorizontal: scale(16),
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  encomiendaCard: {
+    borderRadius: scale(8),
+    marginBottom: scale(6),
+    marginHorizontal: scale(8),
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  modalHeader: {
+  encomiendaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(7),
   },
-  closeButton: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
-  modalTitle: {
-    fontSize: scale(16),
-    fontWeight: 'bold',
-    color: theme.colors.text,
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: theme.colors.background,
-  },
-  productoDetailCard: {
-    width: 80,
-    height: 80,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginRight: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  productoDetailImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  productoInfo: {
-    padding: 10,
-  },
-  productoDetailCodigo: {
+  encomiendaTitle: {
     fontSize: scale(13),
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: 4,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
-  productoDetailAlbum: {
+  encomiendaSubtitle: {
+    fontSize: scale(10),
+    fontWeight: '500',
+    marginTop: scale(1),
+  },
+  pedidosList: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(6),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  pedidoItem: {
+    borderRadius: scale(8),
+    padding: scale(12),
+    marginBottom: scale(8),
+  },
+  pedidoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: scale(4),
+  },
+  pedidoCode: {
     fontSize: scale(12),
-    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
-  imageModal: {
+  pedidoCliente: {
+    fontSize: scale(10),
+    fontWeight: '500',
+    marginTop: scale(2),
+  },
+  estadoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(7),
+    paddingVertical: scale(5),
+    borderRadius: scale(5),
+    gap: scale(3),
+  },
+  estadoEmoji: {
+    fontSize: scale(12),
+  },
+  estadoLabel: {
+    color: '#fff',
+    fontSize: scale(9),
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  pedidoDetails: {
+    marginBottom: scale(8),
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: scale(5),
+  },
+  detailLabel: {
+    fontSize: scale(10),
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: scale(11),
+    fontWeight: '600',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: scale(6),
+  },
+  actionButton: {
     flex: 1,
-    backgroundColor: '#000',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: scale(7),
+    borderRadius: scale(5),
+    gap: scale(3),
+  },
+  buttonText: {
+    fontSize: scale(10),
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  markButton: {
+    marginTop: scale(10),
+    paddingVertical: scale(10),
+    borderRadius: scale(7),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fullImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
+  markButtonText: {
     color: '#fff',
-    fontSize: scale(14),
-    fontWeight: '600',
+    fontSize: scale(12),
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
 });

@@ -17,6 +17,7 @@ import { BackButton } from '../components/BackButton';
 import { clientesService, Cliente } from '../services/clientesService';
 import encomendistasService, { Encomendista, DestinoEncomendista } from '../services/encomendistasService';
 import pedidosService from '../services/pedidosService';
+import { pedidosServiceOptimizado } from '../services/pedidosServiceOptimizado';
 import favoritosService, { FavoritoPedido } from '../services/favoritosService';
 import tiendasService, { Tienda } from '../services/tiendasService';
 import productosService, { Producto } from '../services/productosService';
@@ -662,9 +663,15 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
 
       // Obtener pedidos del día para generar código secuencial
       const pedidosDelDia = await pedidosService.obtenerPedidosDelDia();
-      const codigoPedido = generarCodigoPedido(
+      const codigoInicial = generarCodigoPedido(
         tiendaSeleccionada.nombre_pagina,
         pedidosDelDia
+      );
+
+      // 🔐 VALIDAR CÓDIGO CONTRA LA BD (evita duplicados por concurrencia)
+      const codigoPedido = await pedidosServiceOptimizado.generarCodigoValidado(
+        tiendaSeleccionada.nombre_pagina,
+        codigoInicial
       );
 
       // Obtener IDs y códigos de los productos
@@ -691,12 +698,13 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
         monto_envio: envio,
         total,
         dia_entrega: diaSelec,
-        // 🔴 SOLUCIÓN ZONA HORARIA: Siempre fijar a las 12:00 UTC (mediodía)
-        // Así nunca hay confusión de zonas horarias
+        // 🔴 FORMATO STRING: fecha_entrega_programada en formato YYYY-MM-DD
         fecha_entrega_programada: (() => {
           const fecha = fechaSeleccionada || new Date();
-          const fechaAlMediodiaUTC = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 12, 0, 0, 0);
-          return fechaAlMediodiaUTC;
+          const year = fecha.getFullYear();
+          const month = String(fecha.getMonth() + 1).padStart(2, '0');
+          const day = String(fecha.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         })(),
         hora_inicio: horaInicio,
         hora_fin: horaFin,

@@ -15,6 +15,7 @@ import { FavoritosPedidosComponent } from './modules/favoritos/favoritos-pedidos
 import { SettingsComponent } from './modules/settings/settings.component';
 import { EnviosPorEncomendaComponent } from './modules/envios-por-encomienda/envios-por-encomienda.component';
 import { ReporteImagenesComponent } from './modules/reporte-imagenes/reporte-imagenes.component';
+import { PedidosPorFechaComponent } from './modules/pedidos-por-fecha/pedidos-por-fecha.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -34,6 +35,7 @@ export const routes: Routes = [
       { path: 'encomendistas', component: EncomendistasComponent },
       { path: 'pedidos', component: PedidosComponent },
       { path: 'pedidos-lista', component: PedidosListaComponent },
+      { path: 'pedidos-por-fecha', component: PedidosPorFechaComponent },
       { path: 'envios-por-encomienda', component: EnviosPorEncomendaComponent },
       { path: 'reporte-imagenes', component: ReporteImagenesComponent },
       { path: 'favoritos', component: FavoritosPedidosComponent },

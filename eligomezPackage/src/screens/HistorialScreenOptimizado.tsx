@@ -196,7 +196,7 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   const handleVerFoto = (pedido: PedidoCompleto) => {
     if (pedido.foto_paquete) {
       setCurrentImages([pedido.foto_paquete]);
-      setImageTitle(`Paquete - ${pedido.codigo_pedido}`);
+      setImageTitle('📦 Paquete');
       setImageViewerVisible(true);
     } else {
       Alert.alert('Info', 'Este pedido no tiene foto de paquete');
@@ -220,7 +220,7 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
     
     if (fotos.length > 0) {
       setCurrentImages(fotos);
-      setImageTitle(`Productos - ${pedido.codigo_pedido}`);
+      setImageTitle('📸 Productos');
       setImageViewerVisible(true);
     } else {
       Alert.alert('Sin fotos', 'Este pedido no tiene fotos de productos');

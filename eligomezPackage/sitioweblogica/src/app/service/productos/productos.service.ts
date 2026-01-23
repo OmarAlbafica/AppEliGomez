@@ -446,7 +446,9 @@ export class ProductosService {
    */
   async marcarComoLiberados(productosIds: string[]): Promise<void> {
     try {
-      const ahora = new Date().toISOString();
+      // Usar fecha de HOY al mediodía para evitar problemas de zona horaria
+      const hoy = new Date();
+      const ahora = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}T12:00:00.000Z`;
       const productosActuales = this.productos.value;
       
       for (const productoId of productosIds) {
@@ -473,16 +475,22 @@ export class ProductosService {
 
   /**
    * Desmarca productos como reservados (cuando se elimina un pedido)
+   * También agrega fecha_liberado para que aparezcan en reporte de Canvas
    */
   async desmarcarReservados(productosIds: string[]): Promise<void> {
     try {
+      // Usar fecha de HOY al mediodía para evitar problemas de zona horaria
+      const hoy = new Date();
+      const fechaLiberadoISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}T12:00:00.000Z`;
+      
       const productosActuales = this.productos.value;
       
       for (const productoId of productosIds) {
         const docRef = doc(db, 'productos', productoId);
         await updateDoc(docRef, {
           reservado: false,
-          pedido_id: null
+          pedido_id: null,
+          fecha_liberado: fechaLiberadoISO
         });
         
         // Actualizar en memoria
@@ -490,12 +498,13 @@ export class ProductosService {
         if (indice > -1) {
           productosActuales[indice].reservado = false;
           productosActuales[indice].pedido_id = undefined;
+          productosActuales[indice].fecha_liberado = new Date(fechaLiberadoISO);
         }
       }
       
       // Emitir cambios sin recargar todo
       this.productos.next([...productosActuales]);
-      console.log('Productos desmarcados como reservados en Firestore y en memoria');
+      console.log('✅ Productos desmarcados y fecha_liberado agregada:', fechaLiberadoISO);
     } catch (error) {
       console.error('Error desmarcando productos como reservados:', error);
       throw error;

@@ -42,6 +42,7 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
   const [modalMensaje, setModalMensaje] = useState(false);
   const [mensajeCopiar, setMensajeCopiar] = useState('');
+  const [pedidosGuardando, setPedidosGuardando] = useState<Set<string>>(new Set());
 
   // Animated header - efecto snap sin interpolación gradual
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -95,12 +96,25 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
     return `${String(horas12).padStart(2, '0')}:${String(minutos).padStart(2, '0')} ${ampm}`;
   };
 
-  // Formatear fecha completa en español (ej: Jueves 20 de enero 2026)
+  // Formatear fecha completa en español (ej: Viernes 23 de enero 2026)
   const formatearFechaCompleta = (fecha: string | Date | undefined): string => {
     if (!fecha) return 'No programada';
-    const date = new Date(fecha);
     const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    // Si es un string tipo YYYY-MM-DD, parsear sin conversión de zona horaria
+    let date: Date;
+    if (typeof fecha === 'string') {
+      const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        date = new Date(fecha);
+      }
+    } else {
+      date = new Date(fecha);
+    }
     
     const diaSemana = diasSemana[date.getDay()];
     const dia = date.getDate();
@@ -154,6 +168,43 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
     setModalMensaje(true);
   };
 
+  // Marcar pedido como retirado
+  const handleMarcarRetirado = async (pedido: PedidoCompleto) => {
+    if (pedido.estado === 'retirado') {
+      Alert.alert('ℹ️', 'Este pedido ya está marcado como retirado');
+      return;
+    }
+
+    try {
+      setPedidosGuardando((prev) => new Set(prev).add(pedido.id!));
+      console.log(`[📦 RetiredToday] Marcando como retirado: ${pedido.codigo_pedido}`);
+
+      const exito = await pedidosServiceOptimizado.cambiarEstadoPedido(
+        pedido.id!,
+        'retirado',
+        undefined, // sin foto
+        undefined  // sin notas
+      );
+
+      if (exito) {
+        Alert.alert('✅ Éxito', `${pedido.codigo_pedido} marcado como retirado`);
+        // Recargar pedidos para actualizar la vista
+        await cargarPedidos();
+      } else {
+        Alert.alert('❌', 'No se pudo marcar como retirado');
+      }
+    } catch (error) {
+      console.error('[❌ RetiredToday] Error:', error);
+      Alert.alert('❌', 'Error al cambiar el estado');
+    } finally {
+      setPedidosGuardando((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(pedido.id!);
+        return newSet;
+      });
+    }
+  };
+
   // Cargar pedidos de hoy con estado "enviado"
   useEffect(() => {
     cargarPedidos();
@@ -174,17 +225,18 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
       const pedidosEnviados = await pedidosServiceOptimizado.obtenerPedidosPorEstado('enviado', 1000);
 
       // Filtrar solo los de hoy usando fecha_entrega_programada
+      // Obtener fecha de hoy en formato YYYY-MM-DD (sin timezone issues)
       const hoy = new Date();
-      const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+      const fechaHoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
       const pedidosHoy = pedidosEnviados.filter((pedido) => {
         if (!pedido.fecha_entrega_programada) return false;
-        const fechaProgramada = new Date(pedido.fecha_entrega_programada);
-        const fechaProgramadaFormato = new Date(fechaProgramada.getFullYear(), fechaProgramada.getMonth(), fechaProgramada.getDate());
-        return fechaProgramadaFormato.getTime() === fechaHoy.getTime();
+        // Comparar directamente strings de fecha (YYYY-MM-DD) para evitar issues de timezone
+        const fechaProgramadaStr = pedido.fecha_entrega_programada.substring(0, 10);
+        return fechaProgramadaStr === fechaHoyStr;
       });
 
-      console.log(`📅 Fecha de hoy: ${fechaHoy.toLocaleDateString()}`);
+      console.log(`📅 Fecha de hoy: ${fechaHoyStr}`);
       console.log(`📦 Pedidos enviados para hoy: ${pedidosHoy.length}`);
       console.log(`📋 Pedidos encontrados:`, pedidosHoy.map(p => ({ codigo: p.codigo_pedido, fecha: p.fecha_entrega_programada })));
 
@@ -347,6 +399,28 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
             {pedido.cantidad_prendas}
           </Text>
         </View>
+
+        {/* Botón para marcar como retirado */}
+        <TouchableOpacity
+          style={[
+            styles.botonRetirado,
+            {
+              backgroundColor: pedido.estado === 'retirado' ? theme.colors.success + '30' : theme.colors.warning,
+              opacity: pedidosGuardando.has(pedido.id!) ? 0.6 : 1,
+            },
+          ]}
+          onPress={() => handleMarcarRetirado(pedido)}
+          disabled={pedidosGuardando.has(pedido.id!)}
+          activeOpacity={0.7}
+        >
+          {pedidosGuardando.has(pedido.id!) ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.botonRetiradoTexto}>
+              {pedido.estado === 'retirado' ? '✅ Retirado' : '📦 Marcar como Retirado'}
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -837,5 +911,25 @@ const createStyles = (scale: (size: number) => number, theme: any) =>
       fontSize: scale(14),
       fontWeight: 'bold',
       color: '#fff',
+    },
+    botonRetirado: {
+      marginTop: scale(12),
+      paddingVertical: scale(12),
+      paddingHorizontal: scale(16),
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    botonRetiradoTexto: {
+      fontSize: scale(14),
+      fontWeight: '600',
+      color: '#fff',
+      marginLeft: scale(6),
     },
   });

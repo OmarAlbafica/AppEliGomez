@@ -30,6 +30,7 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ usuario, onLogout, onNavigate }) => {
   const { theme } = useTheme();
   const scale = (size: number) => theme.scale(size);
+  const styles = createStyles(scale);
 
   // Estados para CustomAlert
   const [alertVisible, setAlertVisible] = useState(false);
@@ -188,10 +189,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ usuario, onLogout, onNav
               <HistoryIcon size={24} color="#fff" />
             </View>
             <View style={styles.fullWidthText}>
-              <Text style={[styles.fullWidthTitle, { fontSize: scale(18) }]}>
+              <Text style={[styles.fullWidthTitle, { fontSize: scale(16) }]}>
                 Retirados Hoy
               </Text>
-              <Text style={[styles.fullWidthSubtitle, { fontSize: scale(13) }]}>
+              <Text style={[styles.fullWidthSubtitle, { fontSize: scale(11) }]}>
                 Ver retiros del día por horario
               </Text>
             </View>
@@ -213,7 +214,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ usuario, onLogout, onNav
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (scale: (size: number) => number) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -221,13 +222,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    paddingTop: 48,
+    paddingVertical: scale(24),
+    paddingHorizontal: scale(20),
+    paddingTop: scale(48),
   },
   greeting: {
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   userName: {
     fontWeight: '800',
@@ -238,9 +239,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -250,55 +251,56 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   gridContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: scale(16),
+    paddingTop: scale(8),
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    gap: scale(12),
+    marginBottom: scale(12),
   },
   fullWidthCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 12,
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginBottom: scale(12),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   fullWidthContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   fullWidthIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: scale(12),
   },
   fullWidthText: {
     flex: 1,
   },
   fullWidthTitle: {
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    letterSpacing: -0.3,
+    marginBottom: scale(2),
   },
   fullWidthSubtitle: {
-    fontWeight: '600',
+    fontWeight: '500',
     color: 'rgba(255, 255, 255, 0.85)',
     letterSpacing: -0.2,
+    fontSize: scale(11),
   },
   logoutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderRadius: scale(8),
     alignItems: 'center',
   },
   logoutButtonText: {
@@ -308,12 +310,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontWeight: 'bold',
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: scale(50),
   },
   errorDescription: {
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: scale(10),
   },
 });
+
+const styles = createStyles((size) => size);
 
 export default HomeScreen;
