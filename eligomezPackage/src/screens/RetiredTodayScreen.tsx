@@ -16,6 +16,7 @@ import {
 import { pedidosServiceOptimizado, PedidoCompleto } from '../services/pedidosServiceOptimizado';
 import { BackButton } from '../components/BackButton';
 import { useTheme } from '../context/ThemeContext';
+import { CustomAlert } from '../components/CustomAlert';
 import { PackageIcon, TruckIcon, HistoryIcon } from '../components/icons';
 
 interface Props {
@@ -43,6 +44,20 @@ export const RetiredTodayScreen: React.FC<Props> = ({ onNavigate }) => {
   const [modalMensaje, setModalMensaje] = useState(false);
   const [mensajeCopiar, setMensajeCopiar] = useState('');
   const [pedidosGuardando, setPedidosGuardando] = useState<Set<string>>(new Set());
+  const [diasOffset, setDiasOffset] = useState<number>(0); // 0=Hoy, 1=Ayer, 2=Anteayer, etc.
+
+  // CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertButtons, setAlertButtons] = useState<any[]>([]);
+
+  const showAlert = (title: string, message: string, buttons?: any[]) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertButtons(buttons || [{ text: 'OK', style: 'default' }]);
+    setAlertVisible(true);
+  };
 
   // Animated header - efecto snap sin interpolación gradual
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -168,10 +183,25 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
     setModalMensaje(true);
   };
 
+  // Obtener la fecha con offset (0=Hoy, 1=Ayer, 2=Anteayer, etc.)
+  const obtenerFechaConOffset = (offset: number): string => {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() - offset);
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+  };
+
+  // Obtener etiqueta del día (Hoy, Ayer, Anteayer, etc.)
+  const obtenerEtiquetaDia = (offset: number): string => {
+    if (offset === 0) return 'Hoy';
+    if (offset === 1) return 'Ayer';
+    if (offset === 2) return 'Anteayer';
+    return `Hace ${offset} días`;
+  };
+
   // Marcar pedido como retirado
   const handleMarcarRetirado = async (pedido: PedidoCompleto) => {
     if (pedido.estado === 'retirado') {
-      Alert.alert('ℹ️', 'Este pedido ya está marcado como retirado');
+      showAlert('ℹ️ Información', 'Este pedido ya está marcado como retirado');
       return;
     }
 
@@ -187,15 +217,15 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
       );
 
       if (exito) {
-        Alert.alert('✅ Éxito', `${pedido.codigo_pedido} marcado como retirado`);
+        showAlert('✅ Éxito', `${pedido.codigo_pedido} marcado como retirado`);
         // Recargar pedidos para actualizar la vista
         await cargarPedidos();
       } else {
-        Alert.alert('❌', 'No se pudo marcar como retirado');
+        showAlert('❌ Error', 'No se pudo marcar como retirado');
       }
     } catch (error) {
       console.error('[❌ RetiredToday] Error:', error);
-      Alert.alert('❌', 'Error al cambiar el estado');
+      showAlert('❌ Error', 'Error al cambiar el estado');
     } finally {
       setPedidosGuardando((prev) => {
         const newSet = new Set(prev);
@@ -205,7 +235,7 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
     }
   };
 
-  // Cargar pedidos de hoy con estado "enviado"
+  // Cargar pedidos con offset de días
   useEffect(() => {
     cargarPedidos();
     const interval = setInterval(() => {
@@ -213,7 +243,7 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
     }, 60000); // Actualizar cada minuto
 
     return () => clearInterval(interval);
-  }, []);
+  }, [diasOffset]);
 
   const cargarPedidos = async () => {
     try {
@@ -224,26 +254,24 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
       // Obtener todos los pedidos con estado "enviado"
       const pedidosEnviados = await pedidosServiceOptimizado.obtenerPedidosPorEstado('enviado', 1000);
 
-      // Filtrar solo los de hoy usando fecha_entrega_programada
-      // Obtener fecha de hoy en formato YYYY-MM-DD (sin timezone issues)
-      const hoy = new Date();
-      const fechaHoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+      // Obtener fecha con offset en formato YYYY-MM-DD (sin timezone issues)
+      const fechaBuscadaStr = obtenerFechaConOffset(diasOffset);
 
-      const pedidosHoy = pedidosEnviados.filter((pedido) => {
+      const pedidosFiltrados = pedidosEnviados.filter((pedido) => {
         if (!pedido.fecha_entrega_programada) return false;
         // Comparar directamente strings de fecha (YYYY-MM-DD) para evitar issues de timezone
         const fechaProgramadaStr = pedido.fecha_entrega_programada.substring(0, 10);
-        return fechaProgramadaStr === fechaHoyStr;
+        return fechaProgramadaStr === fechaBuscadaStr;
       });
 
-      console.log(`📅 Fecha de hoy: ${fechaHoyStr}`);
-      console.log(`📦 Pedidos enviados para hoy: ${pedidosHoy.length}`);
-      console.log(`📋 Pedidos encontrados:`, pedidosHoy.map(p => ({ codigo: p.codigo_pedido, fecha: p.fecha_entrega_programada })));
+      console.log(`📅 Fecha seleccionada: ${fechaBuscadaStr} (${obtenerEtiquetaDia(diasOffset)})`);
+      console.log(`📦 Pedidos enviados: ${pedidosFiltrados.length}`);
+      console.log(`📋 Pedidos encontrados:`, pedidosFiltrados.map(p => ({ codigo: p.codigo_pedido, fecha: p.fecha_entrega_programada })));
 
       // Agrupar por horario
       const agrupados: { [key: string]: PedidoCompleto[] } = {};
 
-      pedidosHoy.forEach((pedido) => {
+      pedidosFiltrados.forEach((pedido) => {
         const key = `${pedido.hora_inicio}-${pedido.hora_fin}`;
         if (!agrupados[key]) {
           agrupados[key] = [];
@@ -270,7 +298,7 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
         })
         .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 
-      setPedidos(pedidosHoy);
+      setPedidos(pedidosFiltrados);
       setPedidosAgrupados(resultado);
 
       // Si hay horarios actuales, expandir automáticamente
@@ -280,7 +308,7 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
       }
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert('Error', 'No se pudieron cargar los pedidos');
+      showAlert('❌ Error', 'No se pudieron cargar los pedidos');
     } finally {
       setLoading(false);
     }
@@ -288,6 +316,15 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
 
   // Indicador de estado del horario
   const IndicadorHorario = ({ grupo }: { grupo: PedidoAgrupado }) => {
+    // Si estamos viendo días anteriores (ayer, anteayer, etc.), mostrar siempre PASADO
+    if (diasOffset > 0) {
+      return (
+        <View style={[styles.indicador, styles.indicadorPasado]}>
+          <Text style={[styles.indicadorTexto, { color: theme.colors.error }]}>⏰ PASADO</Text>
+        </View>
+      );
+    }
+
     if (grupo.isCurrentTime) {
       return (
         <View style={[styles.indicador, styles.indicadorActivo]}>
@@ -496,12 +533,34 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
           <View style={styles.iconCircle}>
             <PackageIcon size={scale(48)} color="#fff" />
           </View>
-          <Text style={styles.modernHeaderTitle}>Retirados Hoy</Text>
+          <Text style={styles.modernHeaderTitle}>Retirados {obtenerEtiquetaDia(diasOffset)}</Text>
           <Text style={styles.headerSubtitle}>
-            {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'} • {convertirHora12(horaActual)}
+            {formatearFechaCompleta(obtenerFechaConOffset(diasOffset))}
           </Text>
         </Animated.View>
       </Animated.View>
+
+      {/* Selector de Días */}
+      <View style={[styles.diasSelectorContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
+        {[0, 1, 2, 3, 4].map((offset) => (
+          <TouchableOpacity
+            key={offset}
+            onPress={() => setDiasOffset(offset)}
+            style={[
+              styles.diasButton,
+              diasOffset === offset ? styles.diasButtonActive : styles.diasButtonInactive,
+              diasOffset === offset && { borderBottomColor: theme.colors.primary }
+            ]}
+          >
+            <Text style={[
+              styles.diasButtonText,
+              diasOffset === offset ? { color: theme.colors.primary, fontWeight: 'bold' } : { color: theme.colors.textSecondary }
+            ]}>
+              {obtenerEtiquetaDia(offset)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Contenido */}
       {pedidosAgrupados.length === 0 ? (
@@ -587,6 +646,14 @@ Recuerde que el horario para retirar su paquete es de ${convertirHora12(horaInic
           </View>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        buttons={alertButtons}
+        onDismiss={() => setAlertVisible(false)}
+      />
     </View>
   );
 };
@@ -863,6 +930,36 @@ const createStyles = (scale: (size: number) => number, theme: any) =>
       fontSize: scale(14),
       fontWeight: 'bold',
       color: '#fff',
+    },
+    diasSelectorContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingVertical: scale(10),
+      paddingHorizontal: scale(8),
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      gap: scale(4),
+    },
+    diasButton: {
+      flex: 1,
+      paddingVertical: scale(8),
+      paddingHorizontal: scale(6),
+      borderRadius: scale(6),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    diasButtonActive: {
+      backgroundColor: theme.colors.primary + '20',
+    },
+    diasButtonInactive: {
+      backgroundColor: 'transparent',
+    },
+    diasButtonText: {
+      fontSize: scale(11),
+      fontWeight: '600',
+      textAlign: 'center',
     },
     modalOverlay: {
       flex: 1,

@@ -1,0 +1,34 @@
+[debug] [2026-01-25T05:48:41.988Z] ----------------------------------------------------------------------
+[debug] [2026-01-25T05:48:41.989Z] Command:       /opt/homebrew/Cellar/node/25.2.1/bin/node /opt/homebrew/bin/firebase appdistribution:distribute /Users/grupoejje/Documents/GitHub/AppEliGomez/eligomezPackage/android/app/build/outputs/apk/release/app-release.apk --app=1:1030711833270:android:f95121a96dc5242c9e2c17 --release-notes=📦 v1.0.18 - Marcar pedidos como retirado en RetiredToday + Corrección de fechas. Cambios: ✅ Botón 'Marcar como Retirado' en cada pedido de hoy ✅ Cambio de estado sin foto ni notas requeridas ✅ Corrección: RetiredToday mostraba pedidos de días incorrectos (issue timezone) ✅ Ahora filtra solo el día actual (21 miércoles 2026) ✅ Comparación de fechas sin timezone issues --testers=sr.vmago@gmail.com --project=eli-gomez-web
+[debug] [2026-01-25T05:48:41.989Z] CLI Version:   15.2.1
+[debug] [2026-01-25T05:48:41.989Z] Platform:      darwin
+[debug] [2026-01-25T05:48:41.989Z] Node Version:  v25.2.1
+[debug] [2026-01-25T05:48:41.990Z] Time:          Sat Jan 24 2026 23:48:41 GMT-0600 (hora estándar central)
+[debug] [2026-01-25T05:48:41.990Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-25T05:48:41.996Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-25T05:48:41.996Z] > authorizing via signed-in user (sr.vmago@gmail.com)
+[info] i  uploading binary... 
+[debug] [2026-01-25T05:48:41.997Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:48:41.998Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:48:41.998Z] >>> [apiv2][query] POST https://firebaseappdistribution.googleapis.com/upload/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases:upload [none]
+[debug] [2026-01-25T05:48:41.998Z] >>> [apiv2][body] POST https://firebaseappdistribution.googleapis.com/upload/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases:upload [stream]
+[debug] [2026-01-25T05:49:06.283Z] <<< [apiv2][status] POST https://firebaseappdistribution.googleapis.com/upload/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases:upload 200
+[debug] [2026-01-25T05:49:06.283Z] <<< [apiv2][body] POST https://firebaseappdistribution.googleapis.com/upload/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases:upload {"name":"projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3"}
+[debug] [2026-01-25T05:49:06.285Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:06.285Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:06.285Z] >>> [apiv2][query] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 [none]
+[debug] [2026-01-25T05:49:06.587Z] <<< [apiv2][status] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 200
+[debug] [2026-01-25T05:49:06.587Z] <<< [apiv2][body] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 {"name":"projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3"}
+[debug] [2026-01-25T05:49:08.588Z] [App Distribution Upload Poller] Retrying task index 0
+[debug] [2026-01-25T05:49:08.589Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:08.589Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:08.589Z] >>> [apiv2][query] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 [none]
+[debug] [2026-01-25T05:49:08.855Z] <<< [apiv2][status] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 200
+[debug] [2026-01-25T05:49:08.855Z] <<< [apiv2][body] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 {"name":"projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3"}
+[debug] [2026-01-25T05:49:12.858Z] [App Distribution Upload Poller] Retrying task index 0
+[debug] [2026-01-25T05:49:12.858Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:12.858Z] Checked if tokens are valid: true, expires at: 1769323240968
+[debug] [2026-01-25T05:49:12.858Z] >>> [apiv2][query] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 [none]
+[debug] [2026-01-25T05:49:13.138Z] <<< [apiv2][status] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 200
+[debug] [2026-01-25T05:49:13.139Z] <<< [apiv2][body] GET https://firebaseappdistribution.googleapis.com/v1/projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3 {"name":"projects/1030711833270/apps/1:1030711833270:android:f95121a96dc5242c9e2c17/releases/-/operations/6839fac4d4acb9bc6528ac55f1b10969acec2c89d24bf28ecabb768e6503c1d3"}

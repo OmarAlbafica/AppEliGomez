@@ -42,17 +42,51 @@ interface HistorialScreenOptimizadoProps {
 const Picker = RNPicker as any;
 
 const estadoColors: { [key: string]: string } = {
-  pendiente: '#FFC107',
-  en_transito: '#2196F3',
-  entregado: '#4CAF50',
-  cancelado: '#F44336',
-  enviado: '#9C27B0',
-  retirado: '#00BCD4',
-  'no-retirado': '#FF9800',
-  remunero: '#4CAF50',
-  empacada: '#FF6F00',
-  procesando: '#2196F3',
+  pendiente: '#EAB308',      // yellow-500
+  en_transito: '#3B82F6',    // blue-500
+  entregado: '#22C55E',      // green-500
+  cancelado: '#EF4444',      // red-500
+  enviado: '#A855F7',        // purple-500
+  retirado: '#22C55E',       // green-500
+  'no-retirado': '#F97316',  // orange-500
+  remunero: '#14B8A6',       // teal-500
+  empacada: '#3B82F6',       // blue-500
+  'retirado-local': '#6366F1', // indigo-500
+  liberado: '#EC4899',       // pink-500
+  procesando: '#3B82F6',     // blue-500
 };
+
+const estadosDisponibles = [
+  { value: '', label: '✨ Todos los estados' },
+  { value: 'pendiente', label: '🟡 Pendiente' },
+  { value: 'procesando', label: '🚚 Procesando' },
+  { value: 'empacada', label: '📦 Empacada' },
+  { value: 'enviado', label: '✈️ Enviado' },
+  { value: 'entregado', label: '✅ Entregado' },
+  { value: 'cancelado', label: '💸 Cancelado' },
+  { value: 'retirado', label: '✅ Retirado' },
+  { value: 'no-retirado', label: '❌ No Retirado' },
+  { value: 'retirado-local', label: '📍 Retirado Local' },
+  { value: 'liberado', label: '🔓 Liberado' },
+  { value: 'remunero', label: '💵 Remunerado' },
+];
+
+const opcionesAgrupacion = [
+  { value: 'sin-agrupar', label: '📋 Sin agrupar' },
+  { value: 'encomienda', label: '🚚 Agrupar por Encomienda' },
+  { value: 'cliente', label: '👤 Agrupar por Cliente' },
+  { value: 'estado', label: '📊 Agrupar por Estado' },
+  { value: 'fecha', label: '📅 Agrupar por Fecha' },
+];
+
+const opcionesOrdenamiento = [
+  { value: 'fecha-asc', label: '📅 Fecha (Próxima primero)' },
+  { value: 'fecha-desc', label: '📅 Fecha (Antigua primero)' },
+  { value: 'cliente-asc', label: '👤 Cliente (A-Z)' },
+  { value: 'encomienda-asc', label: '🚚 Encomienda (A-Z)' },
+  { value: 'monto-desc', label: '💰 Monto (Mayor primero)' },
+  { value: 'estado', label: '📊 Estado' },
+];
 
 export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps> = ({
   onNavigate,
@@ -101,6 +135,12 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   const [pedidos, setPedidos] = useState<PedidoCompleto[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [agruparPor, setAgruparPor] = useState<'sin-agrupar' | 'encomienda' | 'cliente' | 'estado' | 'fecha'>('sin-agrupar');
+  const [ordenarPor, setOrdenarPor] = useState<'fecha-asc' | 'fecha-desc' | 'cliente-asc' | 'encomienda-asc' | 'monto-desc' | 'estado'>('fecha-asc');
+  const [mostrarOpcionesOrden, setMostrarOpcionesOrden] = useState(false);
+  const [mostrarOpcionesAgrupacion, setMostrarOpcionesAgrupacion] = useState(false);
+  const [mostrarModalFiltro, setMostrarModalFiltro] = useState(false);
+  const [mostrarFiltros, setMostrarFiltros] = useState(true);
   
   // Modal
   const [modalDetalle, setModalDetalle] = useState(false);
@@ -182,6 +222,11 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
     // El useEffect se dispara automáticamente y recarga con el nuevo filtro
   };
 
+  const obtenerEtiquetaEstado = (estado: string): string => {
+    const item = estadosDisponibles.find(e => e.value === estado);
+    return item?.label || '✨ Todos los estados';
+  };
+
   // ============================================================
   // 📲 ABRIR MODAL DE DETALLE
   // ============================================================
@@ -228,20 +273,77 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   };
 
   // ============================================================
-  // 📊 RENDERIZAR ESTADO CON COLOR
+  // � PROCESAR PEDIDOS (AGRUPAR Y ORDENAR)
+  // ============================================================
+  const getPedidosProcesados = () => {
+    let pedidosOrdenados = [...pedidos];
+
+    // 1️⃣ ORDENAR
+    pedidosOrdenados.sort((a, b) => {
+      switch (ordenarPor) {
+        case 'fecha-asc':
+          return new Date(a.fecha_entrega_programada || '').getTime() - new Date(b.fecha_entrega_programada || '').getTime();
+        case 'fecha-desc':
+          return new Date(b.fecha_entrega_programada || '').getTime() - new Date(a.fecha_entrega_programada || '').getTime();
+        case 'cliente-asc':
+          return (a.cliente_datos?.nombre || '').localeCompare(b.cliente_datos?.nombre || '');
+        case 'encomienda-asc':
+          return (a.encomendista_datos?.nombre || '').localeCompare(b.encomendista_datos?.nombre || '');
+        case 'monto-desc':
+          return (b.total || 0) - (a.total || 0);
+        case 'estado':
+          return (a.estado || '').localeCompare(b.estado || '');
+        default:
+          return 0;
+      }
+    });
+
+    // 2️⃣ AGRUPAR
+    if (agruparPor === 'sin-agrupar') {
+      return { 'sin-agrupar': pedidosOrdenados };
+    }
+
+    const grupos: { [key: string]: PedidoCompleto[] } = {};
+    pedidosOrdenados.forEach(pedido => {
+      let clave = 'Sin definir';
+      switch (agruparPor) {
+        case 'encomienda':
+          clave = pedido.encomendista_datos?.nombre || 'Sin encomienda';
+          break;
+        case 'cliente':
+          clave = pedido.cliente_datos?.nombre || 'Sin cliente';
+          break;
+        case 'estado':
+          clave = pedido.estado || 'Sin estado';
+          break;
+        case 'fecha':
+          clave = pedido.fecha_entrega_programada || 'Sin fecha';
+          break;
+      }
+      if (!grupos[clave]) grupos[clave] = [];
+      grupos[clave].push(pedido);
+    });
+
+    return grupos;
+  };
+
+  // ============================================================
+  // �📊 RENDERIZAR ESTADO CON COLOR
   // ============================================================
   const renderEstadoTag = (estado: string) => {
     const color = estadoColors[estado] || '#999';
     const labels: { [key: string]: string } = {
-      pendiente: '⏳ Pendiente',
+      pendiente: '🟡 Pendiente',
       procesando: '🚚 Procesando',
       empacada: '📦 Empacada',
-      enviado: '📮 Enviado',
+      enviado: '✈️ Enviado',
       entregado: '✅ Entregado',
-      cancelado: '❌ Cancelado',
-      retirado: '✓ Retirado',
-      'no-retirado': '✗ No Retirado',
-      remunero: '💰 Remunerado',
+      cancelado: '💸 Cancelado',
+      retirado: '✅ Retirado',
+      'no-retirado': '❌ No Retirado',
+      'retirado-local': '📍 Retirado Local',
+      liberado: '🔓 Liberado',
+      remunero: '💵 Remunerado',
     };
 
     return (
@@ -260,10 +362,13 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
     const encomendistaNombre = item.encomendista_datos?.nombre || 'Encomendista desconocido';
     const destinoNombre = item.destino_id || 'Destino personalizado';
     const tiendaNombre = item.nombre_tienda || 'Tienda';
+    
+    // Obtener color del estado para el borde
+    const colorEstado = estadoColors[item.estado] || '#999';
 
     return (
       <TouchableOpacity
-        style={styles.pedidoCard}
+        style={[styles.pedidoCard, { borderLeftColor: colorEstado }]}
         onPress={() => handleAbrirDetalle(item)}
       >
         {/* Encabezado */}
@@ -370,43 +475,211 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
   // ============================================================
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header moderno con gradiente */}
-      <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
-        <View style={styles.headerTop}>
-          <BackButton onPress={() => onNavigate?.('home')} />
-        </View>
-        
-        <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
-          <View style={styles.iconCircle}>
-            <HistoryIcon size={scale(48)} color="#fff" />
-          </View>
-          <Text style={styles.modernHeaderTitle}>Historial</Text>
-          <Text style={styles.headerSubtitle}>
-            {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
-          </Text>
-        </Animated.View>
-      </Animated.View>
-
-      {/* Filtro de estado */}
-      <View style={[styles.filterContainer, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(14) }]}>Filtrar por estado:</Text>
-        <Picker
-          selectedValue={filtroEstado}
-          onValueChange={handleCambiarEstadoFiltro}
-          style={[styles.picker, { color: theme.colors.text }]}
-        >
-          <Picker.Item label="Todos los estados" value="" />
-          <Picker.Item label="⏳ Pendiente" value="pendiente" />
-          <Picker.Item label="🚚 Procesando" value="procesando" />
-          <Picker.Item label="📦 Empacada" value="empacada" />
-          <Picker.Item label="📮 Enviado" value="enviado" />
-          <Picker.Item label="✅ Entregado" value="entregado" />
-          <Picker.Item label="❌ Cancelado" value="cancelado" />
-          <Picker.Item label="✓ Retirado" value="retirado" />
-          <Picker.Item label="✗ No Retirado" value="no-retirado" />
-          <Picker.Item label="💰 Remunerado" value="remunero" />
-        </Picker>
+      {/* HEADER FIJO CON BOTÓN ATRÁS */}
+      <View style={[styles.fixedHeader, { backgroundColor: theme.colors.primary }]}>
+        <BackButton onPress={() => onNavigate?.('home')} />
+        <Text style={styles.fixedHeaderTitle}>Historial</Text>
+        <View style={{ width: 48 }} />
       </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+        {/* HEADER ANIMADO - Solo con círculo, título y subtítulo */}
+        <Animated.View style={[styles.modernHeader, { backgroundColor: theme.colors.primary, height: headerHeight, overflow: 'hidden' }]}>
+          <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
+            <View style={styles.iconCircle}>
+              <HistoryIcon size={scale(48)} color="#fff" />
+            </View>
+            <Text style={styles.modernHeaderTitle}>Historial</Text>
+            <Text style={styles.headerSubtitle}>
+              {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
+            </Text>
+          </Animated.View>
+        </Animated.View>
+
+        {/* BOTÓN PARA EXPANDIR/MINIMIZAR FILTROS */}
+        <TouchableOpacity 
+          style={[styles.filtrosToggle, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}
+          onPress={() => setMostrarFiltros(!mostrarFiltros)}
+        >
+          <Text style={[styles.filtrosToggleText, { color: theme.colors.text }]}>
+            {mostrarFiltros ? '▼' : '▶'} Filtros
+          </Text>
+        </TouchableOpacity>
+
+        {/* FILTROS COLAPSABLES */}
+        {mostrarFiltros && (
+          <View style={[styles.filterContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(14) }]}>Filtrar por estado:</Text>
+        <TouchableOpacity 
+          style={[styles.filterButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+          onPress={() => setMostrarModalFiltro(true)}
+        >
+          <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>
+            {filtroEstado ? obtenerEtiquetaEstado(filtroEstado) : '✨ Todos los estados'}
+          </Text>
+          <Text style={{ fontSize: scale(16), color: theme.colors.textSecondary }}>▼</Text>
+        </TouchableOpacity>
+
+        {/* Opciones de agrupación y ordenamiento */}
+        <View style={{ gap: scale(10), marginTop: scale(10) }}>
+          {/* Agrupación */}
+          <View>
+            <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(12) }]}>Agrupar por:</Text>
+            <TouchableOpacity 
+              style={[styles.filterButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+              onPress={() => setMostrarOpcionesAgrupacion(true)}
+            >
+              <Text style={[styles.filterButtonText, { color: theme.colors.text, fontSize: scale(12) }]}>
+                {opcionesAgrupacion.find(o => o.value === agruparPor)?.label || 'Sin agrupar'}
+              </Text>
+              <Text style={{ fontSize: scale(14), color: theme.colors.textSecondary }}>▼</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Ordenamiento */}
+          <View>
+            <Text style={[styles.filterLabel, { color: theme.colors.text, fontSize: scale(12) }]}>Ordenar por:</Text>
+            <TouchableOpacity 
+              style={[styles.filterButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+              onPress={() => setMostrarOpcionesOrden(true)}
+            >
+              <Text style={[styles.filterButtonText, { color: theme.colors.text, fontSize: scale(12) }]}>
+                {opcionesOrdenamiento.find(o => o.value === ordenarPor)?.label || 'Fecha'}
+              </Text>
+              <Text style={{ fontSize: scale(14), color: theme.colors.textSecondary }}>▼</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      )}
+
+      {/* Modal de filtro personalizado */}
+      <Modal
+        visible={mostrarModalFiltro}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setMostrarModalFiltro(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.filterModal, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.filterModalHeader, { borderBottomColor: theme.colors.border }]}>
+              <Text style={[styles.filterModalTitle, { color: theme.colors.text }]}>Todos los estados</Text>
+              <TouchableOpacity onPress={() => setMostrarModalFiltro(false)}>
+                <Text style={{ fontSize: scale(24), color: theme.colors.textSecondary }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.filterModalContent}>
+              {estadosDisponibles.map((estado) => (
+                <TouchableOpacity
+                  key={estado.value}
+                  style={[
+                    styles.filterModalItem,
+                    { borderBottomColor: theme.colors.border },
+                    filtroEstado === estado.value && { backgroundColor: estadoColors[estado.value] + '20' }
+                  ]}
+                  onPress={() => {
+                    handleCambiarEstadoFiltro(estado.value);
+                    setMostrarModalFiltro(false);
+                  }}
+                >
+                  <Text style={[styles.filterModalItemText, { color: theme.colors.text }]}>
+                    {estado.label}
+                  </Text>
+                  {filtroEstado === estado.value && (
+                    <Text style={{ fontSize: scale(18), color: estadoColors[estado.value] }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE AGRUPACIÓN */}
+      <Modal
+        visible={mostrarOpcionesAgrupacion}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setMostrarOpcionesAgrupacion(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.filterModal, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.filterModalHeader, { borderBottomColor: theme.colors.border }]}>
+              <Text style={[styles.filterModalTitle, { color: theme.colors.text }]}>Agrupar por</Text>
+              <TouchableOpacity onPress={() => setMostrarOpcionesAgrupacion(false)}>
+                <Text style={{ fontSize: scale(24), color: theme.colors.textSecondary }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.filterModalContent}>
+              {opcionesAgrupacion.map((opcion) => (
+                <TouchableOpacity
+                  key={opcion.value}
+                  style={[
+                    styles.filterModalItem,
+                    { borderBottomColor: theme.colors.border },
+                    agruparPor === opcion.value && { backgroundColor: theme.colors.primary + '20' }
+                  ]}
+                  onPress={() => {
+                    setAgruparPor(opcion.value as any);
+                    setMostrarOpcionesAgrupacion(false);
+                  }}
+                >
+                  <Text style={[styles.filterModalItemText, { color: theme.colors.text }]}>
+                    {opcion.label}
+                  </Text>
+                  {agruparPor === opcion.value && (
+                    <Text style={{ fontSize: scale(18), color: theme.colors.primary }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE ORDENAMIENTO */}
+      <Modal
+        visible={mostrarOpcionesOrden}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setMostrarOpcionesOrden(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.filterModal, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.filterModalHeader, { borderBottomColor: theme.colors.border }]}>
+              <Text style={[styles.filterModalTitle, { color: theme.colors.text }]}>Ordenar por</Text>
+              <TouchableOpacity onPress={() => setMostrarOpcionesOrden(false)}>
+                <Text style={{ fontSize: scale(24), color: theme.colors.textSecondary }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.filterModalContent}>
+              {opcionesOrdenamiento.map((opcion) => (
+                <TouchableOpacity
+                  key={opcion.value}
+                  style={[
+                    styles.filterModalItem,
+                    { borderBottomColor: theme.colors.border },
+                    ordenarPor === opcion.value && { backgroundColor: theme.colors.primary + '20' }
+                  ]}
+                  onPress={() => {
+                    setOrdenarPor(opcion.value as any);
+                    setMostrarOpcionesOrden(false);
+                  }}
+                >
+                  <Text style={[styles.filterModalItemText, { color: theme.colors.text }]}>
+                    {opcion.label}
+                  </Text>
+                  {ordenarPor === opcion.value && (
+                    <Text style={{ fontSize: scale(18), color: theme.colors.primary }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Lista de pedidos */}
       {pedidos.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -419,17 +692,27 @@ export const HistorialScreenOptimizado: React.FC<HistorialScreenOptimizadoProps>
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={pedidos}
-          keyExtractor={(item) => item.id || Math.random().toString()}
-          renderItem={renderPedidoCard}
-          contentContainerStyle={styles.listContent}
-          refreshing={loading}
-          onRefresh={() => loadHistorial(filtroEstado)}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
+        <View>
+          {Object.entries(getPedidosProcesados()).map(([grupo, pedidosGrupo]: [string, PedidoCompleto[]]) => (
+            <View key={grupo}>
+              {agruparPor !== 'sin-agrupar' && (
+                <View style={[styles.grupoHeader, { backgroundColor: theme.colors.primary + '20', borderLeftColor: theme.colors.primary }]}>
+                  <Text style={[styles.grupoTitle, { color: theme.colors.primary }]}>📌 {grupo}</Text>
+                  <Text style={[styles.grupoSubtitle, { color: theme.colors.textSecondary }]}>({(pedidosGrupo as PedidoCompleto[]).length})</Text>
+                </View>
+              )}
+              <View>
+                {(pedidosGrupo as PedidoCompleto[]).map((pedido) => (
+                  <View key={pedido.id}>
+                    {renderPedidoCard({ item: pedido })}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
       )}
+      </ScrollView>
 
       {/* ============================================================ */}
       {/* MODAL DE DETALLE - Muestra todos los datos enriquecidos */}
@@ -587,6 +870,34 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   container: {
     flex: 1,
   },
+  fixedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    zIndex: 100,
+  },
+  fixedHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  filtrosToggle: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  filtrosToggleText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   modernHeader: {
     backgroundColor: theme.colors.primary,
     paddingBottom: 24,
@@ -598,17 +909,10 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     shadowRadius: 16,
     elevation: 10,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 48,
-    marginBottom: 16,
-  },
   headerContent: {
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingBottom: 16,
   },
   iconCircle: {
     width: 100,
@@ -669,6 +973,62 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     marginBottom: 8,
     fontWeight: '600',
   },
+  filterButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+  },
+  filterButtonText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    flex: 1,
+  },
+  filterModal: {
+    position: 'absolute',
+    top: '25%',
+    left: 16,
+    right: 16,
+    borderRadius: 16,
+    maxHeight: '60%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  filterModalTitle: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  filterModalContent: {
+    paddingVertical: 8,
+  },
+  filterModalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  filterModalItemText: {
+    fontSize: scale(14),
+    fontWeight: '500',
+  },
   picker: {
     backgroundColor: theme.colors.surface,
     borderRadius: 12,
@@ -693,6 +1053,7 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border + '40',
+    borderLeftWidth: 4,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -999,6 +1360,23 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     borderLeftWidth: 3,
     borderLeftColor: theme.colors.primary,
   },
+  grupoHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderRadius: 8,
+  },
+  grupoTitle: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  grupoSubtitle: {
+    fontSize: scale(13),
+    fontWeight: '500',
+  },
 });
 
 const createDetailStyles = (scale: (size: number) => number, theme: any) => StyleSheet.create({
@@ -1027,5 +1405,22 @@ const createDetailStyles = (scale: (size: number) => number, theme: any) => Styl
   valueHighlight: {
     color: theme.colors.primary,
     fontWeight: 'bold',
+  },
+  grupoHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderRadius: 8,
+  },
+  grupoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  grupoSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

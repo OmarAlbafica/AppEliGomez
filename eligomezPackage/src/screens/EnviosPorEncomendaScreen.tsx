@@ -110,16 +110,21 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
     try {
       setLoading(true);
       
-      // ✅ Usar servicio centralizado (sin hardcodear URL)
-      const { pedidos, dia_envio, fecha_inicio, fecha_fin } = await pedidosServiceOptimizado.obtenerPedidosParaEnvios();
+      // ✅ Usar servicio centralizado - SOLO estado 'empacada', sin filtros de fecha
+      const pedidos = await pedidosServiceOptimizado.obtenerPedidosPorEstado('empacada', 500);
       
       // Armar label del día
-      setDiaEnvioHoy(`📦 Envíos ${dia_envio}`);
+      const hoy = new Date();
+      const diaHoy = hoy.getDay();
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const diaActual = diasSemana[diaHoy];
       
-      // Establecer rango desde el servicio
+      setDiaEnvioHoy(`📦 Pedidos Empacados`);
+      
+      // Establecer rango desde el servicio (para referencia)
       setRangoFechas({
-        inicio: fecha_inicio,
-        fin: fecha_fin
+        inicio: new Date().toLocaleDateString(),
+        fin: new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString() // +30 días
       });
       
       // Agrupar por encomendista
@@ -152,7 +157,7 @@ export const EnviosPorEncomendaScreen: React.FC<EnviosPorEncomendaScreenProps> =
         setTotalPedidos(0);
       }
       
-      console.log(`📱 [Envios] Cargados ${pedidos?.length || 0} pedidos para envíos`);
+      console.log(`📱 [Envios] Cargados ${pedidos?.length || 0} pedidos EMPACADOS (sin filtro de fecha)`);
       
     } catch (error) {
       console.error('Error cargando envíos:', error);

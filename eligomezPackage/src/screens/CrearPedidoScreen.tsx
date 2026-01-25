@@ -1407,13 +1407,15 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
               <Text style={styles.modalTitle}>Agregar Destino a {encomendistaSel?.nombre}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Nombre del destino *"
+                placeholder="Escriba el destino (ej: San Juan Nonualco)"
+                placeholderTextColor="#888"
                 value={nuevoDestinoForm.nombre}
                 onChangeText={(text) => setNuevoDestinoForm({ ...nuevoDestinoForm, nombre: text })}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Local (opcional)"
+                placeholder="Local (ej: Box Full, Luna Encomiendas)"
+                placeholderTextColor="#888"
                 value={nuevoDestinoForm.local}
                 onChangeText={(text) => setNuevoDestinoForm({ ...nuevoDestinoForm, local: text })}
               />
@@ -1441,36 +1443,37 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
               </View>
 
               <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Días Disponibles *</Text>
-              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
-                <TouchableOpacity
-                  key={dia}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#e0e0e0',
-                  }}
-                  onPress={() => toggleDiaSeleccionado(dia)}
-                >
-                  <View
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
+                  <TouchableOpacity
+                    key={dia}
                     style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 4,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : theme.colors.surface,
                       borderWidth: 2,
-                      borderColor: theme.colors.primary,
-                      justifyContent: 'center',
+                      borderColor: diasSeleccionados.includes(dia) ? theme.colors.primary : theme.colors.border,
+                      minWidth: '23%',
                       alignItems: 'center',
-                      marginRight: 12,
-                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : '#fff',
+                      shadowColor: diasSeleccionados.includes(dia) ? theme.colors.primary : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: diasSeleccionados.includes(dia) ? 3 : 0,
                     }}
+                    onPress={() => toggleDiaSeleccionado(dia)}
                   >
-                    {diasSeleccionados.includes(dia) && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✓</Text>}
-                  </View>
-                  <Text>{dia}</Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={{
+                      fontWeight: '700',
+                      color: diasSeleccionados.includes(dia) ? '#fff' : theme.colors.text,
+                      fontSize: 12,
+                    }}>
+                      {dia}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoDestino(false)}>
@@ -1518,36 +1521,37 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
               </View>
 
               <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Días para este Horario *</Text>
-              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
-                <TouchableOpacity
-                  key={dia}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#e0e0e0',
-                  }}
-                  onPress={() => toggleDiaSeleccionado(dia)}
-                >
-                  <View
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia) => (
+                  <TouchableOpacity
+                    key={dia}
                     style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 4,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : theme.colors.surface,
                       borderWidth: 2,
-                      borderColor: theme.colors.primary,
-                      justifyContent: 'center',
+                      borderColor: diasSeleccionados.includes(dia) ? theme.colors.primary : theme.colors.border,
+                      minWidth: '23%',
                       alignItems: 'center',
-                      marginRight: 12,
-                      backgroundColor: diasSeleccionados.includes(dia) ? theme.colors.primary : '#fff',
+                      shadowColor: diasSeleccionados.includes(dia) ? theme.colors.primary : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: diasSeleccionados.includes(dia) ? 3 : 0,
                     }}
+                    onPress={() => toggleDiaSeleccionado(dia)}
                   >
-                    {diasSeleccionados.includes(dia) && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✓</Text>}
-                  </View>
-                  <Text>{dia}</Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={{
+                      fontWeight: '700',
+                      color: diasSeleccionados.includes(dia) ? '#fff' : theme.colors.text,
+                      fontSize: 12,
+                    }}>
+                      {dia}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={styles.buttonSecondary} onPress={() => setModalNuevoHorario(false)}>
@@ -1577,17 +1581,26 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.productosScrollView}>
-              {obtenerProductosDisponibles().length === 0 ? (
+            <FlatList
+              data={obtenerProductosDisponibles()}
+              numColumns={2}
+              keyExtractor={(item) => item.id}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              initialNumToRender={10}
+              scrollEnabled={true}
+              style={styles.productosScrollView}
+              contentContainerStyle={styles.productosGrid}
+              ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
                     {productos.length === 0 ? 'No hay productos' : 'Todos están reservados'}
                   </Text>
                 </View>
-              ) : (
-                <View style={styles.productosGrid}>
-                  {obtenerProductosDisponibles().map((producto, idx) => {
-                    const seleccionado = esProductoSeleccionado(producto.id);
+              }
+              renderItem={({ item: producto }) => {
+                const seleccionado = esProductoSeleccionado(producto.id);
                     const seleccion = productosSeleccionados.find(p => p.id === producto.id);
                     
                     return (
@@ -1646,10 +1659,8 @@ export const CrearPedidoScreen: React.FC<Props> = ({ onNavigate }) => {
                         </TouchableOpacity>
                       </View>
                     );
-                  })}
-                </View>
-              )}
-            </ScrollView>
+              }}
+            />
 
             <TouchableOpacity
               style={styles.buttonPrimary}

@@ -403,7 +403,7 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                     minWidth: 40,
                   }}>
                     <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', textAlign: 'center' }}>
-                      {esEncontrado ? '✓' : (pedido.estado === 'pendiente' ? '⏳' : '📦')}
+                      {esEncontrado ? '✓' : (pedido.estado === 'pendiente' ? '🟡' : '📦')}
                     </Text>
                   </View>
 
@@ -528,7 +528,7 @@ export const UrgentesEmpacarScreen: React.FC<UrgentesEmpacarScreenProps> = ({ on
                   ]}
                 >
                   <Text style={styles.badgeText}>
-                    {pedido.estado === 'pendiente' ? '⏳ PENDIENTE' : '📦 EMPACADA'}
+                    {pedido.estado === 'pendiente' ? '🟡 PENDIENTE' : '📦 EMPACADA'}
                   </Text>
                 </View>
 

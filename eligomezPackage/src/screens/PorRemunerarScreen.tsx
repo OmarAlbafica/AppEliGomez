@@ -40,6 +40,9 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
   const [totalRemuneracion, setTotalRemuneracion] = useState(0);
   const [totalRemunerado, setTotalRemunerado] = useState(0);
   const [totalNoRetirado, setTotalNoRetirado] = useState(0);
+  // Totales solo del usuario actual
+  const [totalRemuneradoUsuario, setTotalRemuneradoUsuario] = useState(0);
+  const [totalNoRetiradoUsuario, setTotalNoRetiradoUsuario] = useState(0);
   const [pedidosFinalizados, setPedidosFinalizados] = useState<Map<string, 'remunerado' | 'no-retirado'>>(new Map());
   const [quienMarco, setQuienMarco] = useState<Map<string, string>>(new Map()); // Almacenar quién marcó cada pedido
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
@@ -117,6 +120,10 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         let totalRemuneradoTodos = 0;
         let totalNoRetiradoTodos = 0;
         
+        // Sumar SOLO las remuneraciones del usuario actual
+        let totalRemuneradoDelUsuario = 0;
+        let totalNoRetiradoDelUsuario = 0;
+        
         // Procesar TODAS las remuneraciones
         ordenadas.forEach((rem) => {
           // Mapear quién marcó y estado (para TODOS los usuarios)
@@ -129,6 +136,15 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
           } else if (rem.tipo === 'no-retirado') {
             totalNoRetiradoTodos += rem.monto || 0;
           }
+          
+          // Contar SOLO las del usuario actual
+          if (rem.usuario_id === currentUserId) {
+            if (rem.tipo === 'retirado') {
+              totalRemuneradoDelUsuario += rem.monto || 0;
+            } else if (rem.tipo === 'no-retirado') {
+              totalNoRetiradoDelUsuario += rem.monto || 0;
+            }
+          }
         });
         
         // Actualizar estado
@@ -137,6 +153,8 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         setPedidosFinalizados(estadoPedidosMap);
         setTotalRemunerado(totalRemuneradoTodos);
         setTotalNoRetirado(totalNoRetiradoTodos);
+        setTotalRemuneradoUsuario(totalRemuneradoDelUsuario);
+        setTotalNoRetiradoUsuario(totalNoRetiradoDelUsuario);
       }
     );
 
@@ -606,7 +624,7 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
         
         <Animated.View style={[styles.headerContent, { opacity: headerOpacity }]}>
           <View style={styles.iconCircle}>
-            <Text style={{ fontSize: 48 }}>💰</Text>
+            <Text style={{ fontSize: scale(32) }}>💰</Text>
           </View>
           <Text style={styles.headerTitle}>Por Remunerar</Text>
           <Text style={styles.headerSubtitle}>Paquetes enviados y retirados</Text>
@@ -637,6 +655,29 @@ export const PorRemunerarScreen: React.FC<PorRemunerarScreenProps> = ({ onNaviga
               ${(totalRemuneracion - totalRemunerado - totalNoRetirado).toLocaleString()}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Pendiente</Text>
+          </View>
+        </View>
+
+        {/* 👤 TOTALES DEL USUARIO LOGUEADO */}
+        <View style={{ paddingHorizontal: scale(16), marginTop: scale(8), gap: scale(8) }}>
+          <View style={[{ backgroundColor: theme.colors.surface, borderColor: '#9C27B0', borderWidth: 2, borderRadius: scale(8), paddingVertical: scale(6), paddingHorizontal: scale(12) }]}>
+            <Text style={[{ color: '#9C27B0', fontWeight: '800', fontSize: scale(13), textAlign: 'center' }]}>
+              👤 {usuarioActual}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: scale(8) }}>
+            <View style={[styles.statItem, { flex: 1, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, paddingVertical: scale(8) }]}>
+              <Text style={[styles.statNumber, { color: '#66BB6A', fontSize: scale(18) }]}>
+                ${totalRemuneradoUsuario.toLocaleString()}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Retirado</Text>
+            </View>
+            <View style={[styles.statItem, { flex: 1, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1, paddingVertical: scale(8) }]}>
+              <Text style={[styles.statNumber, { color: '#F44336', fontSize: scale(18) }]}>
+                ${totalNoRetiradoUsuario.toLocaleString()}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>No Retirado</Text>
+            </View>
           </View>
         </View>
 
@@ -980,11 +1021,12 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
     backgroundColor: theme.colors.background,
   },
   header: {
-    paddingTop: scale(6),
-    paddingBottom: scale(8),
+    paddingTop: scale(4),
+    paddingBottom: scale(4),
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(8),
+    minHeight: scale(100),
   },
   headerTop: {
     width: '100%',
@@ -993,28 +1035,31 @@ const createStyles = (scale: (size: number) => number, theme: any) => StyleSheet
   headerContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scale(2),
+    paddingVertical: scale(1),
+    gap: scale(2),
   },
   iconCircle: {
-    height: scale(45),
-    borderRadius: scale(22),
+    height: scale(35),
+    width: scale(35),
+    borderRadius: scale(17.5),
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: scale(2),
+    marginBottom: 0,
+    flexShrink: 0,
   },
   headerTitle: {
     fontWeight: '800',
     color: '#fff',
-    fontSize: scale(18),
-    letterSpacing: -1,
-    marginBottom: scale(1),
+    fontSize: scale(16),
+    letterSpacing: -0.5,
+    marginBottom: 0,
   },
   headerSubtitle: {
     fontWeight: '600',
     color: 'rgba(255,255,255,0.9)',
-    fontSize: scale(10),
-    letterSpacing: -0.3,
+    fontSize: scale(9),
+    letterSpacing: -0.2,
   },
   statsBox: {
     marginHorizontal: scale(8),
